@@ -1,0 +1,868 @@
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+namespace OutOfOffice.EditorTools
+{
+    // Automated checks for the puck simulation, run with the real colliders and Puck.Step on the developer lab board.
+    // Each test prints "HSTEST name PASS|FAIL details".
+    public static class PhysicsTests
+    {
+        struct Frame
+        {
+            public Vector2 Pos, Vel;
+            public StepInfo Info;
+        }
+
+        static StringBuilder log;
+        static int failures;
+
+        [MenuItem("Out of Office/Run Physics Tests")]
+        static void RunFromMenu() => Run();
+
+        public static void RunBatch()
+        {
+            Run();
+            EditorApplication.Exit(failures == 0 ? 0 : 3);
+        }
+
+        public static int Run()
+        {
+            var previousMode = Physics2D.simulationMode;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+            log = new StringBuilder("HOLESHOT PHYSICS TESTS\n");
+            failures = 0;
+            var root = new GameObject("PhysicsTests");
+            try
+            {
+                var lab = LevelBuilder.Build(Levels.Lab, root.transform, false);
+                Tunneling(lab);
+                Energy(lab);
+                Materials(lab);
+                Graze(lab);
+                CurveRide(lab);
+                Seams(lab);
+                Rest(lab);
+                Preview(lab);
+                Penetration(lab);
+                OrderParity(lab);
+                Object.DestroyImmediate(lab.Root);
+                RimLatch(root.transform);
+                MovingHit(root.transform);
+                MeshRelease(root.transform);
+                Crystal(root.transform);
+                Belt(root.transform);
+                NewParts(root.transform);
+                Gadgets(root.transform);
+                MoversClear(root.transform);
+                JumpLanding(root.transform);
+                RimSeam();
+                Capture(null);
+                UndoRestore(root.transform);
+                PortalLoop(root.transform);
+                SaveMigration();
+                Wardrobe();
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Physics2D.simulationMode = previousMode;
+            }
+            log.AppendLine($"HSTEST done, failures: {failures}");
+            Debug.Log(log.ToString());
+            return failures;
+        }
+
+        static void Report(string name, bool pass, string details)
+        {
+            if (!pass) failures++;
+            log.AppendLine($"HSTEST {name} {(pass ? "PASS" : "FAIL")} {details}");
+        }
+
+        // Runs one shot in the same order as the game: each fixed step ticks the movers, runs Puck.Step (which reads
+        // the contacts of the previous simulation, like FixedUpdate does), then simulates. simulateFirst flips the
+        // order, only for the parity test.
+        static List<Frame> Simulate(LevelInstance inst, Vector2 start, Vector2 velocity, int maxSteps = 1800, bool simulateFirst = false)
+        {
+            var frames = new List<Frame>();
+            inst.TickMovers(0f, true);
+            inst.Puck.PlaceAt(start);
+            Settle();
+            inst.Puck.Launch(velocity);
+            for (int i = 0; i < maxSteps; i++)
+            {
+                inst.TickMovers((i + 1) * Rules.Dt, false);
+                if (simulateFirst) Physics2D.Simulate(Rules.Dt);
+                var info = inst.Puck.Step(Rules.Dt);
+                frames.Add(new Frame { Pos = inst.Puck.Body.position, Vel = inst.Puck.Body.linearVelocity, Info = info });
+                if (info.Result != ShotResult.None) break;
+                if (!simulateFirst) Physics2D.Simulate(Rules.Dt);
+            }
+            return frames;
+        }
+
+        // 1. Fast shots never pass through the thin wall (0.3 thick) at (-3.2, -3.5).
+        static void Tunneling(LevelInstance lab)
+        {
+            int shots = 0, tunnels = 0;
+            foreach (float speed in new[] { 20f, 30f, 45f })
+            for (float x = -3.9f; x <= -2.5f; x += 0.1f)
+            for (float a = -20f; a <= 20f; a += 5f)
+            {
+                shots++;
+                var v = Quaternion.Euler(0f, 0f, a) * Vector2.up * speed;
+                var frames = Simulate(lab, new Vector2(x, -5.6f), v, 120);
+                for (int i = 1; i < frames.Count; i++)
+                {
+                    Vector2 p0 = frames[i - 1].Pos, p1 = frames[i].Pos;
+                    bool crossed = p0.y < -3.5f && p1.y >= -3.5f || p1.y > -3.15f && p0.y <= -3.15f;
+                    float xAt = p1.x;
+                    if (crossed && xAt > -4.2f + 0.3f && xAt < -2.2f - 0.36f) { tunnels++; break; }
+                }
+            }
+            Report("tunneling", tunnels == 0, $"{shots} shots up to 45 u/s (max shot 20), crossings through the wall: {tunnels}");
+        }
+
+        // 2. Stationary walls never add energy: speed never rises from one step to the next away from the hole.
+        static void Energy(LevelInstance lab)
+        {
+            int shots = 0, violations = 0;
+            float worst = 0f;
+            var rng = new System.Random(5);
+            for (int s = 0; s < 300; s++)
+            {
+                shots++;
+                float a = (float)rng.NextDouble() * 360f, speed = 4f + (float)rng.NextDouble() * 16f;
+                var frames = Simulate(lab, new Vector2(0f, -6f), Quaternion.Euler(0f, 0f, a) * Vector2.up * speed);
+                for (int i = 1; i < frames.Count; i++)
+                {
+                    if ((frames[i].Pos - lab.Puck.Hole).magnitude < Rules.HoleRadius + 0.5f) continue;
+                    float before = frames[i - 1].Vel.magnitude, after = frames[i].Vel.magnitude;
+                    float gain = after - before;
+                    if (gain > 0.005f + before * 0.002f)
+                    {
+                        violations++;
+                        worst = Mathf.Max(worst, gain);
+                    }
+                }
+            }
+            Report("energy", violations == 0, $"{shots} random shots, speed gains at walls: {violations} (worst +{worst:0.000} u/s)");
+        }
+
+        // In the game the physics always runs at least one step between placing the puck and the next shot, so
+        // its contact list is fresh. Do the same here.
+        public static void Settle()
+        {
+            Physics2D.SyncTransforms();
+            Physics2D.Simulate(Rules.Dt);
+        }
+
+        // Contact correction never forces the puck into a surface: across many random shots on the lab (flat walls,
+        // convex corners, the concave guide, the narrow channel), the deepest overlap after Puck.Step stays at the
+        // level Box2D itself reaches while riding a curve.
+        static void Penetration(LevelInstance lab)
+        {
+            var rng = new System.Random(17);
+            var contacts = new Collider2D[8];
+            float worst = 0f;
+            int shots = 0, deep = 0;
+            for (int s = 0; s < 200; s++)
+            {
+                shots++;
+                float a = (float)rng.NextDouble() * 360f, speed = 3f + (float)rng.NextDouble() * 17f;
+                var start = new Vector2(((float)rng.NextDouble() - 0.5f) * 6f, -6f + (float)rng.NextDouble() * 2f);
+                lab.TickMovers(0f, true);
+                lab.Puck.PlaceAt(start);
+                Settle();
+                lab.Puck.Launch(Quaternion.Euler(0f, 0f, a) * Vector2.up * speed);
+                bool counted = false;
+                for (int i = 0; i < 900; i++)
+                {
+                    var info = lab.Puck.Step(Rules.Dt);
+                    int n = lab.Puck.Body.GetContacts(contacts);
+                    for (int k = 0; k < n; k++)
+                    {
+                        if (contacts[k].usedByEffector) continue;
+                        var d = Physics2D.Distance(lab.Puck.Collider, contacts[k]);
+                        if (!d.isValid) continue;
+                        worst = Mathf.Min(worst, d.distance);
+                        if (d.distance < -0.03f && !counted) { deep++; counted = true; }
+                    }
+                    if (info.Result != ShotResult.None) break;
+                    Physics2D.Simulate(Rules.Dt);
+                }
+            }
+            Report("penetration", deep == 0, $"{shots} random shots, deepest overlap after correction {worst:0.0000} units (Box2D rests at {Rules.ContactRestGap}), shots deeper than 0.03: {deep}");
+        }
+
+        // The game steps the puck before each automatic simulation; older tests simulated first. Both orders must agree,
+        // so the checks describe the game.
+        static void OrderParity(LevelInstance lab)
+        {
+            var rng = new System.Random(23);
+            int shots = 0, same = 0;
+            float worst = 0f;
+            for (int s = 0; s < 60; s++)
+            {
+                shots++;
+                float a = (float)rng.NextDouble() * 360f, speed = 3f + (float)rng.NextDouble() * 12f;
+                var v = Quaternion.Euler(0f, 0f, a) * Vector2.up * speed;
+                var game = Simulate(lab, new Vector2(0f, -6f), v);
+                var old = Simulate(lab, new Vector2(0f, -6f), v, 1800, true);
+                var g = game[game.Count - 1];
+                var o = old[old.Count - 1];
+                float d = (g.Pos - o.Pos).magnitude;
+                if (g.Info.Result == o.Info.Result && d < 0.25f) same++;
+                worst = Mathf.Max(worst, d);
+            }
+            Report("order-parity", same >= shots * 0.9f, $"{shots} shots, same outcome and end within 0.25 units: {same}; largest end difference {worst:0.00}");
+        }
+
+        // The rim sound fires once per approach: on fast passes that skip the middle band, on slow ones, and again
+        // only after the puck has left the outer band.
+        static void RimLatch(Transform parent)
+        {
+            var root = new GameObject("RimLatch");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(new LevelDef("rimlatch", "Rim Latch", 0f, 2f), root.transform, false);
+            int passes = 0, wrong = 0;
+            var notes = new StringBuilder();
+            foreach (float speed in new[] { 5f, 9f, 15f, 19f })
+            foreach (float offset in new[] { 0.55f, 0.75f, 0.9f })
+            {
+                passes++;
+                var frames = Simulate(inst, new Vector2(offset, -0.6f), Vector2.up * speed, 400);
+                int events = 0;
+                foreach (var f in frames)
+                {
+                    if (f.Pos.y > 3.5f) break;  // count one pass; a rebound off the far wall is a new approach
+                    if (f.Info.RimTouch) events++;
+                }
+                int expected = offset < Rules.HoleRadius + Rules.PuckRadius * 0.6f ? 1 : 0;
+                if (events != expected)
+                {
+                    wrong++;
+                    notes.Append($"[v{speed} off{offset}: {events}] ");
+                }
+            }
+            Object.DestroyImmediate(root);
+            Report("rim-latch", wrong == 0, $"{passes} passes past the hole, wrong event counts: {wrong} {notes}");
+        }
+
+        // Fixed boards for mechanic tests, so level design can change freely without moving the tests.
+        static class Fixtures
+        {
+            public static readonly LevelDef Spinner = new LevelDef("fx-spinner", "Spinner fixture", 0f, 4.6f)
+                .WithShape(ShapeDef.Stadium(9f, 16f))
+                .StartAt(0f, -5.5f)
+                .Bouncer(0f, 1.4f, 5f, 0.55f).Spinning(60f);
+
+            public static readonly LevelDef Crystal = new LevelDef("fx-crystal", "Crystal fixture", 0f, 5.8f)
+                .Breakable(-3f, 3.4f, 3f, 0.6f)
+                .Breakable(0f, 3.4f, 3f, 0.6f)
+                .Breakable(3f, 3.4f, 3f, 0.6f);
+
+            public static readonly LevelDef Parts = new LevelDef("fx-parts", "New parts fixture", 0f, 7.2f)
+                .Wind(-3f, -3f, 2f, 6f)
+                .Vortex(2.5f, -4f, 1.8f)
+                .Kicker(2.5f, 3.5f, 0.5f)
+                .Spikes(-2.2f, 4f, 2f, 1f, 2f, 0f)
+                .Spikes(0.2f, 4f, 2f, 1f, 2f, 0.5f);
+
+            public static readonly LevelDef Gadgets = new LevelDef("fx-gadgets", "Gadget fixture", 0f, 7.2f)
+                .OneWay(-2.5f, 0f, 3f, 0f)
+                .Jump(2.5f, -4f, 0.8f)
+                .Wall(2.5f, -1.5f, 3f, 0.5f)
+                .PopWall(0f, 4f, 9f, 0.5f, 2f, 0f);
+
+            public static readonly LevelDef Belt = new LevelDef("fx-belt", "Belt fixture", 3f, 5.4f)
+                .StartAt(-2.6f, -6f)
+                .Conveyor(0f, 1.4f, 2.2f, 9f, -90f)
+                .Wall(-1.6f, 3.6f, 5.8f, 0.5f);
+        }
+
+        // A moving obstacle that hits a resting puck counts as a hard hit (relative speed), like the game wakes it.
+        static void MovingHit(Transform parent)
+        {
+            var root = new GameObject("MovingHit");
+            root.transform.SetParent(parent, false);
+            var def = Fixtures.Spinner;
+            var inst = LevelBuilder.Build(def, root.transform, false);
+            // The spinner (5 long, at (0, 1.4), 60 deg/s) sweeps through a puck resting 1.9 from its center.
+            Vector2 center = new Vector2(0f, 1.4f);
+            Vector2 pos = center + new Vector2(Mathf.Cos(30f * Mathf.Deg2Rad), Mathf.Sin(30f * Mathf.Deg2Rad)) * 1.9f;
+            inst.TickMovers(0f, true);
+            inst.Puck.PlaceAt(pos);
+            Physics2D.SyncTransforms();
+            float impact = -1f, armSpeed = def.Blocks[0].Spin * Mathf.Deg2Rad * 1.9f;
+            bool moving = false;
+            for (int i = 0; i < 240 && impact < 0f; i++)
+            {
+                inst.TickMovers((i + 1) * Rules.Dt, false);
+                if (!moving && inst.Puck.Body.linearVelocity.sqrMagnitude > 0.09f)
+                {
+                    inst.Puck.Wake();
+                    moving = true;
+                }
+                if (moving)
+                {
+                    var info = inst.Puck.Step(Rules.Dt);
+                    if (info.Impact) impact = info.ImpactSpeed;
+                }
+                Physics2D.Simulate(Rules.Dt);
+            }
+            Object.DestroyImmediate(root);
+            Report("moving-hit", impact >= armSpeed * 0.6f, $"spinner arm at {armSpeed:0.00} u/s hits a resting puck: impact speed {impact:0.00}");
+        }
+
+        // Crystal blocks: a hard hit shatters the block and the puck carries on through with part of its speed;
+        // a soft hit bounces off and leaves it whole. Undo brings it back.
+        static void Crystal(Transform parent)
+        {
+            var root = new GameObject("Crystal");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(Fixtures.Crystal, root.transform, false);
+            var start = inst.Capture(inst.Def.Start, 0, 0f);
+            var hard = Simulate(inst, new Vector2(1.2f, -2f), Vector2.up * 14f, 300);
+            bool broke = hard.Exists(f => f.Info.Broke), through = hard.Exists(f => f.Pos.y > 3.8f);
+            inst.Restore(start);
+            bool restored = !inst.Breakables[1].Broken && inst.Breakables[1].Collider.enabled;
+            var soft = Simulate(inst, new Vector2(1.2f, 1.6f), Vector2.up * 4f, 300);
+            bool softBroke = soft.Exists(f => f.Info.Broke), softBounced = soft.Exists(f => f.Vel.y < -0.3f);
+            Object.DestroyImmediate(root);
+            Report("crystal", broke && through && restored && !softBroke && softBounced,
+                $"hard hit breaks {broke}, passes through {through}; undo restores {restored}; soft hit breaks {softBroke}, bounces {softBounced}");
+        }
+
+        // Wind pushes along its arrow; a whirlpool swirls the puck counter-clockwise and inward; a kicker fires it
+        // away at kick speed; pop-up spikes send it back only while they are up.
+        static void NewParts(Transform parent)
+        {
+            var root = new GameObject("Parts");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(Fixtures.Parts, root.transform, false);
+            var wind = Simulate(inst, new Vector2(-3f, -5.6f), Vector2.up * 0.5f, 40);
+            float windSpeed = wind[wind.Count - 1].Vel.y;
+            var swirl = Simulate(inst, new Vector2(3.6f, -4f), new Vector2(0f, 0.05f), 30);
+            Vector2 sv = swirl[swirl.Count - 1].Vel, sp = swirl[swirl.Count - 1].Pos;
+            bool swirls = sv.y > 0.5f && (sp - new Vector2(2.5f, -4f)).magnitude < 1.1f + 0.05f;
+            var kick = Simulate(inst, new Vector2(2.5f, 1.8f), Vector2.up * 4f, 90);
+            bool kicked = kick.Exists(f => f.Info.Kicked) && kick.Exists(f => f.Vel.y < -Rules.KickSpeed * 0.8f);
+            var up = Simulate(inst, new Vector2(-2.2f, 2.8f), Vector2.up * 4f, 60);
+            var down = Simulate(inst, new Vector2(0.2f, 2.8f), Vector2.up * 4f, 60);
+            bool upHurts = up.Exists(f => f.Info.Result == ShotResult.Hazard);
+            bool downSafe = !down.Exists(f => f.Info.Result == ShotResult.Hazard) && down[down.Count - 1].Pos.y > 4.6f;
+            // Pinned by a pushing zone: a belt shoving the puck into the rim must still end the shot.
+            var settle = Simulate(inst, new Vector2(2.5f, -5.2f), new Vector2(0f, 0.05f), 900);
+            bool vortexRests = settle[settle.Count - 1].Info.Result == ShotResult.Rest && settle.Count < 900;
+            Object.DestroyImmediate(root);
+            var beltRoot = new GameObject("Pinned");
+            beltRoot.transform.SetParent(parent, false);
+            var belt = LevelBuilder.Build(Fixtures.Belt, beltRoot.transform, false);
+            var pinned = Simulate(belt, new Vector2(3.4f, 1.4f), new Vector2(0.3f, 0f), 600);
+            bool beltRests = pinned[pinned.Count - 1].Info.Result == ShotResult.Rest && pinned.Count < 600;
+            Object.DestroyImmediate(beltRoot);
+            Report("pinned-rest", beltRests && vortexRests,
+                $"belt into the rim rests after {pinned.Count * Rules.Dt:0.00} s; whirlpool settles after {settle.Count * Rules.Dt:0.00} s");
+            Report("new-parts", windSpeed > 3f && swirls && kicked && upHurts && downSafe,
+                $"wind speed after 0.67 s {windSpeed:0.0}; vortex swirl {sv.x:0.0},{sv.y:0.0} at r {(sp - new Vector2(2.5f, -4f)).magnitude:0.00}; kicked {kicked}; spikes up hurt {upHurts}, down safe {downSafe}");
+        }
+
+        // One-way gate: passes along its arrow, bounces back against it. Trampoline: lifts the puck over a wall.
+        // Pop wall: blocks while up, lets the puck through while down.
+        static void Gadgets(Transform parent)
+        {
+            var root = new GameObject("Gadgets");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(Fixtures.Gadgets, root.transform, false);
+            var along = Simulate(inst, new Vector2(-2.5f, -2f), Vector2.up * 8f, 120);
+            bool passes = along.Exists(f => f.Pos.y > 1f);
+            var against = Simulate(inst, new Vector2(-2.5f, 2f), Vector2.down * 8f, 120);
+            bool blocked = !against.Exists(f => f.Pos.y < -0.6f) && against.Exists(f => f.Vel.y > 0.5f);
+            var jump = Simulate(inst, new Vector2(2.5f, -6f), Vector2.up * 9f, 200);
+            bool jumped = jump.Exists(f => f.Info.Jumped != null) && jump.Exists(f => f.Pos.y > -0.8f);
+            var wallUp = Simulate(inst, new Vector2(0f, 2f), Vector2.up * 8f, 60);     // up during 0..1 s
+            bool upBlocks = !wallUp.Exists(f => f.Pos.y > 4.6f);
+            inst.TickMovers(1.2f, true);
+            var frames = new List<Frame>();
+            inst.Puck.PlaceAt(new Vector2(0f, 2.5f));
+            Settle();
+            inst.Puck.Launch(Vector2.up * 8f);
+            bool downPasses = false;
+            for (int i = 0; i < 40; i++)
+            {
+                inst.TickMovers(1.2f + (i + 1) * Rules.Dt, false);
+                inst.Puck.Step(Rules.Dt);
+                Physics2D.Simulate(Rules.Dt);
+                if (inst.Puck.Body.position.y > 4.6f) downPasses = true;
+            }
+            Object.DestroyImmediate(root);
+            Report("gadgets", passes && blocked && jumped && upBlocks && downPasses,
+                $"one-way passes {passes}, blocks back {blocked}; trampoline clears the wall {jumped}; pop wall up blocks {upBlocks}, down passes {downPasses}");
+        }
+
+        // Jumps (trampolines and ramps) never land the puck inside a wall or a post, and never leave it outside the
+        // floor, wherever they come down: random shots into every level with a jump, corners included.
+        static void JumpLanding(Transform parent)
+        {
+            int shots = 0, landings = 0, inside = 0, outside = 0, fell = 0;
+            string example = "";
+            var rng = new System.Random(11);
+            foreach (var def in Levels.All)
+            {
+                if (!def.Zones.Exists(z => z.Kind == ZoneKind.Jump || z.Kind == ZoneKind.Ramp)) continue;
+                var root = new GameObject("Jumps " + def.Id);
+                root.transform.SetParent(parent, false);
+                var inst = LevelBuilder.Build(def, root.transform, false);
+                var targets = def.Zones.FindAll(z => z.Kind == ZoneKind.Jump || z.Kind == ZoneKind.Ramp);
+                for (int s = 0; s < 80; s++)
+                {
+                    shots++;
+                    var z = targets[s % targets.Count];
+                    // From the start, or from a random point near the jump, toward the jump with some spread.
+                    Vector2 from = s % 2 == 0 ? def.Start : z.Center - z.Direction * (1.5f + (float)rng.NextDouble() * 2f) + new Vector2((float)rng.NextDouble() - 0.5f, (float)rng.NextDouble() - 0.5f);
+                    if (!InsideFloor(def, from, Rules.PuckRadius + 0.05f) || Physics2D.OverlapCircle(from, Rules.PuckRadius + 0.05f) != null) continue;
+                    Vector2 dir = (z.Center - from).normalized;
+                    dir = Quaternion.Euler(0f, 0f, ((float)rng.NextDouble() - 0.5f) * 50f) * dir;
+                    var frames = Simulate(inst, from, dir * (6f + (float)rng.NextDouble() * 14f), 900);
+                    if (frames.Count > 0 && frames[frames.Count - 1].Info.Result == ShotResult.Fell)
+                    {
+                        // Fell right after coming down from a jump that was still moving: the corner case players hit.
+                        int last = frames.Count - 1, landed = frames.FindLastIndex(fr => fr.Info.Landed);
+                        if (landed >= 0 && last - landed < 6 && frames[landed].Vel.magnitude > 2f)
+                        {
+                            fell++;
+                            if (example.Length < 400) example += $" [{def.Id} from {from} dir {dir} landed {frames[landed].Pos} v {frames[landed].Vel} fell {frames[last].Pos}]";
+                        }
+                    }
+                    for (int i = 0; i < frames.Count; i++)
+                    {
+                        if (!frames[i].Info.Landed) continue;
+                        landings++;
+                        // A few steps after touching down, the puck must be clear of every static block and on the floor.
+                        // (A pacing hazard can still walk into a puck that has already landed; that is a normal hit.)
+                        var f = frames[Mathf.Min(frames.Count - 1, i + 3)];
+                        bool hit = false;
+                        foreach (var c in inst.BlockColliders)
+                            if (c != null && c.enabled && c.GetComponentInParent<Mover>() == null && c.OverlapPoint(f.Pos)) hit = true;
+                        bool off = !InsideFloor(def, f.Pos, 0f);
+                        if (hit) inside++;
+                        if (off) outside++;
+                        if ((hit || off) && example.Length < 400) example += $" [{def.Id} from {from} dir {dir} at {f.Pos}{(hit ? " in a block" : "")}{(off ? " off the floor" : "")} result {f.Info.Result}]";
+                    }
+                }
+                Object.DestroyImmediate(root);
+            }
+            Report("jump-landing", inside == 0 && outside == 0 && fell == 0, $"{shots} shots, {landings} landings; inside a block {inside}, off the floor {outside}, into a pit on touchdown {fell} {example}");
+        }
+
+        static bool InsideFloor(LevelDef def, Vector2 p, float margin)
+        {
+            var o = def.Shape.Outline;
+            bool inPoly = false;
+            for (int i = 0, j = o.Count - 1; i < o.Count; j = i++)
+                if ((o[i].y > p.y) != (o[j].y > p.y) && p.x < (o[j].x - o[i].x) * (p.y - o[i].y) / (o[j].y - o[i].y) + o[i].x) inPoly = !inPoly;
+            if (!inPoly) return false;
+            for (int i = 0, j = o.Count - 1; i < o.Count; j = i++)
+            {
+                Vector2 a = o[j], b = o[i], ab = b - a;
+                float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+                if ((a + ab * t - p).magnitude < margin) return false;
+            }
+            return true;
+        }
+
+        // Moving parts (sliding doors, pacing managers, swinging bars) never pass through a static block, a rail, or
+        // another moving part at the same depth, at any point of their cycle, in any level.
+        static void MoversClear(Transform parent)
+        {
+            var bad = new List<string>();
+            foreach (var def in Levels.All)
+            {
+                var root = new GameObject("Movers " + def.Id);
+                root.transform.SetParent(parent, false);
+                var inst = LevelBuilder.Build(def, root.transform, false);
+                var moving = new List<Collider2D>();
+                foreach (var m in inst.Movers) moving.Add(m.GetComponent<Collider2D>());
+                var solid = new List<Collider2D>();
+                foreach (var c in inst.BlockColliders)
+                    if (c != null && !moving.Contains(c) && !c.usedByEffector && c.attachedRigidbody == null) solid.Add(c);
+                bool hit = false;
+                for (int k = 0; k < 96 && !hit; k++)
+                {
+                    inst.TickMovers(k * 0.0625f, true);
+                    Physics2D.SyncTransforms();
+                    for (int i = 0; i < moving.Count && !hit; i++)
+                    {
+                        foreach (var other in solid)
+                            if (Physics2D.Distance(moving[i], other).distance < -0.02f) { hit = true; bad.Add($"{def.Id} t={k * 0.0625f:0.00} {moving[i].name}/{other.name}"); break; }
+                        for (int j = i + 1; j < moving.Count && !hit; j++)
+                            if (Physics2D.Distance(moving[i], moving[j]).distance < -0.02f) { hit = true; bad.Add($"{def.Id} t={k * 0.0625f:0.00} {moving[i].name}/{moving[j].name}"); }
+                    }
+                }
+                Object.DestroyImmediate(root);
+            }
+            Report("movers-clear", bad.Count == 0, bad.Count == 0 ? "no moving part overlaps a wall or another moving part" : string.Join("; ", bad));
+        }
+
+        // A conveyor brings a puck up to the belt speed along its direction, and the preview stops at it.
+        static void Belt(Transform parent)
+        {
+            var root = new GameObject("Belt");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(Fixtures.Belt, root.transform, false);
+            var frames = Simulate(inst, new Vector2(-2.5f, 1.4f), new Vector2(0f, 0.2f), 50);
+            float vx = frames.Count > 30 ? frames[30].Vel.x : 0f;
+            var path = new List<Vector2>();
+            var pred = AimPreview.Compute(inst, new Vector2(-2.5f, -3f), Vector2.up * 8f, path);
+            Object.DestroyImmediate(root);
+            Report("conveyor", vx > Rules.ConveyorSpeed * 0.6f && vx <= Rules.ConveyorSpeed + 0.01f && pred.Uncertain,
+                $"belt speed {Rules.ConveyorSpeed}, puck speed after 0.5 s {vx:0.00}; preview stops at the belt {pred.Uncertain}");
+        }
+
+        // Level teardown frees the meshes a level built: repeated rebuilds keep the mesh count flat.
+        static void MeshRelease(Transform parent)
+        {
+            int Count() => Resources.FindObjectsOfTypeAll<Mesh>().Length;
+            int firstRound = 0;
+            // Four levels, one per chapter, rebuilt three times: after the first round every new mesh must be freed.
+            int[] picks = { 4, 8, 13, 20 };
+            for (int i = 0; i < picks.Length * 3; i++)
+            {
+                var root = new GameObject("MeshRelease");
+                root.transform.SetParent(parent, false);
+                int level = picks[i % picks.Length];
+                var inst = LevelBuilder.Build(Levels.All[level], root.transform, true, 0, Themes.ForLevel(level));
+                Meshes.ReleaseLevel(inst.Root);
+                Object.DestroyImmediate(root);
+                if (i == picks.Length - 1) firstRound = Count();
+            }
+            int end = Count();
+            Report("mesh-release", end == firstRound, $"meshes after one round of 4 levels {firstRound}, after three rounds {end} (growth {end - firstRound})");
+        }
+
+        // 3. Head-on rebounds match the material: wood modest, rubber lively, never above 1.
+        static void Materials(LevelInstance lab)
+        {
+            float wood = Rebound(lab, new Vector2(-3.2f, -5.2f), Vector2.up);                 // thin wood wall
+            float rubber = Rebound(lab, new Vector2(-2.6f, -1.6f), Vector2.up);               // rubber post, dead center
+            bool ok = wood > 0.5f && wood < 0.72f && rubber > 0.82f && rubber <= 1.0f;
+            Report("materials", ok, $"rebound ratio wood {wood:0.00} (target {Rules.WoodBounce}), rubber {rubber:0.00} (target {Rules.RubberBounce})");
+        }
+
+        static float Rebound(LevelInstance lab, Vector2 start, Vector2 dir)
+        {
+            var frames = Simulate(lab, start, dir * 10f, 90);
+            for (int i = 1; i < frames.Count; i++)
+                if (frames[i].Info.Impact)
+                {
+                    float before = Vector2.Dot(frames[i - 1].Vel, dir), after = -Vector2.Dot(frames[i].Vel, dir);
+                    return after / Mathf.Max(0.01f, before);
+                }
+            return -1f;
+        }
+
+        // 4. Grazing the rounded block corner: deflection right after contact grows steadily with overlap,
+        //    from a gentle redirection to a full rebound, with no sudden jumps or reversals.
+        static void Graze(LevelInstance lab)
+        {
+            // Block spans x 1.5..3.7, y -3.5..-1.3, corner radius 0.8. Shots go straight up past its lower-left corner.
+            var angles = new List<float>();
+            var offsets = new List<float>();
+            for (float x = 1.0f; x <= 1.9f; x += 0.02f)
+            {
+                var frames = Simulate(lab, new Vector2(x, -6.6f), Vector2.up * 12f, 120);
+                int hit = frames.FindIndex(f => f.Info.Impact || f.Info.RubSpeed > 0f);
+                float deflect = 0f;
+                if (hit >= 0)
+                {
+                    Vector2 v = frames[Mathf.Min(frames.Count - 1, hit + 2)].Vel;
+                    deflect = Vector2.Angle(Vector2.up, v);
+                }
+                angles.Add(deflect);
+                offsets.Add(x);
+            }
+            float maxJump = 0f, reversal = 0f;
+            for (int i = 1; i < angles.Count; i++)
+            {
+                float step = angles[i] - angles[i - 1];
+                maxJump = Mathf.Max(maxJump, Mathf.Abs(step));
+                if (step < -1f) reversal = Mathf.Max(reversal, -step);
+            }
+            var sample = new StringBuilder();
+            for (int i = 0; i < angles.Count; i += 9) sample.Append($"{offsets[i]:0.00}:{angles[i]:0} ");
+            Report("graze", maxJump < 35f && reversal < 3f,
+                $"deflection vs offset [{sample}] largest step {maxJump:0.0} deg per 0.02 units, reversal {reversal:0.0} deg");
+        }
+
+        // 5. Riding the concave guide: after entry, the puck holds a long continuous contact run with a steady
+        //    radius, a normal that turns only as fast as the geometry, and no speed spikes.
+        static void CurveRide(LevelInstance lab)
+        {
+            Vector2 center = new Vector2(0.6f, 4.2f);
+            const float rideRadius = 2.6f - 0.25f - Rules.PuckRadius;
+            float a230 = 230f * Mathf.Deg2Rad;
+            Vector2 radial = new Vector2(Mathf.Cos(a230), Mathf.Sin(a230)), tangent = new Vector2(Mathf.Sin(a230), -Mathf.Cos(a230));
+            int runs = 0, bad = 0, minRun = int.MaxValue;
+            float worstExcess = 0f, worstRadius = 0f;
+            foreach (float speed in new[] { 7f, 11f, 15f })
+            for (float r = 1.84f; r <= 1.97f; r += 0.04f)
+            {
+                runs++;
+                var frames = Simulate(lab, center + radial * r, tangent * speed, 160);
+                int best = 0, run = 0, bestEnd = -1;
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    bool riding = frames[i].Info.RubSpeed > 0f && frames[i].Pos.x < center.x;
+                    run = riding ? run + 1 : 0;
+                    if (run > best) { best = run; bestEnd = i; }
+                }
+                bool spike = false;
+                float excess = 0f, radiusDev = 0f;
+                // Skip the settling frames at the start and the roll-off around the rod's round end cap.
+                for (int i = bestEnd - best + 3; i <= bestEnd - 3 && i > 0; i++)
+                {
+                    var f = frames[i];
+                    float geometric = f.Vel.magnitude * Rules.Dt / rideRadius * Mathf.Rad2Deg;
+                    excess = Mathf.Max(excess, Vector2.Angle(frames[i - 1].Info.RubNormal, f.Info.RubNormal) - geometric * 1.6f);
+                    radiusDev = Mathf.Max(radiusDev, Mathf.Abs((f.Pos - center).magnitude - rideRadius));
+                    if (f.Vel.magnitude > frames[i - 1].Vel.magnitude + 0.01f) spike = true;
+                }
+                minRun = Mathf.Min(minRun, best);
+                worstExcess = Mathf.Max(worstExcess, excess);
+                worstRadius = Mathf.Max(worstRadius, radiusDev);
+                if (best < 10 || excess > 3f || radiusDev > 0.03f || spike) bad++;
+            }
+            Report("curve-ride", bad == 0, $"{runs} entries, unstable {bad}; shortest continuous ride {minRun} steps, radius deviation {worstRadius:0.000}, normal turn beyond geometry {worstExcess:0.0} deg");
+        }
+
+        // 6. Collider seams do not snag: sliding across the join of two rods, and across the point where
+        //    the rim's edge chain opens and closes.
+        static void Seams(LevelInstance lab)
+        {
+            // Rods meet at x = -2.6 along y = 7.6 (bottom face at y = 7.35). Slide just under them, pressing upward.
+            var frames = Simulate(lab, new Vector2(-4.0f, 6.98f), new Vector2(1f, 0.03f).normalized * 10f, 90);
+            float worst = 0f;
+            for (int i = 1; i < frames.Count; i++)
+            {
+                if (frames[i].Pos.x < -3.2f || frames[i].Pos.x > -2f) continue;
+                worst = Mathf.Max(worst, Vector2.Angle(frames[i - 1].Vel, frames[i].Vel));
+            }
+            Report("seams", worst < 2f, $"two rods meeting end to end: max turn while sliding across the join {worst:0.00} deg");
+        }
+
+        // 6b. The rim's edge chain opens and closes on a straight edge with ghost points: sliding across is seamless.
+        static void RimSeam()
+        {
+            // The rim chain starts and ends at points[0]; on a clean board, slide along that wall across it.
+            var root = new GameObject("SeamTest");
+            var clean = LevelBuilder.Build(new LevelDef("seam-test", "Seam", 0f, -7f), root.transform, false);
+            var edge = clean.Root.transform.Find("Boundary").GetComponent<EdgeCollider2D>();
+            Vector2 seam = edge.points[0], along = (edge.points[1] - edge.points[0]).normalized;
+            Vector2 inward = new Vector2(-along.y, along.x);
+            if (Vector2.Dot(inward, -seam) < 0f) inward = -inward;  // toward the board center
+            Vector2 start = seam - along * 1.5f + inward * (Rules.PuckRadius + 0.02f);
+            var rim = Simulate(clean, start, (along - inward * 0.03f).normalized * 9f, 50);
+            float rimWorst = 0f, drop = 0f;
+            for (int i = 1; i < rim.Count; i++)
+            {
+                if ((rim[i].Pos - seam).magnitude > 0.8f) continue;
+                rimWorst = Mathf.Max(rimWorst, Vector2.Angle(rim[i - 1].Vel, rim[i].Vel));
+                drop = Mathf.Max(drop, rim[i - 1].Vel.magnitude - rim[i].Vel.magnitude);
+            }
+            Object.DestroyImmediate(root);
+            float decelPerStep = 9f * Rules.Wood.Drag * Rules.Dt + Rules.Wood.Decel * Rules.Dt;
+            bool ok = rimWorst < 2f && drop < decelPerStep * 1.5f;
+            Report("rim-seam", ok, $"max turn across the chain join {rimWorst:0.00} deg, max speed drop per step {drop:0.000} (surface alone {decelPerStep:0.000})");
+        }
+
+        // 7. Every shot settles in finite time and stays settled.
+        static void Rest(LevelInstance lab)
+        {
+            var rng = new System.Random(9);
+            int shots = 0, unsettled = 0;
+            float longest = 0f;
+            for (int s = 0; s < 120; s++)
+            {
+                shots++;
+                float a = (float)rng.NextDouble() * 360f, speed = 2f + (float)rng.NextDouble() * 18f;
+                var frames = Simulate(lab, new Vector2(0f, -6f), Quaternion.Euler(0f, 0f, a) * Vector2.up * speed, 1200);
+                var last = frames[frames.Count - 1];
+                if (last.Info.Result == ShotResult.None) unsettled++;
+                if (last.Info.Result == ShotResult.Rest) longest = Mathf.Max(longest, frames.Count * Rules.Dt);
+            }
+            Report("rest", unsettled == 0 && longest < 12f, $"{shots} shots, never settled: {unsettled}, slowest settle {longest:0.0}s");
+        }
+
+        // 8. Hole capture on a clean board: fair centered shots drop, fast ones skim across on the first pass,
+        //    and a near miss outside the opening is neither captured nor pulled sideways.
+        static void Capture(LevelInstance unused)
+        {
+            var root = new GameObject("CaptureTest");
+            var inst = LevelBuilder.Build(new LevelDef("capture-test", "Capture", 0f, 0f), root.transform, false);
+            Vector2 hole = inst.Puck.Hole;
+            var lines = new StringBuilder();
+            bool ok = true;
+            foreach (var (offset, speed, expect) in new[] { (0f, 4f, true), (0f, 9f, true), (0f, 14f, false), (0f, 18f, false), (0.3f, 4f, true), (0.45f, 8f, false), (0.85f, 3f, false) })
+            {
+                // Roll toward the hole from 3 units below at a lateral offset; speed is measured on arrival.
+                float launch = speed;
+                for (int k = 0; k < 40; k++) launch += (speed - AimPreview.SpeedAfter(launch, 3f)) * 0.9f;
+                var frames = Simulate(inst, hole + new Vector2(offset, -3f), Vector2.up * launch, 400);
+                int firstImpact = frames.FindIndex(f => f.Info.Impact);
+                int sunkAt = frames.FindIndex(f => f.Info.Result == ShotResult.Sunk);
+                bool firstPassDrop = sunkAt >= 0 && (firstImpact < 0 || sunkAt < firstImpact);
+                float drift = 0f;
+                for (int i = 0; i < frames.Count && (firstImpact < 0 || i < firstImpact); i++)
+                    drift = Mathf.Max(drift, Mathf.Abs(frames[i].Pos.x - (hole.x + offset)));
+                bool pass = firstPassDrop == expect && (offset < Rules.HoleRadius || drift < 0.001f);
+                ok &= pass;
+                lines.Append($"[off {offset:0.00} v {speed:0}: {(firstPassDrop ? "drop" : "skim")}{(offset >= Rules.HoleRadius ? $", sideways pull {drift:0.0000}" : "")}{(pass ? "" : " WRONG")}] ");
+            }
+            Object.DestroyImmediate(root);
+            Report("capture", ok, lines.ToString());
+        }
+
+        // 9. The aim preview predicts where the first bounce happens and where the puck goes next.
+        static void Preview(LevelInstance lab)
+        {
+            var rng = new System.Random(3);
+            var path = new List<Vector2>();
+            int checkedShots = 0;
+            float worstPoint = 0f, worstAngle = 0f;
+            var angleErrors = new List<float>();
+            string worstCase = "";
+            for (int s = 0; s < 600 && checkedShots < 120; s++)
+            {
+                Vector2 start = new Vector2(-1f + (float)rng.NextDouble() * 2f, -6f + (float)rng.NextDouble() * 2f);
+                float a = -80f + (float)rng.NextDouble() * 160f, power = 0.4f + (float)rng.NextDouble() * 0.6f;
+                var v = Quaternion.Euler(0f, 0f, a) * Vector2.up * (Rules.MaxSpeed * Mathf.Pow(power, Rules.PowerCurve));
+                lab.Puck.PlaceAt(start);
+                Physics2D.SyncTransforms();
+                var pred = AimPreview.Compute(lab, start, v, path);
+                if (!pred.Bounced || path.Count < 3 || (path[2] - path[1]).magnitude < 0.6f) continue;
+                var frames = Simulate(lab, start, v, 300);
+                int hit = frames.FindIndex(f => f.Info.Impact || f.Info.RubSpeed > 0f);
+                if (hit < 1) continue;
+                checkedShots++;
+                // The contact happened during the step before the event was read.
+                Vector2 contact = frames[hit - 1].Pos;
+                float pointError = Mathf.Min((contact - pred.BouncePoint).magnitude, (frames[hit].Pos - pred.BouncePoint).magnitude);
+                // A few steps past the bounce, but never across the next one (fast shots reach a corner's second wall quickly).
+                int after = Mathf.Min(frames.Count - 1, hit + 3);
+                for (int k = hit + 1; k < after; k++)
+                    if (frames[k].Info.Impact) { after = k - 1; break; }
+                Vector2 simDir = frames[after].Pos - frames[hit].Pos;
+                Vector2 predDir = path[2] - path[1];
+                float angleError = simDir.sqrMagnitude > 1e-4f ? Vector2.Angle(simDir, predDir) : 0f;
+                if (angleError > worstAngle)
+                    worstCase = $"start {start} aim {a:0} power {power:0.00} hit {frames[hit].Info.ImpactBlock?.Kind} vn {frames[hit].Info.ImpactSpeed:0.0} rub {frames[hit].Info.RubSpeed:0.0} pred {predDir.normalized} sim {simDir.normalized}";
+                worstPoint = Mathf.Max(worstPoint, pointError);
+                worstAngle = Mathf.Max(worstAngle, angleError);
+                angleErrors.Add(angleError);
+            }
+            angleErrors.Sort();
+            float p90 = angleErrors.Count > 0 ? angleErrors[(int)(angleErrors.Count * 0.9f)] : 0f;
+            Report("preview", checkedShots >= 20 && worstPoint < 0.4f && p90 < 4f && worstAngle < 10f,
+                $"{checkedShots} bounce shots, worst bounce point error {worstPoint:0.00} units, direction error 90th pct {p90:0.0} deg, worst {worstAngle:0.0} deg ({worstCase})");
+        }
+
+        // 10. Undo restores switches, gates, stars, crates, and moving parts exactly.
+        static void UndoRestore(Transform parent)
+        {
+            var def = new LevelDef("undo-test", "Undo Test", 3f, 6f)
+                .Switch(0, -2f, -2f).Gate(0, 2f, 2f, 3f, 0.5f)
+                .Crate(0f, 1f, 1.2f).Star(-2f, 3f)
+                .Wall(-2f, 5f, 2f, 0.5f).Moving(1.5f, 0f, 3f);
+            var inst = LevelBuilder.Build(def, parent, false);
+            inst.TickMovers(0.7f, true);
+            var snap = inst.Capture(new Vector2(0f, -6f), 0, 0.7f);
+            Vector2 moverBefore = inst.Movers[0].transform.position;
+
+            inst.PressSwitch(inst.Zones[0]);
+            inst.Stars[0].Collected = true;
+            inst.Crates[0].Body.position = new Vector2(2.5f, 4f);
+            inst.Crates[0].Body.rotation = 33f;
+            inst.TickMovers(2.2f, true);
+
+            inst.Restore(snap);
+            bool ok = !inst.Zones[0].Pressed && !inst.Gates[0].Open && inst.Gates[0].Collider.enabled && !inst.Stars[0].Collected
+                      && (inst.Crates[0].Body.position - new Vector2(0f, 1f)).magnitude < 1e-4f && Mathf.Abs(inst.Crates[0].Body.rotation) < 1e-3f
+                      && ((Vector2)inst.Movers[0].transform.position - moverBefore).magnitude < 1e-4f;
+            Report("undo-restore", ok, "switch, gate collider, star, crate pose, and mover position after restore");
+            Object.DestroyImmediate(inst.Root);
+        }
+
+        // 11. Two portals facing each other cannot trap the puck in a loop.
+        static void PortalLoop(Transform parent)
+        {
+            var def = new LevelDef("portal-test", "Portal Test", 3.5f, 7f).Portal(0f, -2f, 0f, 2f, 0f, 180f);
+            var inst = LevelBuilder.Build(def, parent, false);
+            var frames = Simulate(inst, new Vector2(0f, -5f), Vector2.up * 14f, 1800);
+            int teleports = 0;
+            foreach (var f in frames) if (f.Info.Teleported != null) teleports++;
+            var end = frames[frames.Count - 1].Info.Result;
+            Report("portal-loop", teleports <= Rules.MaxTeleportsPerShot && end != ShotResult.None,
+                $"teleports {teleports} (limit {Rules.MaxTeleportsPerShot}), shot ended with {end}");
+            Object.DestroyImmediate(inst.Root);
+        }
+
+        // Wardrobe: an old skin save wears that skin's color and hat; chests give every chest item exactly once
+        // before duplicates; star items unlock with stars; daily quests track, complete, and claim once.
+        static void Wardrobe()
+        {
+            var prefs = new MemoryPrefs();
+            prefs.SetString("buca.skin", "grape");
+            prefs.SetInt("buca.save", Progress.Version);
+            var p = new Progress(prefs);
+            var o = p.Outfit;
+            bool migrated = o.Color == "c.grape" && o.Hat == "h.catears" && o.Face == Cosmetics.Default.Face && o.Employee == Cosmetics.Default.Employee;
+            int chestItems = Cosmetics.All.FindAll(i => i.FromChest).Count;
+            var rng = new System.Random(3);
+            var seen = new HashSet<string>();
+            int rares = 0, dupesBeforeAll = 0;
+            for (int i = 0; i < chestItems; i++)
+            {
+                var item = p.OpenChest(rng, out bool dup);
+                if (dup) dupesBeforeAll++;
+                seen.Add(item.Id);
+                if (item.Rarity != Rarity.Common) rares++;
+            }
+            p.OpenChest(rng, out bool dupAfter);
+            bool starLocked = !p.Owns(Cosmetics.Find("c.midnight"));
+            var quests = p.TodayQuests;
+            int completed = 0;
+            foreach (var q in quests) completed += p.Track(q.Kind, q.Target);
+            bool claimOnce = p.ClaimQuest(0) && !p.ClaimQuest(0);
+            bool daily = p.ClaimDailyChest() && !p.ClaimDailyChest();
+            var sameDay = Quests.For(20261010);
+            bool stable = sameDay[0] == Quests.For(20261010)[0] && sameDay.Length == 3;
+            bool ok = migrated && seen.Count == chestItems && dupesBeforeAll == 0 && dupAfter && starLocked && completed == 3 && claimOnce && daily && stable
+                      && Quips.Count >= 40 && Cosmetics.All.Count >= 40;
+            Report("wardrobe", ok, $"migrated {migrated} ({o.Color}, {o.Hat}); {seen.Count}/{chestItems} chest items with no early duplicate ({rares} above common), duplicate after {dupAfter}; " +
+                $"star item locked {starLocked}; quests completed {completed}/3, claim once {claimOnce}, daily chest once {daily}; {Cosmetics.All.Count} items, {Quips.Count} lines");
+        }
+
+        // 12. A Buca save migrates        // 12. A Buca save migrates: stars move to the new level ids and reached levels stay unlocked.
+        static void SaveMigration()
+        {
+            var prefs = new MemoryPrefs();
+            prefs.SetInt("buca.level", 8);        // was on "Portal"
+            prefs.SetInt("buca.stars.0", 3);      // Warm up
+            prefs.SetInt("buca.stars.3", 2);      // Speed pad
+            prefs.SetInt("buca.stars.8", 1);      // Portal
+            var p = new Progress(prefs);
+            bool ok = p.Best("first") == 3 && p.Best("speedpad") == 2 && p.Best("portal") == 1
+                      && p.Unlocked > Levels.IndexOf("speedpad") && p.Unlocked > Levels.IndexOf("portal")
+                      && Levels.All[p.CurrentIndex].Id == "portal" && prefs.GetInt("buca.save", 0) == Progress.Version
+                      && prefs.GetInt("buca.stars.0", 0) == 3;
+            var fresh = new Progress(new MemoryPrefs());
+            ok &= fresh.Unlocked == 1 && fresh.CurrentIndex == 0;
+            Report("save-migration", ok, $"unlocked {p.Unlocked}, current {Levels.All[p.CurrentIndex].Id}, stars first/speedpad/portal {p.Best("first")}/{p.Best("speedpad")}/{p.Best("portal")}, old keys kept");
+        }
+
+        static float Min(List<float> v) { float m = float.MaxValue; foreach (var x in v) m = Mathf.Min(m, x); return m; }
+        static float Max(List<float> v) { float m = float.MinValue; foreach (var x in v) m = Mathf.Max(m, x); return m; }
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gotobed",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  },
+  "kv_namespaces": [
+    { "binding": "ASSETS", "id": "1e577162ed9e425d868d0e495adecc4b" }
+  ],
+  "routes": [
+    { "pattern": "gotobed.win", "custom_domain": true },
+    { "pattern": "www.gotobed.win", "custom_domain": true }
+  ]
+}
