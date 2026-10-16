@@ -24,6 +24,8 @@ namespace OutOfOffice
             instance.context = context;
         }
 
+        public static bool Active => instance != null;
+
         // Marks work done this frame, so a hitch can name its cause.
         public static void Note(string what)
         {

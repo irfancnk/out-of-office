@@ -52,7 +52,9 @@ namespace OutOfOffice
                     t.localScale = Vector3.one + (from - Vector3.one) * swing;
                 }, Tweens.Linear, 0f, () => t.localScale = Vector3.one, this);
             bool inside = e.pointerCurrentRaycast.gameObject != null && e.pointerCurrentRaycast.gameObject.transform.IsChildOf(transform);
-            if (down && inside) Clicked?.Invoke();
+            // A press that turned into a drag was scrolling a list, not choosing: in a scroll view the tile moves with the
+            // finger, so it would still be "inside" on release and start a room or equip an item by accident.
+            if (down && inside && !e.dragging) Clicked?.Invoke();
             down = false;
         }
     }

@@ -411,6 +411,10 @@ namespace OutOfOffice
         void Update()
         {
             PaceFrames();
+            // Nothing of the room shows under the home screen, so the camera draws none of it there (OUT-36): the menu
+            // runs at the full frame rate instead of paying for a hidden 3D board with shadows.
+            int visible = hud.CoversBoard ? 0 : ~0;
+            if (cam.cullingMask != visible) cam.cullingMask = visible;
             IconStudio.Playing = state == State.Ready || state == State.Aiming || state == State.Moving || state == State.Capturing || state == State.Penalty;
             TickServices();  // ad and consent SDK callbacks, ad SDK start-up (OUT-31)
             UpdateQuips();

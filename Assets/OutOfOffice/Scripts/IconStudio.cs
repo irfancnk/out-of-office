@@ -20,11 +20,13 @@ namespace OutOfOffice
         static readonly Vector3 Origin = new Vector3(400f, 400f, 0f);
         public static readonly Color PortraitBack = new Color(0.82f, 0.91f, 1f);
 
-        // Set by the game and the HUD. Nothing renders while a shot is in play; on menus one portrait a frame; with the
-        // wardrobe open, as many as fit in a few milliseconds, the open tab's items first.
+        // Set by the game and the HUD. A portrait costs a frame on a budget phone, so: nothing renders while a shot is in
+        // play; with the wardrobe open, the hero and the open tab's icons render one a frame and the other tabs wait
+        // until they are opened; elsewhere the rest trickle in one every few frames, so menus stay smooth.
         public static bool Playing, WardrobeOpen;
         public static Slot ShowingTab = Slot.Employee;
-        const double FrameBudgetMs = 4.0;
+        const int TrickleFrames = 30;
+        int sinceTrickle;
 
         const int HeroSize = 768, ItemSize = 192;
 
@@ -87,23 +89,18 @@ namespace OutOfOffice
         void LateUpdate()
         {
             if (queue.Count == 0 || (Playing && !WardrobeOpen)) return;
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            int done = 0;
-            while (queue.Count > 0)
-            {
-                int next = NextJob();
-                if (next < 0) break;
-                var job = queue[next];
-                queue.RemoveAt(next);
-                Draw(job);
-                done++;
-                if (!WardrobeOpen || watch.Elapsed.TotalMilliseconds > FrameBudgetMs) break;
-            }
-            if (done > 0) Rendered?.Invoke();
+            int next = NextJob();
+            if (next < 0) return;
+            var job = queue[next];
+            bool wanted = job.Hero || WardrobeOpen;  // on screen now
+            if (!wanted && ++sinceTrickle < TrickleFrames) return;
+            sinceTrickle = 0;
+            queue.RemoveAt(next);
+            Draw(job);
+            Rendered?.Invoke();
         }
 
-        // The hero first, then the open wardrobe tab, then the rest. Item icons wait while the wardrobe is closed and
-        // the hero is still pending, so the title portrait is never late.
+        // The hero first, then the open wardrobe tab, then the rest, which wait while the wardrobe is open.
         static int NextJob()
         {
             int best = -1, bestRank = int.MaxValue;
@@ -113,12 +110,13 @@ namespace OutOfOffice
                 int rank = j.Hero ? 0 : WardrobeOpen && j.Slot == ShowingTab ? 1 : 2;
                 if (rank < bestRank) { best = i; bestRank = rank; }
             }
-            return best;
+            return WardrobeOpen && bestRank == 2 ? -1 : best;
         }
 
         static void Draw(Job job)
         {
-            FrameWatch.Note(job.Hero ? "portrait" : "icon");
+            var watch = FrameWatch.Active ? System.Diagnostics.Stopwatch.StartNew() : null;
+            double built = 0;
             if (!targets.TryGetValue(job.Key, out var target) || target == null)
             {
                 target = new RenderTexture(job.Size, job.Size, 0, RenderTextureFormat.ARGB32) { name = "Portrait " + job.Key };
@@ -131,7 +129,8 @@ namespace OutOfOffice
             {
                 var cam = job.Hero ? HeroCamera(rig.transform, Origin, temp) : ItemCamera(rig.transform, Origin, temp, job.Head);
                 Pose(rig.transform, Origin, Cosmetics.Compose(job.Outfit), cam);
-                cam.Render();
+                if (watch != null) built = watch.Elapsed.TotalMilliseconds;
+                RenderInDaylight(cam);
                 if (job.Hero) Graphics.Blit(temp, target);
                 else Graphics.Blit(temp, target, Corners);  // wardrobe icons get their rounded corners here
             }
@@ -140,6 +139,7 @@ namespace OutOfOffice
                 RenderTexture.ReleaseTemporary(temp);
                 Remove(rig);
             }
+            if (watch != null) FrameWatch.Note($"{(job.Hero ? "portrait" : "icon")} build {built:0}ms total {watch.Elapsed.TotalMilliseconds:0}ms");
             shown[job.Key] = job.LookKey;
             latest[job.Key] = job;
             if (job.Hero) HeroIcon = target;
@@ -148,6 +148,41 @@ namespace OutOfOffice
 
         static Material corners;
         static Material Corners => corners != null ? corners : corners = new Material(Resources.Load<Shader>("OutOfOfficeRoundCorners")) { hideFlags = HideFlags.HideAndDontSave };
+
+        // Portraits look the same in every chapter: lit by the first chapter's daylight, not by whatever room (a dim
+        // night floor, say) sits behind the menu. The room's light is put back before the frame renders.
+        static void RenderInDaylight(Camera cam)
+        {
+            var day = Themes.All[0];
+            var sun = RenderSettings.sun;
+            Color sunColor = sun != null ? sun.color : Color.white;
+            float sunIntensity = sun != null ? sun.intensity : 1f;
+            var ambient = RenderSettings.ambientLight;
+            var probe = RenderSettings.ambientProbe;
+            try
+            {
+                if (sun != null)
+                {
+                    sun.color = day.Sun;
+                    sun.intensity = day.SunIntensity;
+                }
+                var dayProbe = new UnityEngine.Rendering.SphericalHarmonicsL2();
+                dayProbe.AddAmbientLight(day.Ambient);
+                RenderSettings.ambientLight = day.Ambient;
+                RenderSettings.ambientProbe = dayProbe;
+                cam.Render();
+            }
+            finally
+            {
+                if (sun != null)
+                {
+                    sun.color = sunColor;
+                    sun.intensity = sunIntensity;
+                }
+                RenderSettings.ambientLight = ambient;
+                RenderSettings.ambientProbe = probe;
+            }
+        }
 
         // The employee, placed and posed at once: the rig never lives to the next frame.
         static Mascot Pose(Transform rig, Vector3 pos, SkinDef look, Camera cam)

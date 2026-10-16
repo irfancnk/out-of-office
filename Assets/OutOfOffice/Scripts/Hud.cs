@@ -81,8 +81,11 @@ namespace OutOfOffice
 
         public static Hud Create()
         {
-            if (EventSystem.current == null)
-                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+            var events = EventSystem.current;
+            if (events == null) events = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule)).GetComponent<EventSystem>();
+            // A tap may wander a couple of millimetres before it counts as a drag (Unity's default is 10 pixels, a hair
+            // on a phone screen), so a slightly shaky tap on a list tile still chooses it.
+            events.pixelDragThreshold = Mathf.Max(10, Mathf.RoundToInt((Screen.dpi > 0f ? Screen.dpi : 300f) * 0.08f));
             var go = new GameObject("HUD", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             var hud = go.AddComponent<Hud>();
             hud.Build();
@@ -1193,6 +1196,11 @@ namespace OutOfOffice
             }
         }
 
+        // The home screen is opaque, and the wardrobe and the shop leave only a dimmed sliver: the board under them need
+        // not be drawn.
+        public bool CoversBoard => (title != null && title.gameObject.activeSelf) || (skinsCard != null && skinsCard.Root.gameObject.activeSelf)
+            || (shopCard != null && shopCard.Root.gameObject.activeSelf);
+
         public void HideTitle()
         {
             title.gameObject.SetActive(false);
@@ -1534,12 +1542,12 @@ namespace OutOfOffice
 
         (RectTransform root, List<SkinTile> tiles) BuildSkinTab(Slot slot)
         {
+            var watch = FrameWatch.Active ? System.Diagnostics.Stopwatch.StartNew() : null;
             if (skinTabs.TryGetValue(slot, out var old) && old.root != null)
             {
                 old.root.gameObject.SetActive(false);
                 Destroy(old.root.gameObject);
             }
-            FrameWatch.Note("tiles");
             var items = Cosmetics.InSlot(slot);
             int rows = (items.Count + 3) / 4;
             var root = Rect("Tab " + slot, wardrobeContent, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, rows * (SkinTileH + 16f) + 20f));
@@ -1547,6 +1555,7 @@ namespace OutOfOffice
             var tiles = new List<SkinTile>(items.Count);
             for (int i = 0; i < items.Count; i++) tiles.Add(SkinTileFor(root, items[i], i));
             skinTabs[slot] = (root, tiles);
+            if (watch != null) FrameWatch.Note($"{tiles.Count} tiles {watch.Elapsed.TotalMilliseconds:0}ms");
             return (root, tiles);
         }
 
@@ -1575,10 +1584,9 @@ namespace OutOfOffice
             string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
             t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, 46f), new Vector2(tileW - 10f, 50f)),
                 caption, 30f, Ink, Ink);
-            // Long names shrink to fit the tile (OUT-29). Tiles are built once per tab, so this is not paid on every equip.
-            t.Label.enableAutoSizing = true;
-            t.Label.fontSizeMin = 15f;
-            t.Label.fontSizeMax = 30f;
+            // Long names shrink to fit the tile (OUT-29), by their length: TMP's auto-size runs several layouts per label,
+            // which made opening a tab freeze on a budget phone (OUT-36). Caps in this face run about 0.6 em wide.
+            t.Label.fontSize = Mathf.Clamp((tileW - 22f) / (0.62f * Mathf.Max(1, caption.Length)), 15f, 30f);
 
             var check = Rect("Check", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -16f), new Vector2(58f, 58f));
             Img(check, UiArt.RoundButton, Palette.UiGreen);
