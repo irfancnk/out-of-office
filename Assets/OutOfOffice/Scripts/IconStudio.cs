@@ -150,10 +150,10 @@ namespace OutOfOffice
         // The title screen hero: almost from the front, so the employee stands up like a character on a stage.
         static Camera HeroCamera(Transform parent, Vector3 pos, RenderTexture rt)
         {
-            var focus = pos + new Vector3(0f, 0f, -0.47f);  // room above the head for tall hats (OUT-29)
-            var cam = MakeCamera(parent, focus, 2.4f, 26f, rt, new Color(0f, 0f, 0f, 0f));
+            var focus = pos + new Vector3(0f, 0f, -0.56f);  // room above the head for tall and wide hats (OUT-29)
+            var cam = MakeCamera(parent, focus, 2.65f, 26f, rt, new Color(0f, 0f, 0f, 0f));
             cam.transform.rotation = Quaternion.Euler(-72f, 0f, 0f);
-            cam.transform.position = focus - cam.transform.forward * 2.4f;
+            cam.transform.position = focus - cam.transform.forward * 2.65f;
             return cam;
         }
 

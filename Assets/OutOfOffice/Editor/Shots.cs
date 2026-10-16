@@ -221,7 +221,9 @@ namespace OutOfOffice.EditorTools
                 hud.CurrentOutfit = () => sam;
                 hud.OwnsItem = item => true;
                 IconStudio.RenderItemsNow(sam);
-                IconStudio.HeroIcon = IconStudio.RenderHeroNow(Cosmetics.Compose(sam));
+                var pillow = sam;
+                pillow.Hat = "h." + Cosmetics.HatId(Accessory.Beanie);
+                IconStudio.HeroIcon = IconStudio.RenderHeroNow(Cosmetics.Compose(Cosmetics.Find(pillow.Hat) != null ? pillow : sam));  // a wide hat must fit
                 hud.ShowSkins(Slot.Hat);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-wardrobe.png"), Canvas.ForceUpdateCanvases);
