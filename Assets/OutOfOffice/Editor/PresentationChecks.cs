@@ -90,7 +90,7 @@ namespace OutOfOffice.EditorTools
                     m.Mode = MascotMode.Idle;
                     m.Pose(Eyes.Open, Mouth.Smile);
                     m.TickPresentation(1f / 60f);
-                    if (skin < 2) Render(camera, "/tmp/outofoffice-" + Skins.All[skin].Id + ".png");
+                    if (skin < 2) Render(camera, Path.Combine(Path.GetTempPath(), "outofoffice-" + Skins.All[skin].Id + ".png"));  // review images, any OS
                     UnityEngine.Object.DestroyImmediate(p.gameObject);
                 }
                 foreach (Setting setting in Enum.GetValues(typeof(Setting)))

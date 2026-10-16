@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 namespace OutOfOffice.EditorTools
 {
     // Renders representative frames with the game's camera and lighting, for visual review outside Play mode:
-    // Unity -batchmode -executeMethod OutOfOffice.EditorTools.Shots.RunBatch  (writes PNGs to OOO_SHOTS or /tmp/out-of-office-shots)
+    // Unity -batchmode -executeMethod OutOfOffice.EditorTools.Shots.RunBatch  (writes PNGs to OOO_SHOTS or <temp>/out-of-office-shots)
     public static class Shots
     {
         const float CameraTilt = 34f, CameraFov = 36f;
@@ -23,7 +23,7 @@ namespace OutOfOffice.EditorTools
         public static void RenderAll()
         {
             string dir = System.Environment.GetEnvironmentVariable("OOO_SHOTS");
-            if (string.IsNullOrEmpty(dir)) dir = "/tmp/out-of-office-shots";
+            if (string.IsNullOrEmpty(dir)) dir = Path.Combine(Path.GetTempPath(), "out-of-office-shots");
             Directory.CreateDirectory(dir);
             var oldAmbient = RenderSettings.ambientLight;
             var oldMode = RenderSettings.ambientMode;
@@ -143,6 +143,7 @@ namespace OutOfOffice.EditorTools
                 hud.CurrentLevel = () => 8;
                 hud.BestStars = id => id == "first" || id == "easy" ? 3 : id == "bank" || id == "ring" ? 2 : 0;
                 hud.SetQuestBadge(2);
+                hud.UntilQuestReset = () => new System.TimeSpan(7, 42, 0);
                 hud.ShowTitle(23, 9, theme);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "title.png"), Canvas.ForceUpdateCanvases);

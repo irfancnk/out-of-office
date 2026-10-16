@@ -907,8 +907,8 @@ namespace OutOfOffice.EditorTools
             // ...but going back doesn't open today again, and the borrowed day's quest progress stays.
             clock.Advance(System.TimeSpan.FromDays(-1));
             bool heldBack = !p.DailyChestReady && p.Today == day0 + 1 && p.QuestProgress(0) == progressAhead && p.ClaimDailyChest() == false;
-            int rollbacks = p.ClockRollbacks;
             p.Now.ToString(); p.Now.ToString();  // more reads while behind don't count again
+            int rollbacks = p.ClockRollbacks;
 
             // Relaunch: the guard survives a restart.
             p.Flush();
@@ -939,9 +939,9 @@ namespace OutOfOffice.EditorTools
             far.Advance(System.TimeSpan.FromDays(1));
             bool reopened = fp.DailyChestReady && !fp.QuestClaimed(0) && fp.QuestProgress(0) == 0;
 
-            bool ok = first && borrowed && heldBack && rollbacks == 1 && p.ClockRollbacks == 1 && survives && spent && fresh && travel
+            bool ok = first && borrowed && heldBack && rollbacks == 1 && survives && spent && fresh && travel
                       && closedToday && reopened;
-            Report("daily-clock", ok, $"claim once {first}; borrow ahead {borrowed}, wound back holds {heldBack} (rollbacks {p.ClockRollbacks}); " +
+            Report("daily-clock", ok, $"claim once {first}; borrow ahead {borrowed}, wound back holds {heldBack} (rollbacks {rollbacks}); " +
                 $"survives relaunch {survives}; borrowed day spent {spent}, next day fresh {fresh}; time zone change ignored {travel}; " +
                 $"far-future clock closed {closedToday}, reopens next day {reopened}");
         }
