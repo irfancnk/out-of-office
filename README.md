@@ -7,6 +7,7 @@ A one-thumb physics puzzle for iPhone and Android, built in Unity.
 - `Assets/OutOfOffice/` - game code (`Scripts/`), editor tools and checks (`Editor/`), shaders, materials and fonts (`Resources/`), app icon (`Icon/`)
 - `Assets/Plugins/iOS/` - native iOS haptics
 - `deploy_ios.sh` - builds the game and installs it on a connected iPhone
+- `deploy_android.sh` - builds a development APK and installs it on a connected Android phone (USB debugging on); then `adb logcat -s Unity` shows the game log
 - `site/` - the game's website (Cloudflare Worker)
 
 ## Getting started
