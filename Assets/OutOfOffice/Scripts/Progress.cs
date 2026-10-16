@@ -182,12 +182,7 @@ namespace OutOfOffice
 
         public void Equip(CosmeticItem item)
         {
-            var o = Outfit;
-            if (item.Slot == Slot.Employee) o.Employee = item.Id;
-            else if (item.Slot == Slot.Color) o.Color = item.Id;
-            else if (item.Slot == Slot.Hat) o.Hat = item.Id;
-            else o.Face = item.Id;
-            Outfit = o;
+            Outfit = Outfit.With(item);
         }
 
         // Rolls a chest and keeps what it gives. Returns the item and whether it was already owned.

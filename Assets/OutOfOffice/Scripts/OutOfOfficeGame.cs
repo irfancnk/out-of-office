@@ -130,11 +130,7 @@ namespace OutOfOffice
         void OpenChest(string heading)
         {
             var item = progress.OpenChest(new System.Random(), out bool duplicate);
-            var o = progress.Outfit;
-            if (item.Slot == Slot.Color) o.Color = item.Id;
-            else if (item.Slot == Slot.Hat) o.Hat = item.Id;
-            else o.Face = item.Id;
-            ChestStage.Open(item, duplicate, Cosmetics.Compose(o), heading, (clip, volume) => sound.Play(clip, volume, 1f, 0.9f), equip =>
+            ChestStage.Open(item, duplicate, Cosmetics.Compose(progress.Outfit.With(item)), heading, (clip, volume) => sound.Play(clip, volume, 1f, 0.9f), equip =>
             {
                 if (equip)
                 {
@@ -189,7 +185,13 @@ namespace OutOfOffice
             hud.Resume = ResumeGame;
             hud.Restart = () => { sound.Play(Sfx.Restart, 0.7f); StartLevel(levelIndex); };
             hud.Undo = UndoShot;
-            hud.Next = () => { Tap(); StartLevel(levelIndex < 0 ? -1 : Mathf.Min(levelIndex + 1, Levels.All.Length - 1)); };
+            hud.Next = () =>
+            {
+                // After the last room there is nothing to start: go home rather than replay it forever.
+                if (IsFinalLevel) { GoHome(); return; }
+                Tap();
+                StartLevel(levelIndex < 0 ? -1 : levelIndex + 1);
+            };
             hud.Replay = () => { sound.Play(Sfx.Restart, 0.7f); StartLevel(levelIndex); };
             hud.Home = GoHome;
             hud.SelectLevel = i => { Tap(); StartLevel(i); };
@@ -355,6 +357,8 @@ namespace OutOfOffice
             LoadLevel(levelIndex < 0 ? Mathf.Max(0, progress.CurrentIndex) : levelIndex);
             ShowTitle();
         }
+
+        bool IsFinalLevel => levelIndex == Levels.All.Length - 1;
 
         int StarsFor(int shotCount) =>
             1 + (shotCount <= Def.Par ? 1 : 0) + (level.StarsCollected == level.Stars.Count ? 1 : 0);
@@ -849,7 +853,7 @@ namespace OutOfOffice
             yield return new WaitForSeconds(reduced ? 0.3f : 0.6f);
             state = State.Complete;
             sound.Play(Sfx.Complete, 0.6f, 1f, 1f);
-            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count);
+            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel);
         }
 
         // The blanket rises and falls with slow sleepy breaths.

@@ -44,7 +44,8 @@ namespace OutOfOffice
         RectTransform safe, hudRoot, title, titleArea, dim, banner, levelsContent, devRow, sunburst;
         Card pauseCard, levelsCard, skinsCard, completeCard, settingsCard;
         TextMeshProUGUI chapterText, levelText, shotsText, starText, hintText, bannerText, debugText, totalStars;
-        TextMeshProUGUI completeLevel, completeShots, completePar, completeExtra;
+        TextMeshProUGUI completeLevel, completeShots, completePar, completeExtra, completeNextLabel;
+        Image completeNextIcon;
         RectTransform starPill, hintPill, shotsPill, undoButton, chapterPill;
         Image titleWash;
         readonly List<Image> completeStars = new List<Image>();
@@ -1065,7 +1066,7 @@ namespace OutOfOffice
             foreach (Transform c in wardrobeContent) Destroy(c.gameObject);
             wardrobeIcons.Clear();
             var outfit = CurrentOutfit?.Invoke() ?? Cosmetics.Default;
-            string worn = wardrobeTab == Slot.Color ? outfit.Color : wardrobeTab == Slot.Hat ? outfit.Hat : outfit.Face;
+            string worn = outfit.Get(wardrobeTab);
             var items = Cosmetics.InSlot(wardrobeTab);
             const float tileW = 210f, tileH = 270f;
             for (int i = 0; i < items.Count; i++)
@@ -1304,7 +1305,10 @@ namespace OutOfOffice
             completePar = StatChip(c, new Vector2(150f, -60f), "PAR");
             completeExtra = Txt(Rect("Extra", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(800f, 60f)),
                 "", 40f, Themes.Hex(0xF29B1D), Ink, 0f, false);
-            TextButton(c, "NEXT", Palette.UiGreen, new Vector2(80f, -330f), new Vector2(500f, 170f), 76f, "play").Clicked = () => Next?.Invoke();
+            var next = TextButton(c, "NEXT", Palette.UiGreen, new Vector2(80f, -330f), new Vector2(500f, 170f), 76f, "play");
+            next.Clicked = () => Next?.Invoke();
+            completeNextLabel = next.GetComponentInChildren<TextMeshProUGUI>();
+            completeNextIcon = next.transform.Find("Icon").GetComponent<Image>();
             IconButton(c, "Replay", new Vector2(0.5f, 0.5f), new Vector2(-275f, -322f), 160f, Palette.UiBlue, "restart", Color.white).Clicked = () => Replay?.Invoke();
         }
 
@@ -1317,7 +1321,8 @@ namespace OutOfOffice
             return Txt(Rect("Value", chip, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 70f)), "0", 60f, Ink, Ink, 0f, false);
         }
 
-        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups)
+        // finalLevel: the last room there is, so NEXT becomes HOME instead of replaying it.
+        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups, bool finalLevel = false)
         {
             HideAll();
             completeCard.Title.text = stars >= 3 ? "PERFECT!" : stars == 2 ? "GREAT!" : "NICE!";
@@ -1325,7 +1330,9 @@ namespace OutOfOffice
             completeShots.text = shots.ToString();
             completePar.text = par.ToString();
             completeShots.color = shots <= par ? Themes.Hex(0x2EAD4B) : Ink;
-            completeExtra.text = allPickups ? "FULLY CAFFEINATED!" : shots <= par ? "UNDER PAR!" : "";
+            completeExtra.text = finalLevel ? "OFFICE CLEARED! MORE ROOMS SOON" : allPickups ? "FULLY CAFFEINATED!" : shots <= par ? "UNDER PAR!" : "";
+            completeNextLabel.text = finalLevel ? "HOME" : "NEXT";
+            completeNextIcon.sprite = UiArt.Icon(finalLevel ? "home" : "play");
             ShowCard(completeCard);
             for (int i = 0; i < completeStars.Count; i++)
             {

@@ -35,11 +35,7 @@ namespace OutOfOffice
             {
                 if (!force && ItemIcons.ContainsKey(item.Id)) continue;
                 var d = Cosmetics.Default;
-                var o = new Outfit { Employee = d.Employee, Color = d.Color, Hat = "h.tuft", Face = "f.none" };
-                if (item.Slot == Slot.Employee) o.Employee = item.Id;
-                else if (item.Slot == Slot.Color) o.Color = item.Id;
-                else if (item.Slot == Slot.Hat) o.Hat = item.Id;
-                else o.Face = item.Id;
+                var o = new Outfit { Employee = d.Employee, Color = d.Color, Hat = "h.tuft", Face = "f.none" }.With(item);
                 jobs.Add(new Job { Key = item.Id, Look = Cosmetics.Compose(o), Size = 160 });
             }
             if (jobs.Count > 0) Run(jobs);

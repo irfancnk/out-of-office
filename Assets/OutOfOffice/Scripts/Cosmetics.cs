@@ -27,9 +27,26 @@ namespace OutOfOffice
     }
 
     // What Puffy is wearing: one item per slot.
+    // Every slot lookup goes through Get and With, so a new slot can't be missed by one of the callers.
     public struct Outfit
     {
         public string Employee, Color, Hat, Face;
+
+        public string Get(Slot slot) =>
+            slot == Slot.Employee ? Employee : slot == Slot.Color ? Color : slot == Slot.Hat ? Hat : Face;
+
+        // A copy with one slot replaced.
+        public Outfit With(Slot slot, string id)
+        {
+            var o = this;
+            if (slot == Slot.Employee) o.Employee = id;
+            else if (slot == Slot.Color) o.Color = id;
+            else if (slot == Slot.Hat) o.Hat = id;
+            else o.Face = id;
+            return o;
+        }
+
+        public Outfit With(CosmeticItem item) => With(item.Slot, item.Id);
     }
 
     // The wardrobe catalog and the chest odds.
