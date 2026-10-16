@@ -27,9 +27,7 @@ namespace OutOfOffice
             new QuestDef { Kind = QuestKind.Shots, Target = 25, Text = "Take 25 shots" },
         };
 
-        // Today's date as yyyymmdd (local time).
-        public static int Today => DayOf(DateTime.Now);
-
+        // A date as yyyymmdd. Today comes from Progress.Today, which guards against a wound-back clock.
         public static int DayOf(DateTime t) => t.Year * 10000 + t.Month * 100 + t.Day;
 
         // A fixed, different trio for each day.
@@ -46,12 +44,6 @@ namespace OutOfOffice
                 picks[i] = Pool[k];
             }
             return picks;
-        }
-
-        public static TimeSpan UntilReset()
-        {
-            var now = DateTime.Now;
-            return now.Date.AddDays(1) - now;
         }
     }
 }

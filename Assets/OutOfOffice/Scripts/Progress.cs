@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,12 +33,31 @@ namespace OutOfOffice
         public void SetInt(string key, int value) => Values[key] = value;
         public string GetString(string key, string fallback) => Values.TryGetValue(key, out var v) && v is string s ? s : fallback;
         public void SetString(string key, string value) => Values[key] = value;
-        public void Save() { }
+        public int Saves;
+        public void Save() => Saves++;
     }
 
     // Player progress and preferences. Keys keep the original "buca." prefix so nothing existing breaks.
     // Version 1 (Buca) stored the current level index and stars per level index.
     // Version 2 (HoleShot, later Puffy Putt, now Out of Office) stores everything by stable level id. Version 1 keys are read once and left in place.
+    //
+    // Save keys. Never rename one: players would lose what it holds.
+    //   buca.save                  save format version
+    //   buca.level, buca.stars.N   version 1 only (current level index, stars by level index); read by Migrate
+    //   buca.unlocked              how many levels are open
+    //   buca.current               id of the level Play starts
+    //   buca.best.<id>             best stars on a level
+    //   buca.shots.<id>            fewest shots on a level
+    //   buca.skin                  pre-wardrobe skin id; read when no outfit is saved yet
+    //   buca.outfit.<slot>         equipped item per slot (employee, color, hat, face)
+    //   buca.own.<item>            1 once a chest has given that item
+    //   buca.chests.opened         chests opened so far (input for the chest pity timer, OUT-14)
+    //   buca.quest.day             the day today's quest progress belongs to (yyyymmdd)
+    //   buca.quest.pN, .cN         progress and claimed flag of today's quest N
+    //   buca.daily.chest           the day the free daily chest was last claimed (yyyymmdd)
+    //   buca.clock.seen            latest UTC time seen, in ticks; the clock never reads earlier than this
+    //   buca.clock.rollbacks       how many launches found the device clock wound back
+    //   buca.sfx, buca.music, buca.reduce   settings
     public class Progress
     {
         public const int Version = 2;
@@ -49,11 +69,108 @@ namespace OutOfOffice
             { "first", "bank", "easy", "speedpad", "soft", "timing", "spinner", "corner", "portal", "door", "ramp", "rubber", "pinball", "track" };
 
         readonly IPrefs prefs;
+        readonly IClock clock;
+        long seenTicks;
 
-        public Progress(IPrefs prefs)
+        public Progress(IPrefs prefs, IClock clock = null)
         {
             this.prefs = prefs;
+            this.clock = clock ?? new SystemClock();
+            long.TryParse(prefs.GetString("buca.clock.seen", "0"), out seenTicks);
+            savedTicks = seenTicks;
             Migrate();
+        }
+
+        // Writes everything to disk. The game calls it when the app is paused or quits, because the OS may kill a
+        // backgrounded app without warning, and quest progress isn't saved on every shot.
+        public void Flush()
+        {
+            if (seenTicks != savedTicks) SaveSeen();
+            prefs.Save();
+        }
+
+        // ---------- Time ----------
+
+        // Local time for daily resets, guarded against winding the device clock back to claim the same day's
+        // rewards again: the clock never reads earlier than the latest time it has shown. UTC is compared, so
+        // flying across time zones is not a rollback. Moving the clock forward only borrows future days, since
+        // those days are then already claimed when they really come. Server time (OUT-5) replaces this.
+        public DateTime Now
+        {
+            get
+            {
+                var utc = clock.UtcNow;
+                long behind = seenTicks - utc.Ticks;
+                if (behind > TrustLimit.Ticks)
+                {
+                    // Far behind: the earlier reading was a wrong clock (a dead battery, a bad manual setting), not
+                    // this one. Trust this one, and close out the days claimed in that false future.
+                    seenTicks = utc.Ticks;
+                    SaveSeen();
+                    CloseFutureDays(Quests.DayOf(clock.ToLocal(utc)));
+                    Analytics.Event("clock_reanchor", ("behind_days", (int)TimeSpan.FromTicks(behind).TotalDays));
+                }
+                else if (behind > 0)
+                {
+                    // Counted once per launch, not on every read while the clock stays behind.
+                    if (behind > RollbackSlack.Ticks && !heldBack)
+                    {
+                        heldBack = true;
+                        prefs.SetInt("buca.clock.rollbacks", ClockRollbacks + 1);
+                        Analytics.Event("clock_rollback", ("behind_minutes", (int)TimeSpan.FromTicks(behind).TotalMinutes));
+                    }
+                    utc = new DateTime(seenTicks, DateTimeKind.Utc);
+                }
+                else
+                {
+                    heldBack = false;
+                    seenTicks = utc.Ticks;
+                    if (seenTicks - savedTicks > TimeSpan.TicksPerMinute) SaveSeen();  // the HUD reads the time often
+                }
+                return clock.ToLocal(utc);
+            }
+        }
+
+        static readonly TimeSpan RollbackSlack = TimeSpan.FromMinutes(5);  // network time corrections are not tampering
+        static readonly TimeSpan TrustLimit = TimeSpan.FromDays(30);
+
+        bool heldBack;
+        long savedTicks;
+
+        void SaveSeen()
+        {
+            savedTicks = seenTicks;
+            prefs.SetString("buca.clock.seen", seenTicks.ToString());
+        }
+
+        // Daily state saved under a day later than today becomes today's, already used up, so going back to the
+        // real date gives nothing extra and tomorrow works as normal.
+        void CloseFutureDays(int today)
+        {
+            if (prefs.GetInt("buca.daily.chest", 0) > today) prefs.SetInt("buca.daily.chest", today);
+            if (prefs.GetInt("buca.quest.day", 0) > today)
+            {
+                prefs.SetInt("buca.quest.day", today);
+                var quests = Quests.For(today);
+                for (int i = 0; i < Quests.PerDay; i++)
+                {
+                    prefs.SetInt("buca.quest.p" + i, quests[i].Target);
+                    prefs.SetInt("buca.quest.c" + i, 1);
+                }
+            }
+            prefs.Save();
+        }
+
+        public int Today => Quests.DayOf(Now);
+        public int ClockRollbacks => prefs.GetInt("buca.clock.rollbacks", 0);
+
+        public TimeSpan UntilReset
+        {
+            get
+            {
+                var now = Now;
+                return now.Date.AddDays(1) - now;
+            }
         }
 
         void Migrate()
@@ -200,8 +317,10 @@ namespace OutOfOffice
 
         void EnsureDay()
         {
-            int today = Quests.Today;
-            if (prefs.GetInt("buca.quest.day", 0) == today) return;
+            // Days only move forward. A saved day later than today (a clock wound back before this guard existed)
+            // keeps its progress instead of handing out a fresh set.
+            int today = Today;
+            if (prefs.GetInt("buca.quest.day", 0) >= today) return;
             prefs.SetInt("buca.quest.day", today);
             for (int i = 0; i < Quests.PerDay; i++)
             {
@@ -213,7 +332,7 @@ namespace OutOfOffice
 
         public QuestDef[] TodayQuests
         {
-            get { EnsureDay(); return Quests.For(Quests.Today); }
+            get { EnsureDay(); return Quests.For(prefs.GetInt("buca.quest.day", Today)); }
         }
 
         public int QuestProgress(int i) { EnsureDay(); return prefs.GetInt("buca.quest.p" + i, 0); }
@@ -246,12 +365,12 @@ namespace OutOfOffice
             return true;
         }
 
-        public bool DailyChestReady => prefs.GetInt("buca.daily.chest", 0) != Quests.Today;
+        public bool DailyChestReady => prefs.GetInt("buca.daily.chest", 0) < Today;
 
         public bool ClaimDailyChest()
         {
             if (!DailyChestReady) return false;
-            prefs.SetInt("buca.daily.chest", Quests.Today);
+            prefs.SetInt("buca.daily.chest", Today);
             prefs.Save();
             return true;
         }

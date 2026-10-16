@@ -31,7 +31,7 @@ namespace OutOfOffice.EditorTools
         {
             var previousMode = Physics2D.simulationMode;
             Physics2D.simulationMode = SimulationMode2D.Script;
-            log = new StringBuilder("HOLESHOT PHYSICS TESTS\n");
+            log = new StringBuilder("OUT OF OFFICE PHYSICS TESTS\n");
             failures = 0;
             var root = new GameObject("PhysicsTests");
             try
@@ -63,6 +63,9 @@ namespace OutOfOffice.EditorTools
                 PortalLoop(root.transform);
                 SaveMigration();
                 Wardrobe();
+                OutfitSlots();
+                DailyClock();
+                SaveFlush();
             }
             finally
             {
@@ -844,7 +847,7 @@ namespace OutOfOffice.EditorTools
                 $"star item locked {starLocked}; quests completed {completed}/3, claim once {claimOnce}, daily chest once {daily}; {Cosmetics.All.Count} items, {Quips.Count} lines");
         }
 
-        // 12. A Buca save migrates        // 12. A Buca save migrates: stars move to the new level ids and reached levels stay unlocked.
+        // 12. A Buca save migrates: stars move to the new level ids and reached levels stay unlocked.
         static void SaveMigration()
         {
             var prefs = new MemoryPrefs();
@@ -860,6 +863,101 @@ namespace OutOfOffice.EditorTools
             var fresh = new Progress(new MemoryPrefs());
             ok &= fresh.Unlocked == 1 && fresh.CurrentIndex == 0;
             Report("save-migration", ok, $"unlocked {p.Unlocked}, current {Levels.All[p.CurrentIndex].Id}, stars first/speedpad/portal {p.Best("first")}/{p.Best("speedpad")}/{p.Best("portal")}, old keys kept");
+        }
+
+        // 13. Every wardrobe slot reads and writes its own field (the STAFF tab once read the face slot).
+        static void OutfitSlots()
+        {
+            bool ok = true;
+            var slots = (Slot[])System.Enum.GetValues(typeof(Slot));
+            foreach (var slot in slots)
+            {
+                var o = Cosmetics.Default.With(slot, "x.test");
+                ok &= o.Get(slot) == "x.test";
+                foreach (var other in slots)
+                    if (other != slot) ok &= o.Get(other) == Cosmetics.Default.Get(other);
+            }
+            var staff = Cosmetics.All.Find(i => i.Slot == Slot.Employee && i.Id != Cosmetics.Default.Employee);
+            var prefs = new MemoryPrefs();
+            var p = new Progress(prefs);
+            p.Grant(staff);
+            p.Equip(staff);
+            ok &= p.Outfit.Get(Slot.Employee) == staff.Id && p.Outfit.Face == Cosmetics.Default.Face;
+            Report("outfit-slots", ok, $"{slots.Length} slots isolated; equipping {staff.Id} shows on the STAFF tab");
+        }
+
+        // 14. Winding the device clock back never hands out a day's rewards twice, and a far-future clock that gets
+        // corrected doesn't lock rewards away for years.
+        static void DailyClock()
+        {
+            var start = new System.DateTime(2026, 10, 16, 6, 0, 0, System.DateTimeKind.Utc);
+            var clock = new FakeClock(start, System.TimeSpan.FromHours(4));  // 10:00 local
+            var prefs = new MemoryPrefs();
+            var p = new Progress(prefs, clock);
+            int day0 = p.Today;
+            bool first = p.ClaimDailyChest() && !p.ClaimDailyChest();
+
+            // Forward a day: that day's chest can be taken early...
+            clock.Advance(System.TimeSpan.FromDays(1));
+            var quests = p.TodayQuests;
+            p.Track(quests[0].Kind, 1);
+            int progressAhead = p.QuestProgress(0);
+            bool borrowed = p.ClaimDailyChest();
+            // ...but going back doesn't open today again, and the borrowed day's quest progress stays.
+            clock.Advance(System.TimeSpan.FromDays(-1));
+            bool heldBack = !p.DailyChestReady && p.Today == day0 + 1 && p.QuestProgress(0) == progressAhead && p.ClaimDailyChest() == false;
+            int rollbacks = p.ClockRollbacks;
+            p.Now.ToString(); p.Now.ToString();  // more reads while behind don't count again
+
+            // Relaunch: the guard survives a restart.
+            p.Flush();
+            var relaunched = new Progress(prefs, clock);
+            // (each launch that finds the clock behind counts once more)
+            bool survives = !relaunched.DailyChestReady && relaunched.ClockRollbacks == 2;
+
+            // Real time catches up: the borrowed day is spent, the one after is fresh.
+            clock.Advance(System.TimeSpan.FromDays(1) + System.TimeSpan.FromHours(2));
+            bool spent = !relaunched.DailyChestReady;
+            clock.Advance(System.TimeSpan.FromDays(1));
+            bool fresh = relaunched.DailyChestReady;
+
+            // Flying west moves local time back, but UTC goes on: not a rollback.
+            clock.Offset = System.TimeSpan.FromHours(-7);
+            int rollbacksBefore = relaunched.ClockRollbacks;
+            relaunched.Now.ToString();
+            bool travel = relaunched.ClockRollbacks == rollbacksBefore;
+
+            // A clock set years ahead and then corrected: the false future is closed out and tomorrow works.
+            var far = new FakeClock(new System.DateTime(2031, 1, 1, 12, 0, 0, System.DateTimeKind.Utc));
+            var farPrefs = new MemoryPrefs();
+            var fp = new Progress(farPrefs, far);
+            fp.ClaimDailyChest();
+            fp.TodayQuests.ToString();  // quest progress now belongs to that false day
+            far.UtcNow = start;
+            bool closedToday = !fp.DailyChestReady && fp.Today == Quests.DayOf(start) && fp.QuestClaimed(0);
+            far.Advance(System.TimeSpan.FromDays(1));
+            bool reopened = fp.DailyChestReady && !fp.QuestClaimed(0) && fp.QuestProgress(0) == 0;
+
+            bool ok = first && borrowed && heldBack && rollbacks == 1 && p.ClockRollbacks == 1 && survives && spent && fresh && travel
+                      && closedToday && reopened;
+            Report("daily-clock", ok, $"claim once {first}; borrow ahead {borrowed}, wound back holds {heldBack} (rollbacks {p.ClockRollbacks}); " +
+                $"survives relaunch {survives}; borrowed day spent {spent}, next day fresh {fresh}; time zone change ignored {travel}; " +
+                $"far-future clock closed {closedToday}, reopens next day {reopened}");
+        }
+
+        // 15. Progress that isn't saved on every event reaches disk when the app is backgrounded.
+        static void SaveFlush()
+        {
+            var prefs = new MemoryPrefs();
+            var p = new Progress(prefs, new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc)));
+            int qi = System.Array.FindIndex(p.TodayQuests, q => q.Target > 1);
+            var quest = p.TodayQuests[qi];
+            int before = prefs.Saves;
+            p.Track(quest.Kind, 1);
+            bool lazy = prefs.Saves == before;
+            p.Flush();
+            bool ok = lazy && prefs.Saves == before + 1 && p.QuestProgress(qi) == 1;
+            Report("save-flush", ok, $"quest step saved lazily {lazy}, flush writes {prefs.Saves - before}");
         }
 
         static float Min(List<float> v) { float m = float.MaxValue; foreach (var x in v) m = Mathf.Min(m, x); return m; }

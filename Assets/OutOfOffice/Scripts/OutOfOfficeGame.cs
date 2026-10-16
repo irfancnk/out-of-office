@@ -30,6 +30,7 @@ namespace OutOfOffice
         State state, stateBeforePause;
         float levelTime;
         int shots, starCombo;
+        int undos;  // undos this attempt: undo gives the shot back, so par can be reached with it (OUT-13)
         Vector2 restPos;
         readonly Stack<LevelSnapshot> history = new Stack<LevelSnapshot>();
 
@@ -175,6 +176,7 @@ namespace OutOfOffice
             hud.QuestProgressOf = i => progress.QuestProgress(i);
             hud.QuestClaimedOf = i => progress.QuestClaimed(i);
             hud.DailyChestReady = () => progress.DailyChestReady;
+            hud.UntilQuestReset = () => progress.UntilReset;
             hud.ChestsWaiting = () => progress.ChestsWaiting;
             hud.ClaimQuest = i => { if (progress.ClaimQuest(i)) OpenChest("TASK COMPLETE!"); };
             hud.OpenDailyChest = () => { if (progress.ClaimDailyChest()) OpenChest("EMPLOYEE APPRECIATION"); };
@@ -322,6 +324,7 @@ namespace OutOfOffice
             mascot = level.Puck.GetComponent<Mascot>();
             mascot.Sound = (clip, volume) => sound.Play(clip, volume, Random.Range(0.96f, 1.04f), 0.7f);
             shots = 0;
+            undos = 0;
             history.Clear();
             restPos = Def.Start;
             level.Puck.PlaceAt(restPos, true);
@@ -469,6 +472,14 @@ namespace OutOfOffice
             CancelAim(false);
             if (state == State.Ready || state == State.Moving) PauseGame();
         }
+
+        // A backgrounded app can be killed by the OS with no further callback, so this is the last safe moment to save.
+        void OnApplicationPause(bool paused)
+        {
+            if (paused) progress?.Flush();
+        }
+
+        void OnApplicationQuit() => progress?.Flush();
 
         void Launch()
         {
@@ -846,6 +857,8 @@ namespace OutOfOffice
             if (levelIndex >= 0)
             {
                 progress.Record(levelIndex, earned, shots);
+                Analytics.Event("level_complete", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("par", Def.Par),
+                    ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)));
                 TrackQuest(QuestKind.FinishLevels);
                 if (shots <= Def.Par) TrackQuest(QuestKind.ParFinishes);
                 if (shots == 1) TrackQuest(QuestKind.HoleInOne);
@@ -962,6 +975,7 @@ namespace OutOfOffice
             level.Restore(snap);
             levelTime = snap.Time;
             shots = snap.Shots;
+            undos++;
             restPos = snap.Puck;
             level.Puck.PlaceAt(restPos, true);
             sound.StopContinuous();

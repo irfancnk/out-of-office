@@ -657,7 +657,7 @@ namespace OutOfOffice
             chapterFill.gameObject.SetActive(got > 0);
 
             bool ready = DailyChestReady?.Invoke() ?? false;
-            var left = Quests.UntilReset();
+            var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;
             giftPlate.text = ready ? "FREE!" : $"{left.Hours}h {left.Minutes}m";
             giftPlateImage.color = ready ? Palette.UiGreen : FrameDark;
             giftBadge.gameObject.SetActive(ready);
@@ -1131,6 +1131,7 @@ namespace OutOfOffice
         public System.Func<int, int> QuestProgressOf;
         public System.Func<int, bool> QuestClaimedOf;
         public System.Func<bool> DailyChestReady;
+        public System.Func<System.TimeSpan> UntilQuestReset;
         public System.Func<int> ChestsWaiting;
         public System.Action<int> ClaimQuest;
         public System.Action OpenDailyChest;
@@ -1160,7 +1161,7 @@ namespace OutOfOffice
         {
             if (questsList == null) return;
             foreach (Transform c in questsList) Destroy(c.gameObject);
-            var left = Quests.UntilReset();
+            var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;
             questTimer.text = $"New tasks in {left.Hours}h {left.Minutes}m";
 
             // The free daily chest.
