@@ -144,7 +144,11 @@ namespace OutOfOffice.EditorTools
             starNote += CoffeeRules(def, maxStars, touched, out bool coffeeOk);
             // The shot limit (OUT-27) must leave two spare shots over the fewest this level can be finished in.
             bool limitOk = !solved || def.MaxShots >= minShots + 2;
-            starNote += $"  limit {def.MaxShots}" + (limitOk ? "" : $"  LIMIT TOO TIGHT (min {minShots})");
+            starNote += $"  limit {def.MaxShots}  empty {EmptyRun(def):0.0}" + (limitOk ? "" : $"  LIMIT TOO TIGHT (min {minShots})");
+            // No room opens on a long stretch of bare floor (OUT-25): something to play with comes early.
+            bool furnished = EmptyRun(def) <= MaxEmptyRun;
+            if (!furnished) starNote += $"  EMPTY START ({EmptyRun(def):0.0} of bare floor, max {MaxEmptyRun})";
+            limitOk &= furnished;
             coffeeOk &= limitOk;
             ok = solved && coffeeOk;
             string stats = $"min shots {minShots}  par {def.Par}  one-shot win {100f * wins / shots,5:0.0}%  hazard {100f * hazards / shots,4:0.0}%  {starNote}  e.g. {example}{parNote}";
@@ -157,6 +161,7 @@ namespace OutOfOffice.EditorTools
         //   - they are not all lined up on the plain straight shot from the start to the bed
         public const float CoffeeClearance = 1.2f;   // from the start and from the bed
         public const float StraightLane = 0.7f;      // how close to the start-bed line counts as "on the straight shot"
+        public const float MaxEmptyRun = 3.5f;       // bare floor allowed between the start and the first thing in the room
 
         static string CoffeeRules(LevelDef def, int reached, bool[] touched, out bool ok)
         {
@@ -179,6 +184,22 @@ namespace OutOfOffice.EditorTools
             }
             if (onLine == def.Stars.Count && def.Stars.Count > 1) { ok = false; notes.Append($"  COFFEES ALL ON THE STRAIGHT SHOT"); }
             return $" (on straight shot {onLine}){notes}";
+        }
+
+        // How much bare floor lies between the start and the first thing in the room (OUT-25): the empty lower half
+        // that makes a board look unfinished.
+        public static float EmptyRun(LevelDef def)
+        {
+            float lowest = float.MaxValue;
+            foreach (var b in def.Blocks)
+            {
+                float reach = b.Shape == BlockShape.Post ? b.Size.x * 0.5f : 0.5f * Mathf.Max(b.Size.x, b.Size.y) * Mathf.Abs(Mathf.Sin(b.Angle * Mathf.Deg2Rad)) + 0.5f * b.Size.y * Mathf.Abs(Mathf.Cos(b.Angle * Mathf.Deg2Rad));
+                lowest = Mathf.Min(lowest, b.Center.y - reach - Mathf.Abs(b.MoveOffset.y));
+            }
+            foreach (var z in def.Zones) lowest = Mathf.Min(lowest, z.Center.y - 0.5f * Mathf.Max(z.Size.x, z.Size.y));
+            foreach (var r in def.Rails) foreach (var p in r.Path) lowest = Mathf.Min(lowest, p.y);
+            foreach (var s in def.Stars) lowest = Mathf.Min(lowest, s.y);
+            return lowest == float.MaxValue ? 0f : Mathf.Max(0f, lowest - def.Start.y);
         }
 
         static void Touch(bool[] touched, ShotOutcome o)

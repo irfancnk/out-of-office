@@ -326,11 +326,13 @@ namespace OutOfOffice
                 .Wall(2.95f, 0.8f, 3.1f, 0.6f)
                 .Post(BlockKind.Bouncer, -2.9f, 4.6f, 0.5f)
                 .Post(BlockKind.Bouncer, 2.9f, 4.6f, 0.5f)
+                .Post(BlockKind.Bouncer, -3.2f, -3.8f, 0.45f).Post(BlockKind.Bouncer, 3.2f, -3.8f, 0.45f)  // OUT-25: two chairs to bank off from the start
                 .Star(0f, -2.4f).Star(0f, 0.8f).Star(-2.5f, 3.1f),  // two on the way, one for a bank toward the chair
 
             new LevelDef("easy", "Avoid Eye Contact", 0f, 5.3f).WithHint("GO AROUND THE DESK").WithPar(2)
                 .Wall(0f, 1.2f, 5.4f, 2.6f).Rounded(0.6f)
                 .SpikeBall(3.6f, 1.2f, 0.4f).Moving(0f, 1.7f, 3f)
+                .Wall(-2.9f, -3.8f, 2.2f, 0.6f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: a side desk and a chair by the start
                 .Star(-3.5f, -1.4f).Star(-3.5f, 2.8f).Star(-1.4f, 4.4f),
 
             new LevelDef("bank", "Bounce Off the Walls", 2.8f, 5.8f).WithHint("BOUNCE OFF THE WALL").WithPar(2)
@@ -368,6 +370,7 @@ namespace OutOfOffice
                 .Kicker(-3.4f, -1.2f, 0.5f)
                 .Post(BlockKind.Bouncer, 0.8f, 0.6f, 0.5f)
                 .SpikeBall(-0.6f, 5.8f, 0.4f)
+                .Post(BlockKind.Bouncer, 2.8f, -3.6f, 0.45f)  // OUT-25: a chair to warm up on
                 .Star(3.6f, 1.4f).Star(3.6f, 4.6f).Star(0.8f, 6.6f),
 
             new LevelDef("figure8", "This Meeting Has No End", 0f, 12.2f).WithHint("CROSS THE BRIDGE IN THE MIDDLE").WithPar(3)
@@ -413,6 +416,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 1.3f, 2f, 0.55f)
                 .Post(BlockKind.Bouncer, -2.9f, 0.8f, 0.5f)
                 .Hazard(2.6f, -2f, 3.8f, 0.5f)
+                .Post(BlockKind.Bouncer, -3f, -3.9f, 0.45f)  // OUT-25: one more chair at the start
                 .Star(0f, -0.8f).Star(3.6f, 3.8f).Star(1.2f, 6.8f),
 
             new LevelDef("breeze", "Can You Turn Off the AC?", -2.8f, 6.2f).WithHint("THE VENT PUSHES YOU SIDEWAYS").WithPar(2)
@@ -432,6 +436,7 @@ namespace OutOfOffice
                 .OneWay(3f, 1f, 3f, 180f)
                 .Post(BlockKind.Bouncer, 0f, 4.4f, 0.55f)
                 .SpikeBall(3f, 3.2f, 0.4f).Moving(1f, 0f, 2.6f)
+                .Wall(2.9f, -3.4f, 2.4f, 0.6f).Post(BlockKind.Bouncer, -3.1f, -3.8f, 0.45f)  // OUT-25: a side desk and a chair
                 .Star(-3f, -1f).Star(-3f, 4f).Star(1.4f, 6.6f),
 
             new LevelDef("switch", "Badge In, Lose Your Soul", 0f, 6.2f).WithHint("PRESS THE BADGE READER FIRST").WithPar(3)
@@ -441,6 +446,7 @@ namespace OutOfOffice
                 .Switch(0, 3.4f, 6.6f)
                 .Post(BlockKind.Bouncer, 0f, -0.8f, 0.6f)
                 .SpikeBall(-3.3f, 1.2f, 0.45f).Moving(0f, 1.8f, 3.2f)
+                .Ice(-2.8f, -3.6f, 2.4f, 1.6f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: a wet patch and a chair by the start
                 .Star(3.4f, 3f).Star(-3.35f, 6.4f).Star(0f, 2.2f),
 
             new LevelDef("spinner", "Death by Spreadsheet", 0f, 6.4f).WithHint("TIME IT WITH THE SPINNERS").WithPar(2)
@@ -456,6 +462,7 @@ namespace OutOfOffice
                 .PopWall(0f, -1.5f, 9f, 0.5f, 2.4f, 0f)
                 .PopWall(0f, 1.5f, 9f, 0.5f, 2.4f, 0.33f)
                 .PopWall(0f, 4.2f, 9f, 0.5f, 2.4f, 0.66f)
+                .Post(BlockKind.Bouncer, -3.1f, -4f, 0.45f).Post(BlockKind.Bouncer, 3.1f, -4f, 0.45f)  // OUT-25: chairs waiting for the desks
                 .Star(-3f, 0f).Star(3f, 2.9f).Star(-3.1f, 5.6f),
 
             new LevelDef("hairpin", "The Long Walk to HR", 4.25f, -10.8f).WithHint("UP, AROUND, AND BACK DOWN").WithPar(4)
@@ -466,6 +473,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 0f, 9.6f, 0.55f)
                 .SpikeBall(4.25f, 1f, 0.4f).Moving(1.6f, 0f, 3f)
                 .Boost(4.25f, -4.5f, 2f, 3f, 180f)
+                .Post(BlockKind.Bouncer, -6.1f, -8.4f, 0.45f)  // OUT-25: a chair in the long corridor
                 .Star(-4.25f, -2.2f).Star(0f, 11.2f).Star(4.25f, 4.6f),
 
             new LevelDef("microwave", "Who Microwaved Fish?", 0f, 6.2f).WithHint("MIND THE WET FLOOR").WithPar(2)
@@ -511,6 +519,7 @@ namespace OutOfOffice
                 .Wall(1.3f, 3.2f, 6.4f, 0.6f)
                 .Magnet(-3.2f, 1.2f, 2.4f)
                 .SpikeBall(0.6f, 6.2f, 0.4f)
+                .Ice(-2.4f, -3.6f, 3.2f, 2f).Post(BlockKind.Bouncer, 0.4f, -4.3f, 0.42f)  // OUT-25: someone spilled on the way to the machine
                 .Star(3.2f, -0.8f).Star(0f, 1.2f).Star(-3.4f, 4.6f),
 
             new LevelDef("ice", "Slip, Sue, Get Fired", 2.8f, 6.3f).WithHint("WET FLOOR: GO GENTLE").WithPar(2)
@@ -539,6 +548,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 0f, 9.4f, 0.55f)
                 .Post(BlockKind.Bouncer, -9.4f, 0f, 0.55f)
                 .SpikeBall(5.6f, 0f, 0.4f).Moving(0f, 1.6f, 2.8f)
+                .Post(BlockKind.Bouncer, -1.6f, -6.2f, 0.4f).Post(BlockKind.Bouncer, 1.6f, -4.4f, 0.4f)  // OUT-25: chairs zigzag down the south hallway
                 .Star(-7.6f, 0f).Star(0f, 7.6f).Star(3.6f, -1.4f),
 
             new LevelDef("boardroom", "Bored Room", 0f, 6.4f).WithHint("BANK OFF THE CHAIRS").WithPar(2)
@@ -555,6 +565,7 @@ namespace OutOfOffice
                 .PopWall(2.25f, -1.5f, 4.5f, 0.5f, 2.2f, 0.5f)
                 .PopWall(-2.25f, 2f, 4.5f, 0.5f, 2.2f, 0.5f)
                 .PopWall(2.25f, 2f, 4.5f, 0.5f, 2.2f, 0f)
+                .Post(BlockKind.Bouncer, -3.1f, -4f, 0.45f).Post(BlockKind.Bouncer, 3.1f, -4f, 0.45f)  // OUT-25: chairs for the people still sitting
                 .Star(-3f, 0.25f).Star(3f, 0.25f).Star(0f, 4.2f),
 
             // ---------- Chapter 4, Manager's Office (levels 30-37): gaps, cacti, speed strips, pacing managers ----------
@@ -595,6 +606,7 @@ namespace OutOfOffice
                 .Crate(0f, 0f, 1.3f)
                 .Rail(BlockKind.Wall, 0f, -4.6f, 4f, 1.7f, 4f)
                 .Crate(3.2f, 4f, 1.4f)
+                .Crate(-2.8f, -3.4f, 1f).Post(BlockKind.Bouncer, 3f, -3.6f, 0.45f)  // OUT-25: one more box nobody will ever open
                 .Star(1.4f, -0.2f).Star(2.6f, 2f).Star(-0.4f, 5.6f),  // beside the middle box: hug it on the way up
 
             new LevelDef("speedpad", "Fast Track to Burnout", 0f, 6.2f).WithHint("SPEED STRIPS BEAT THE RUG").WithPar(2)
@@ -612,6 +624,7 @@ namespace OutOfOffice
                 .Wall(3.2f, 4.4f, 2.6f, 0.6f)
                 .SpikeBall(-3.5f, 1f, 0.4f)
                 .SpikeBall(3.5f, 1f, 0.4f)
+                .SpikeBall(-3.2f, -3.6f, 0.35f).Post(BlockKind.Bouncer, 3.2f, -3.8f, 0.45f)  // OUT-25: a cactus and a chair by the start
                 .Star(-1.6f, -1f).Star(0f, 1f).Star(1.2f, 3.6f),
 
             new LevelDef("feedback", "Dodge the Feedback", 0f, 6.4f).WithHint("DODGE THE PACING MANAGER").WithPar(2)
@@ -619,6 +632,7 @@ namespace OutOfOffice
                 .Wall(0f, 3.6f, 3.6f, 0.6f)
                 .Kicker(-3.6f, 3.6f, 0.45f)
                 .Kicker(3.6f, 3.6f, 0.45f)
+                .Post(BlockKind.Bouncer, -3f, -3.4f, 0.45f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: the audience for your feedback
                 .Star(-3.6f, 0f).Star(3.6f, 0f).Star(0f, 5f),
 
             new LevelDef("window", "View of Another Office", 0f, 5.2f).WithHint("ROUND THE DESK, UP THE FAST LANE").WithPar(2)
@@ -651,6 +665,7 @@ namespace OutOfOffice
                 .Hazard(0f, -2f, 2.6f, 0.45f).Moving(3f, 0f, 3f)
                 .Hazard(0f, 1.2f, 2.2f, 0.45f).Moving(3.1f, 0f, 2.4f, 1.2f)
                 .Hazard(0f, 4.2f, 2.6f, 0.45f).Moving(3f, 0f, 3.4f, 0.6f)
+                .Post(BlockKind.Bouncer, -3.2f, -4.2f, 0.45f)  // OUT-25: a chair in the queue
                 .Star(0f, -0.4f).Star(2f, 2.7f).Star(-2.6f, 5.8f),
 
             new LevelDef("turnstile", "Security Theatre", 3f, 6f).WithHint("SPIN, THEN SLIP THROUGH").WithPar(2)
@@ -659,6 +674,7 @@ namespace OutOfOffice
                 .OneWay(-3.05f, 3f, 2.9f, 0f)
                 .OneWay(3.05f, 3f, 2.9f, 180f)
                 .Kicker(-3.4f, 6.5f, 0.45f)
+                .Sticky(-3.3f, -3.2f, 1.2f, 1.2f).Rounded(0.6f).Post(BlockKind.Bouncer, 3.1f, -3.8f, 0.45f)  // OUT-25: a beanbag and a chair in reception
                 .Star(-3f, 1f).Star(-3f, 5f).Star(0f, 6.4f),
 
             new LevelDef("soft", "Nap Pods for Managers", 0f, 5.6f).WithHint("BEANBAGS SOAK UP SPEED").WithPar(2)
@@ -669,6 +685,7 @@ namespace OutOfOffice
                 .Wall(0f, 1.5f, 3f, 0.5f)
                 .Sticky(-4.2f, 3f, 0.6f, 3f)
                 .Sticky(4.2f, 3f, 0.6f, 3f)
+                .Sticky(-3.3f, -3.4f, 1.2f, 1.2f).Rounded(0.6f).Sticky(3.3f, -3.4f, 1.2f, 1.2f).Rounded(0.6f)  // OUT-25: more beanbags, of course
                 .Star(0f, -0.5f).Star(-3f, 3f).Star(-1.2f, 4.3f),
 
             new LevelDef("tidepool", "Twice the Mess, No Raise", -3f, 6.8f).WithHint("TWO SPILLS, TWO SPINS").WithPar(2)
@@ -694,6 +711,7 @@ namespace OutOfOffice
                 .Breakable(3f, 0f, 3f, 0.6f)
                 .Breakable(-1.2f, 3.4f, 6.6f, 0.6f)
                 .Wall(3.3f, 3.4f, 2.4f, 0.6f)
+                .Breakable(-3f, -3.6f, 2f, 0.6f).Post(BlockKind.Bouncer, 3.1f, -3.8f, 0.45f)  // OUT-25: a first pile of folders to smash
                 .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(-3.4f, 5.2f),  // the last one is behind the folders
 
             // ---------- Chapter 6, Executive Floor (levels 46-54): mail belts, sliding doors, air con, elevators ----------
@@ -719,6 +737,7 @@ namespace OutOfOffice
                 .Breakable(-2f, 5.8f, 0.6f, 3.6f)
                 .Breakable(2f, 5.8f, 0.6f, 3.6f)
                 .Ice(0f, 2.3f, 9f, 2f)
+                .Boost(3.2f, -4f, 1.4f, 2.4f)  // OUT-25: a speed strip to hit the folders hard
                 .Star(-3.4f, -0.5f).Star(0f, 3f).Star(-3.4f, 6.8f),
 
             new LevelDef("avalanche", "Shiny Floor, Dull Soul", 0f, 6f).WithHint("SLIDE PAST THE STANDING DESKS").WithPar(2)
@@ -739,6 +758,7 @@ namespace OutOfOffice
                 .Wall(-3.4f, 3.6f, 2.2f, 0.5f)
                 .Wall(2.1f, 3.6f, 4.8f, 0.5f)
                 .Wall(-1.3f, 3.13f, 2.1f, 0.42f).Moving(1f, 0f, 2.2f, 1f)    // second door, also on its own track
+                .Post(BlockKind.Bouncer, -3.1f, -4f, 0.45f)  // OUT-25: a chair waiting for the doors
                 .Star(0f, -2f).Star(-1.3f, 1.8f).Star(-1.3f, 5f),
 
             new LevelDef("blizzard", "Executive Wind Chill", 2.6f, 6.4f).WithHint("MIND THE AIR CON: AIM UPWIND").WithPar(2)
@@ -810,6 +830,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 0f, 3.6f, 0.55f)
                 .Post(BlockKind.Bouncer, 3.2f, 5.2f, 0.5f)
                 .Rail(BlockKind.Wall, 0.3f, -4.6f, 4.6f, -1.2f, 4.6f, -1.2f, 6f)
+                .Post(BlockKind.Bouncer, -3f, -4f, 0.45f).Post(BlockKind.Bouncer, 3f, -4f, 0.45f)  // OUT-25: two more flippers
                 .Star(3.2f, 0.2f).Star(0f, 5.6f).Star(-0.4f, 7.2f),
 
             new LevelDef("track", "Per Company Policy", 2.75f, 5.2f).WithHint("THE LONG WAY ROUND").WithPar(2)
@@ -851,6 +872,7 @@ namespace OutOfOffice
                 .Hazard(0f, -2f, 2.4f, 0.45f).Moving(3f, 0f, 2.2f)
                 .Hazard(0f, 1f, 2.4f, 0.45f).Moving(3f, 0f, 1.8f, 0.5f)
                 .Hazard(0f, 4f, 2.4f, 0.45f).Moving(3f, 0f, 2f, 0.25f)
+                .Ice(-2.8f, -4f, 2.6f, 2f)  // OUT-25: the cleaner was here first
                 .Star(-3.6f, -0.5f).Star(3.6f, 2.5f).Star(-2.4f, 5.7f),
 
             new LevelDef("finale", "Last One, Turn Off Lights", 0f, 6.5f).WithHint("EVERYTHING AT ONCE!").WithPar(3)
