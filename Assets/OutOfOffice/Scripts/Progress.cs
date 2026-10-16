@@ -89,6 +89,7 @@ namespace OutOfOffice
             Migrate();
             MigrateCard();
             MigrateHires();
+            MigrateGuide();
             Energy = new Energy(prefs, () => UtcNow, () => PassActive);
         }
 
@@ -619,6 +620,46 @@ namespace OutOfOffice
         public bool Sfx { get => prefs.GetInt("buca.sfx", 1) == 1; set { prefs.SetInt("buca.sfx", value ? 1 : 0); prefs.Save(); } }
         public bool Music { get => prefs.GetInt("buca.music", 1) == 1; set { prefs.SetInt("buca.music", value ? 1 : 0); prefs.Save(); } }
         public bool ReducedMotion { get => prefs.GetInt("buca.reduce", 0) == 1; set { prefs.SetInt("buca.reduce", value ? 1 : 0); prefs.Save(); } }
+
+        // ---------- First-time experience (OUT-11) ----------
+
+        public bool SeenGadget(string key) => prefs.GetInt("buca.gadget." + key, 0) == 1;
+
+        public void MarkGadget(string key)
+        {
+            if (SeenGadget(key)) return;
+            prefs.SetInt("buca.gadget." + key, 1);
+            prefs.Save();
+        }
+
+        public bool FtueDone(string step) => prefs.GetInt("buca.ftue." + step, 0) == 1;
+
+        // Once per step, with the funnel event that measures the first session.
+        public void MarkFtue(string step)
+        {
+            if (FtueDone(step)) return;
+            prefs.SetInt("buca.ftue." + step, 1);
+            prefs.Save();
+            Analytics.Event("ftue_step", ("step", step), ("rooms", Unlocked), ("days", DaysSinceInstall));
+        }
+
+        // Failed tries in a row on a room: after two, the aim line reaches further there until it's beaten.
+        public int FailStreak(string id) => prefs.GetInt("buca.fails." + id, 0);
+        public void SetFailStreak(string id, int n) => prefs.SetInt("buca.fails." + id, Mathf.Max(0, n));
+
+        // Saves from before the tutorial: gadgets in rooms already beaten count as met, and a player past the first
+        // rooms has done the first-time steps.
+        void MigrateGuide()
+        {
+            if (prefs.GetInt("buca.guide.version", 0) >= 1) return;
+            int beaten = Unlocked - 1;
+            for (int i = 0; i < beaten && i < Levels.All.Length; i++)
+                foreach (var g in Gadgets.In(Levels.All[i])) prefs.SetInt("buca.gadget." + g.Key, 1);
+            if (beaten >= 2)
+                foreach (var step in new[] { "hand", "first_aim", "first_shot", "first_win", "home_tasks", "home_wardrobe" }) prefs.SetInt("buca.ftue." + step, 1);
+            prefs.SetInt("buca.guide.version", 1);
+            prefs.Save();
+        }
 
         // Settings (OUT-16, OUT-19). Volumes are written while a slider moves and saved when it is let go.
         public float SfxVolume { get => prefs.GetInt("buca.vol.sfx", 100) / 100f; set => prefs.SetInt("buca.vol.sfx", Mathf.RoundToInt(Mathf.Clamp01(value) * 100f)); }

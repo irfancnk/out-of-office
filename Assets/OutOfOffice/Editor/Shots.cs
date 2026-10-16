@@ -366,6 +366,20 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-settings.png"), Canvas.ForceUpdateCanvases);
                 hud.HideAll();
+
+                // The first-time experience (OUT-11): a gadget's intro card, and the field guide.
+                hud.GadgetArt = key => GadgetPreview.Get(key);
+                hud.GadgetArtReady = key => GadgetPreview.Ready(key);
+                hud.GadgetSeen = key => System.Array.FindIndex(Gadgets.All, g => g.Key == key) < 14;
+                hud.ShowGadget(Gadgets.Find("conveyor"), "NEW IN THE OFFICE", "1/2", true, null);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-gadget.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
+                for (int i = 0; i < 14; i++) GadgetPreview.Get(Gadgets.All[i].Key);
+                hud.ShowGuide();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-guide.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
                 hud.EnergyPoints = () => 15;
 
                 // Home with the first chapter's chest earned and waiting.

@@ -106,6 +106,7 @@ namespace OutOfOffice
             state = State.Title;
             int index = Mathf.Max(0, progress.CurrentIndex);
             hud.ShowTitle(progress.TotalStars, index + 1, Themes.ForLevel(index));
+            PointTheWay();  // the first chest, then the wardrobe (OUT-11)
             hud.SetQuestBadge(progress.ChestsWaiting);
         }
 
@@ -202,6 +203,7 @@ namespace OutOfOffice
             WireShop();
             WireEnergy();
             WireSettings();
+            WireTutorial();
             WireReceptionist();
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             RefreshSettings();
@@ -214,6 +216,7 @@ namespace OutOfOffice
                 state = State.Ready;
                 hud.SetHint(shots == 0);
                 quipAt = Time.unscaledTime + 0.4f;
+                IntroduceGadgets();
             };
             hud.Pause = PauseGame;
             hud.Resume = ResumeGame;
@@ -333,6 +336,7 @@ namespace OutOfOffice
             hud.HideTitle();
             Time.timeScale = 1f;
             state = State.Ready;
+            IntroduceGadgets();  // anything new in this room gets its card first (OUT-11)
             return true;
         }
 
@@ -382,6 +386,7 @@ namespace OutOfOffice
             hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
             hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
+            ApplyFailHelp();  // a longer aim line on a room failed twice running (OUT-11)
             UsePerk();
             undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom, perk.FreeUndos);  // a new attempt: three free again, plus the perk's
             hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
@@ -440,6 +445,7 @@ namespace OutOfOffice
         {
             PaceFrames();
             TickDevice();
+            TickTutorial();
             // Nothing of the room shows under the home screen, so the camera draws none of it there (OUT-36): the menu
             // runs at the full frame rate instead of paying for a hidden 3D board with shadows.
             int visible = hud.CoversBoard ? 0 : ~0;
@@ -559,6 +565,7 @@ namespace OutOfOffice
             history.Push(level.Capture(restPos, shots, levelTime));
             shots++;
             energy.MarkAttempt();  // from here, leaving the room ends the play (OUT-48)
+            if (levelIndex == 0) progress.MarkFtue("first_shot");
             hud.SetRestartCost(StartOverCost);
             shotBounces = 0;
             TrackQuest(QuestKind.Shots);
@@ -936,6 +943,7 @@ namespace OutOfOffice
             if (levelIndex >= 0)
             {
                 energy.FinishAttempt();  // a win carries the play on to the next room (OUT-48)
+                CountWin();
                 int before = progress.Best(Def.Id);
                 progress.Record(levelIndex, earned, shots);
                 // A perk that pays for new stars (OUT-45): only new ones, so replays can't farm it.
@@ -1062,7 +1070,7 @@ namespace OutOfOffice
         void UsePerk()
         {
             perk = StaffPerks.For(progress.Outfit.Employee);
-            AimPreview.Reach = perk.AimReach;
+            AimPreview.Reach = perk.AimReach * aimBoost;
         }
 
         // After every shot that didn't end in bed: a warning before the last shot, and a failed level after it.
@@ -1080,6 +1088,7 @@ namespace OutOfOffice
             Analytics.Event("level_fail", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("limit", ShotLimit), ("par", Def.Par),
                 ("coffees", level.StarsCollected), ("seconds", Mathf.RoundToInt(levelTime)));
             energy.EndPlay("fail", Def.Id);  // a continue picks it up again (OUT-48)
+            CountFail();
             StartCoroutine(ShowOutOfShotsSoon());
         }
 

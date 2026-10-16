@@ -423,6 +423,24 @@ def tv():
     face_camera(parts, tilt=-12, turn=24)
 
 
+def hand():
+    # The tutorial's pointing hand (OUT-11): a puffy cartoon glove, index finger up, with a gold cuff band.
+    glove = material("Glove", hexc("#E6EBF5"), 0.5, coat=0.3)  # cool off-white: pure white clips to a flat shape
+    band = material("Band", hexc("#FFB62E"), 0.35, coat=0.5)
+    parts = [box((0.96, 0.6, 0.9), (0.05, 0, 0), glove, 0.3)]                          # palm
+    parts.append(cyl(0.24, 0.78, (-0.22, 0, 0.72), glove, verts=40, bevel=0.0))         # index finger
+    parts.append(sphere(0.24, (-0.22, 0, 1.1), glove))                                  # its tip
+    for x, z in ((0.08, 0.42), (0.32, 0.38), (0.52, 0.27)):                             # curled fingers
+        parts.append(sphere(0.21, (x, -0.17, z), glove, scale=(1, 1, 0.9)))
+    parts.append(cyl(0.2, 0.46, (-0.46, -0.22, 0.02), glove, rot=(0, 0.95, 0), verts=40, bevel=0.0))  # thumb
+    parts.append(sphere(0.2, (-0.63, -0.22, 0.16), glove))
+    parts.append(cyl(0.5, 0.4, (0.05, 0, -0.52), glove, verts=48, bevel=0.08))          # cuff, joined to the palm
+    parts.append(cyl(0.53, 0.11, (0.05, 0, -0.44), band, verts=48, bevel=0.03))         # its gold band
+    for light in bpy.data.lights:
+        light.energy *= 0.55
+    face_camera(parts, tilt=-10, turn=18)
+
+
 def restart():
     arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
 
@@ -432,7 +450,7 @@ def undo():
 
 
 PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
-         "restart": restart, "undo": undo, "bolt": bolt, "tv": tv}
+         "restart": restart, "undo": undo, "bolt": bolt, "tv": tv, "hand": hand}
 
 
 def render(name):

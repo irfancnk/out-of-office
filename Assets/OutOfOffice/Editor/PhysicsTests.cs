@@ -75,6 +75,7 @@ namespace OutOfOffice.EditorTools
                 Undos();
                 EnergyPlays();
                 QualityTiers();
+                GadgetGuide();
                 Data();
             }
             finally
@@ -1314,6 +1315,66 @@ namespace OutOfOffice.EditorTools
             bool ok = a06 && quad && midPhone && pixel && flagship && iphones && desktop && picked && warm && hot && cooled && lighter && lowStays60;
             Report("quality-tiers", ok, $"Galaxy A06 low {a06}, quad-core low {quad}, mid phone {midPhone}, Pixel 8 high {pixel}, S24 Ultra ultra {flagship}, " +
                 $"iPhones {iphones}, desktop {desktop}; pick {picked}; warm steps down {warm}, hot holds {hot}, cools back {cooled}; presets lighter by tier {lighter}, low tier sane {lowStays60}");
+        }
+
+        // 25. The field guide (OUT-11): every gadget's demo room builds and is recognized as that gadget, every gadget
+        // the rooms use has a card, and an old save counts the gadgets of rooms it has beaten as met.
+        static void GadgetGuide()
+        {
+            bool demos = true;
+            string broken = "";
+            var holder = new GameObject("Gadget Check");
+            try
+            {
+                foreach (var g in OutOfOffice.Gadgets.All)
+                {
+                    var def = g.Demo();
+                    bool ok = g.In(def) && def.Id == "demo-" + g.Key;
+                    try { LevelBuilder.Build(def, holder.transform, false); }
+                    catch (System.Exception) { ok = false; }
+                    if (!ok) { demos = false; broken += g.Key + " "; }
+                }
+            }
+            finally { Object.DestroyImmediate(holder); }
+
+            // Everything that isn't a plain wall in any room has an intro card.
+            bool covered = true;
+            string missing = "";
+            foreach (var def in Levels.All)
+            {
+                foreach (var b in def.Blocks)
+                {
+                    if ((b.Kind == BlockKind.Wall && !b.Moves) || b.Reception != 0) continue;
+                    var one = new LevelDef("probe", "probe", 0f, 0f);
+                    one.Blocks.Add(b);
+                    if (OutOfOffice.Gadgets.In(one).Count == 0) { covered = false; missing += def.Id + ":" + b.Kind + " "; }
+                }
+                foreach (var z in def.Zones)
+                {
+                    var one = new LevelDef("probe", "probe", 0f, 0f);
+                    one.Zones.Add(z);
+                    if (OutOfOffice.Gadgets.In(one).Count == 0) { covered = false; missing += def.Id + ":" + z.Kind + " "; }
+                }
+            }
+            bool unique = new System.Collections.Generic.HashSet<string>(System.Array.ConvertAll(OutOfOffice.Gadgets.All, g => g.Key)).Count == OutOfOffice.Gadgets.All.Length;
+            bool written = System.Array.TrueForAll(OutOfOffice.Gadgets.All, g => g.Name.Length > 0 && g.Name.Length <= 20 && g.Text.Length > 10 && g.Text.Length <= 80);
+
+            // An old save at room 30 has met what rooms 1-29 use; a new one has met nothing.
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var oldPrefs = new MemoryPrefs();
+            oldPrefs.SetInt("buca.unlocked", 30);
+            var old = new Progress(oldPrefs, clock);
+            bool migrated = true;
+            for (int i = 0; i < 29; i++) foreach (var g in OutOfOffice.Gadgets.In(Levels.All[i])) migrated &= old.SeenGadget(g.Key);
+            migrated &= old.FtueDone("first_win");
+            var fresh = new Progress(new MemoryPrefs(), clock);
+            bool clean = !System.Array.Exists(OutOfOffice.Gadgets.All, g => fresh.SeenGadget(g.Key)) && !fresh.FtueDone("hand");
+            fresh.MarkFtue("hand");
+            bool marked = fresh.FtueDone("hand");
+
+            bool ok2 = demos && covered && unique && written && migrated && clean && marked;
+            Report("gadget-guide", ok2, $"{OutOfOffice.Gadgets.All.Length} gadgets, demo rooms build and read right {demos} {broken}; every gadget in the rooms has a card {covered} {missing}; " +
+                $"keys unique {unique}; names and lines fit {written}; old saves migrated {migrated}; new saves clean {clean}; steps mark {marked}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

@@ -150,6 +150,9 @@ namespace OutOfOffice
             BuildShop();
             BuildEnergyCard();
             BuildQuit();
+            BuildGadgetCard();  // the first-time experience (OUT-11)
+            BuildGuide();
+            BuildHand();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -446,7 +449,7 @@ namespace OutOfOffice
 
         Card OpenCard()
         {
-            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
+            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, gadgetCard, guideCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
                 if (c != null && c.Root.gameObject.activeSelf) return c;
             return null;
         }
@@ -994,8 +997,11 @@ namespace OutOfOffice
                 Img(Rect("Divider", area, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-324f + i * 216f, y), new Vector2(5f, 150f)), Shapes.Square, new Color(FrameDark.r, FrameDark.g, FrameDark.b, 0.6f));
 
             Tab(area, "ROOMS", "grid", Themes.Hex(0x34C3B5), -432f, y).Clicked = () => ShowLevels();
-            Tab(area, "WARDROBE", "shirt", Themes.Hex(0xFF5FA2), -216f, y).Clicked = () => ShowSkins();
+            var wardrobe = Tab(area, "WARDROBE", "shirt", Themes.Hex(0xFF5FA2), -216f, y);
+            wardrobe.Clicked = () => ShowSkins();
+            wardrobeButton = wardrobe.transform as RectTransform;  // the tutorial points here (OUT-11)
             var tasks = Tab(area, "TASKS", "gift", Themes.Hex(0xFF9F2E), 216f, y);
+            tasksButton = tasks.transform as RectTransform;
             tasks.Clicked = () => ShowQuests();
             questBadge = Badge(tasks.transform as RectTransform, "1");
             questBadgeText = questBadge.GetComponentInChildren<TextMeshProUGUI>();
@@ -1331,9 +1337,10 @@ namespace OutOfOffice
             pauseCard = MakeCard("Pause", "PAUSED", new Vector2(860f, 1260f), true);
             var c = pauseCard.Root;
             TextButton(c, "RESUME", Palette.UiGreen, new Vector2(0f, 400f), new Vector2(620f, 170f), 70f, "play").Clicked = () => Resume?.Invoke();
-            RoundAction(c, "RESTART", "restart", Palette.UiRed, new Vector2(-230f, 170f), Ink).Clicked = () => Restart?.Invoke();
-            RoundAction(c, "HOME", "home", Palette.UiBlue, new Vector2(0f, 170f), Ink).Clicked = () => Home?.Invoke();
-            RoundAction(c, "ROOMS", "grid", Palette.UiWood, new Vector2(230f, 170f), Ink).Clicked = () => ShowLevels();
+            RoundAction(c, "RESTART", "restart", Palette.UiRed, new Vector2(-282f, 170f), Ink).Clicked = () => Restart?.Invoke();
+            RoundAction(c, "HOME", "home", Palette.UiBlue, new Vector2(-94f, 170f), Ink).Clicked = () => Home?.Invoke();
+            RoundAction(c, "ROOMS", "grid", Palette.UiWood, new Vector2(94f, 170f), Ink).Clicked = () => ShowLevels();
+            RoundAction(c, "GUIDE", "wetfloor", Themes.Hex(0xFFB62E), new Vector2(282f, 170f), Ink).Clicked = () => ShowGuide();  // the field guide (OUT-11)
             pauseNote = Body(Rect("Note", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 282f), new Vector2(760f, 50f)),
                 $"Restarting or leaving ends this play: {Energy.PlayCost} energy to start again.", 26f, Themes.Hex(0x8A6A9E), Ink);
             pauseNote.gameObject.SetActive(false);
@@ -1599,6 +1606,7 @@ namespace OutOfOffice
             RefreshSkins();
             ShowCard(skinsCard);
             IconStudio.WardrobeOpen = true;  // its icons render first, and faster
+            Opened?.Invoke("wardrobe");
         }
 
         // Wardrobe tiles are built once per tab and afterwards only repainted (OUT-36): an equip or a tab switch no
@@ -1872,6 +1880,7 @@ namespace OutOfOffice
             HideAll();
             RefreshQuests();
             ShowCard(questsCard);
+            Opened?.Invoke("tasks");
         }
 
         public void RefreshQuests()
@@ -2150,7 +2159,7 @@ namespace OutOfOffice
         {
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);
@@ -2194,6 +2203,8 @@ namespace OutOfOffice
             BuildPendingTiles();
             if (Screen.width != lastScreen.x || Screen.height != lastScreen.y) FitScaler();
             TickEnergy();
+            TickHand(Time.unscaledDeltaTime);
+            TickGuide();
             if (title.gameObject.activeSelf && !ReducedMotion)
             {
                 // Idle wave on the logo.

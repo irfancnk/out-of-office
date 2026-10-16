@@ -142,7 +142,7 @@ namespace OutOfOffice
         static readonly Dictionary<string, string> Icon3DNames = new Dictionary<string, string>
         {
             { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" }, { "gem", "gem" },
-            { "restart", "restart" }, { "undo", "undo" }, { "bolt", "bolt" }, { "tv", "tv" },
+            { "restart", "restart" }, { "undo", "undo" }, { "bolt", "bolt" }, { "tv", "tv" }, { "hand", "hand" },
         };
 
         public static Sprite Icon3D(string name)
