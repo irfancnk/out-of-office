@@ -156,6 +156,7 @@ namespace OutOfOffice
             BuildBoosters();  // OUT-13
             BuildOdds();  // OUT-14
             BuildClipShop();
+            BuildAchievements();  // OUT-9, on the tasks card
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -452,7 +453,7 @@ namespace OutOfOffice
 
         Card OpenCard()
         {
-            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, gadgetCard, guideCard, oddsCard, clipCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
+            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, gadgetCard, guideCard, oddsCard, clipCard, achievementsCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
                 if (c != null && c.Root.gameObject.activeSelf) return c;
             return null;
         }
@@ -1891,7 +1892,7 @@ namespace OutOfOffice
 
         void BuildQuests()
         {
-            questsCard = MakeCard("Quests", "DAILY TASKS", new Vector2(940f, 1240f), true);
+            questsCard = MakeCard("Quests", "DAILY TASKS", new Vector2(940f, 1400f), true);  // room for ACHIEVEMENTS under the tasks (OUT-9)
             questTimer = Body(Rect("Timer", questsCard.Root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(800f, 60f)),
                 "", 36f, Ink, Ink);
             questsList = Rect("List", questsCard.Root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -200f), new Vector2(860f, 980f));
@@ -2185,7 +2186,7 @@ namespace OutOfOffice
             SetBoosterTray(false);
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard, oddsCard, clipCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard, oddsCard, clipCard, achievementsCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);

@@ -100,6 +100,7 @@ namespace OutOfOffice
                     activeBoosters.Add(k);
                     break;
             }
+            progress.BumpStat(Achievements.BoostersUsed);
             Analytics.Event("booster_use", ("booster", def.Key), ("level", Def.Id), ("shots", shots), ("bought", bought), ("left", progress.BoosterCount(k)));
             sound.Play(Sfx.Reward, 0.6f, 1.25f, 0.8f);
             Haptics.Play(Haptics.Style.Success);

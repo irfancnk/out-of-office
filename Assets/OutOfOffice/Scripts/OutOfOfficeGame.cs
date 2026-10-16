@@ -107,7 +107,7 @@ namespace OutOfOffice
             int index = Mathf.Max(0, progress.CurrentIndex);
             hud.ShowTitle(progress.TotalStars, index + 1, Themes.ForLevel(index));
             PointTheWay();  // the first chest, then the wardrobe (OUT-11)
-            hud.SetQuestBadge(progress.ChestsWaiting);
+            CheckAchievements();  // toasts for anything done, and the badges (OUT-9)
         }
 
         // Rebuilds Puffy's look in place after an outfit change, and re-renders the title portrait.
@@ -150,9 +150,9 @@ namespace OutOfOffice
                 hud.RefreshQuests();
                 hud.RefreshChapterChest();
                 hud.RefreshCoffeeCard();
-                hud.SetQuestBadge(progress.ChestsWaiting);
+                CheckAchievements();
             }, progress.ReducedMotion, tier, note);
-            hud.SetQuestBadge(progress.ChestsWaiting);
+            RefreshBadges();
         }
 
         // Counts toward today's quests and cheers when one completes.
@@ -190,7 +190,7 @@ namespace OutOfOffice
             hud.DailyChestReady = () => progress.DailyChestReady;
             hud.UntilQuestReset = () => progress.UntilReset;
             hud.ChestsWaiting = () => progress.ChestsWaiting;
-            hud.ClaimQuest = i => { if (progress.ClaimQuest(i)) OpenChest("TASK COMPLETE!"); };
+            hud.ClaimQuest = i => { if (!progress.ClaimQuest(i)) return; progress.BumpStat(Achievements.QuestsClaimed); OpenChest("TASK COMPLETE!"); };
             hud.OpenDailyChest = () => { if (progress.ClaimDailyChest()) OpenChest("EMPLOYEE APPRECIATION"); };
             hud.ChapterChestClaimed = c => progress.ChapterChestClaimed(c);
             hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!", ChestTier.ExecutiveSafe); };
@@ -199,6 +199,7 @@ namespace OutOfOffice
             hud.ClaimCoffeeCard = () => { if (progress.ClaimCard()) OpenChest("ON THE HOUSE!", ChestTier.SupplyCloset); };
             hud.HeroPoked = spin =>
             {
+                progress.BumpStat(Achievements.Pokes);
                 sound.Play(spin ? Sfx.Whee : Sfx.Giggle, 0.7f, Random.Range(0.95f, 1.1f), 0.8f);
                 Haptics.Play(spin ? Haptics.Style.Success : Haptics.Style.Light, 0.7f);
             };
@@ -207,6 +208,7 @@ namespace OutOfOffice
             WireSettings();
             WireTutorial();
             WireBoosters();
+            WireAchievements();
             WireReceptionist();
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             RefreshSettings();
@@ -570,6 +572,7 @@ namespace OutOfOffice
             shots++;
             hud.SetBoosterTray(false);
             energy.MarkAttempt();  // from here, leaving the room ends the play (OUT-48)
+            progress.BumpStat(Achievements.Shots);
             if (levelIndex == 0) progress.MarkFtue("first_shot");
             hud.SetRestartCost(StartOverCost);
             shotBounces = 0;
@@ -961,6 +964,7 @@ namespace OutOfOffice
                     hud.Banner($"+{gained * perk.StarGems} GEMS · {perk.Name}", Themes.Hex(0xB990FF), 0.9f);
                 }
                 newStamps = progress.StampCoffees(levelIndex, level.StarsCollected);
+                CountWinStats();  // streaks, par, holes in one, achievements (OUT-9)
                 Analytics.Event("level_complete", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("par", Def.Par),
                     ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)), ("coffees", level.StarsCollected), ("stamps", newStamps));
                 TrackQuest(QuestKind.FinishLevels);

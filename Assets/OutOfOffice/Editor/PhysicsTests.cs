@@ -78,6 +78,7 @@ namespace OutOfOffice.EditorTools
                 GadgetGuide();
                 BoosterChecks(root.transform);
                 ChestChecks();
+                AchievementChecks();
                 Data();
             }
             finally
@@ -1532,6 +1533,63 @@ namespace OutOfOffice.EditorTools
             bool ok = sums && floors && spread && epicPity && legendPity && counted && dupes && refused && bought && region && prices;
             Report("chests", ok, $"odds add up {sums}, tier floors {floors}; seeded spread {spread} ({got}); pity epic {epicPity}, legendary {legendPity}, counters {counted}; " +
                 $"duplicates pay clips, no repeats {dupes}; clip shop refuses when short {refused}, sells {bought}; paid chests off in BE/NL {region}; prices {prices}");
+        }
+
+        // 28. Achievements (OUT-9): 50+ distinct goals, every one reachable (a save that has done everything has them
+        // all), counted from stats and the save, claimed once for their gems, announced once, and an old save's done
+        // ones wait to be claimed without a pile of toasts.
+        static void AchievementChecks()
+        {
+            var all = OutOfOffice.Achievements.All;
+            var keys = new HashSet<string>();
+            bool shaped = all.Length >= 50;
+            foreach (var a in all) shaped &= keys.Add(a.Key) && a.Name.Length <= 32 && a.Text.Length <= 60 && a.Target > 0 && a.Gems > 0;
+
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var fresh = new Progress(new MemoryPrefs(), clock);
+            bool clean = OutOfOffice.Achievements.Ready(fresh) == 0 && OutOfOffice.Achievements.Fresh(fresh).Count == 0;
+
+            // One hole in one: done, announced once, claimed once for its gems.
+            fresh.BumpStat(OutOfOffice.Achievements.HoleInOne);
+            var hio = OutOfOffice.Achievements.Find("hio1");
+            bool counted = OutOfOffice.Achievements.Done(hio, fresh) && OutOfOffice.Achievements.Fresh(fresh).Exists(a => a.Key == "hio1");
+            fresh.AnnounceAchievement("hio1");
+            int gems = fresh.Gems;
+            bool claimOnce = fresh.ClaimAchievement("hio1") && fresh.Gems == gems + hio.Gems && !fresh.ClaimAchievement("hio1")
+                && !OutOfOffice.Achievements.Fresh(fresh).Exists(a => a.Key == "hio1");
+            bool notEarly = !fresh.ClaimAchievement("hio10");
+
+            // Everything done: every achievement is reachable.
+            var maxed = new Progress(new MemoryPrefs(), clock);
+            for (int i = 0; i < Levels.All.Length; i++)
+            {
+                maxed.Record(i, 3, 1);
+                maxed.StampCoffees(i, Levels.All[i].Stars.Count);
+            }
+            foreach (var item in Cosmetics.All) maxed.Grant(item);
+            foreach (var g in OutOfOffice.Gadgets.All) maxed.MarkGadget(g.Key);
+            for (int i = 0; i < 50; i++) maxed.OpenChest(ChestTier.DeskDrawer, new System.Random(i), out _, out _);
+            foreach (var key in new[] { OutOfOffice.Achievements.HoleInOne, OutOfOffice.Achievements.ParFinish, OutOfOffice.Achievements.Shots,
+                OutOfOffice.Achievements.BoostersUsed, OutOfOffice.Achievements.QuestsClaimed, OutOfOffice.Achievements.DaysPlayed,
+                OutOfOffice.Achievements.BestStreak, OutOfOffice.Achievements.Pokes, OutOfOffice.Achievements.Pinball,
+                OutOfOffice.Achievements.BossClean, OutOfOffice.Achievements.ClipBuys })
+                maxed.SetStat(key, 100000);
+            string unreachable = "";
+            foreach (var a in all) if (!OutOfOffice.Achievements.Done(a, maxed)) unreachable += a.Key + " ";
+            bool reachable = unreachable.Length == 0;
+
+            // An old save: what it has done waits to be claimed, without toasts.
+            var oldPrefs = new MemoryPrefs();
+            var before = new Progress(oldPrefs, clock);
+            for (int i = 0; i < 12; i++) before.Record(i, 3, 1);
+            oldPrefs.Values.Remove("buca.ach.version");
+            foreach (var a in all) oldPrefs.Values.Remove("buca.ach.seen." + a.Key);
+            var migrated = new Progress(oldPrefs, clock);
+            bool quiet = OutOfOffice.Achievements.Fresh(migrated).Count == 0 && OutOfOffice.Achievements.Ready(migrated) > 0;
+
+            bool ok = shaped && clean && counted && claimOnce && notEarly && reachable && quiet;
+            Report("achievements", ok, $"{all.Length} achievements, distinct and sized {shaped}; new save clean {clean}; counts {counted}; claimed once {claimOnce}; " +
+                $"not before done {notEarly}; all reachable {reachable} {unreachable}; old saves quiet but claimable {quiet}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

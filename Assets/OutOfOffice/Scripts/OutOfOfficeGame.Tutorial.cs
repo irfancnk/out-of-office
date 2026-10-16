@@ -139,6 +139,7 @@ namespace OutOfOffice
 
         void CountFail()
         {
+            BreakStreak();
             if (levelIndex >= 0) progress.SetFailStreak(Def.Id, progress.FailStreak(Def.Id) + 1);
         }
 

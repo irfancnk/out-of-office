@@ -380,6 +380,23 @@ namespace OutOfOffice.EditorTools
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-clipshop.png"), Canvas.ForceUpdateCanvases);
                 hud.HideAll();
 
+                // Achievements (OUT-9): the tasks card with its new button, and the list.
+                hud.TodayQuests = () => Quests.For(20000);
+                hud.QuestProgressOf = i => i;
+                hud.QuestClaimedOf = i => i == 2;
+                hud.DailyChestReady = () => true;
+                hud.AchievementValue = a => a.Key == "hio1" || a.Key == "rooms10" ? a.Target : a.Target / 3;
+                hud.AchievementDone = a => a.Key == "hio1" || a.Key == "rooms10";
+                hud.AchievementClaimed = a => a.Key == "rooms10";
+                hud.SetAchievementsBadge(1);
+                hud.ShowQuests();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-quests.png"), Canvas.ForceUpdateCanvases);
+                hud.ShowAchievements();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-achievements.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
+
                 // Out of energy (OUT-48): the refills, and the stand-in for a rewarded video.
                 hud.EnergyPoints = () => 2;
                 hud.EnergyUntilPlay = () => new System.TimeSpan(2, 24, 0);

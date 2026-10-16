@@ -74,6 +74,7 @@ namespace OutOfOffice
                 return false;
             }
             if (leaving) energy.EndPlay(state == State.Failed ? "retry" : "restart", Def.Id);
+            if (leaving) BreakStreak();  // starting over after a shot ends a win streak (OUT-9)
             energy.Start(counted, index >= 0 ? Levels.All[index].Id : "lab");
             return true;
         }

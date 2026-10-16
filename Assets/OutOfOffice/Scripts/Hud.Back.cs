@@ -31,7 +31,7 @@ namespace OutOfOffice
             if (testAd != null && testAd.gameObject.activeSelf) return true;  // the video has its own skip
             if (transform.Find("Reward") != null) return true;                // the reward moment finishes on its own
             Card top = null;
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard, oddsCard, clipCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard, oddsCard, clipCard, achievementsCard })
                 if (c != null && c.Root.gameObject.activeSelf && (top == null || c.Root.GetSiblingIndex() > top.Root.GetSiblingIndex())) top = c;
             if (top != null)
             {

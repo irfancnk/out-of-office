@@ -85,6 +85,7 @@ namespace OutOfOffice
         // Pinged around like a pinball: dizzy when it finally stops.
         void OnPinballFinish()
         {
+            CountStat(Achievements.Pinball);
             mascot.OnDizzyShort();
             mascot.Twirl(progress.ReducedMotion ? 0f : 360f, 0.6f);
         }

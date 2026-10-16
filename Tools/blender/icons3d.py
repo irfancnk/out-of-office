@@ -562,6 +562,23 @@ def clip():
     face_camera([wire], tilt=-18, turn=28)
 
 
+def trophy():
+    # Achievements (OUT-9): a gold cup with two handles on a dark stepped base.
+    gold = material("Gold", hexc("#FFC233"), 0.22, metal=0.55, coat=0.6)
+    base = material("Base", hexc("#3E2C5A"), 0.35, coat=0.4)
+    plate = material("Plate", hexc("#FFE9A8"), 0.3, metal=0.4)
+    parts = [cyl(0.62, 0.7, (0, 0, 0.55), gold, verts=64, bevel=0.04, r2=0.36)]   # the bowl, narrowing down
+    parts.append(torus(0.6, 0.06, (0, 0, 0.9), gold))                              # its rim
+    parts.append(cyl(0.11, 0.42, (0, 0, -0.01), gold, verts=32, bevel=0.0))         # stem
+    parts.append(cyl(0.3, 0.1, (0, 0, -0.24), gold, verts=48, bevel=0.03))
+    parts.append(box((0.95, 0.62, 0.22), (0, 0, -0.42), base, 0.05))
+    parts.append(box((0.78, 0.5, 0.2), (0, 0, -0.62), base, 0.05))
+    parts.append(box((0.5, 0.04, 0.12), (0, -0.32, -0.42), plate, 0.02))
+    for side in (-1, 1):
+        parts.append(torus(0.24, 0.06, (side * 0.66, 0, 0.58), gold, rot=(math.pi / 2, 0, 0)))
+    face_camera(parts, tilt=-12, turn=20)
+
+
 def restart():
     arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
 
@@ -572,7 +589,7 @@ def undo():
 
 PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
          "restart": restart, "undo": undo, "bolt": bolt, "tv": tv, "hand": hand,
-         "laser": laser, "alarm": alarm, "mulligan": mulligan, "magnet": magnet, "briefcase": briefcase, "clip": clip}
+         "laser": laser, "alarm": alarm, "mulligan": mulligan, "magnet": magnet, "briefcase": briefcase, "clip": clip, "trophy": trophy}
 
 
 def render(name):

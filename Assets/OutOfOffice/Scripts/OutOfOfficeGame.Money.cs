@@ -30,6 +30,7 @@ namespace OutOfOffice
             prefs = new UnityPrefs();
             serverClock = new ServerClock();
             progress = new Progress(prefs, serverClock);
+            progress.CountPlayDay();  // for the days-played achievements (OUT-9)
 
             Analytics.InstallId = Experiments.InstallId = progress.InstallId;
             Analytics.Session = progress.StartSession();
@@ -132,6 +133,7 @@ namespace OutOfOffice
                     sound.Play(Sfx.Cancel, 0.4f);
                     return;
                 }
+                progress.BumpStat(Achievements.ClipBuys);
                 sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
                 Haptics.Play(Haptics.Style.Success);
                 hud.RefreshClipShop();
@@ -149,6 +151,7 @@ namespace OutOfOffice
                 }
                 progress.Grant(item);
                 Analytics.Event("hire", ("item", item.Id), ("gems", item.GemCost), ("balance", progress.Gems));
+                CheckAchievements();
                 sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
                 Haptics.Play(Haptics.Style.Success);
                 return true;

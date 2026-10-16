@@ -90,6 +90,7 @@ namespace OutOfOffice
             MigrateCard();
             MigrateHires();
             MigrateGuide();
+            MigrateAchievements();
             Energy = new Energy(prefs, () => UtcNow, () => PassActive);
         }
 
@@ -662,6 +663,58 @@ namespace OutOfOffice
         public bool Sfx { get => prefs.GetInt("buca.sfx", 1) == 1; set { prefs.SetInt("buca.sfx", value ? 1 : 0); prefs.Save(); } }
         public bool Music { get => prefs.GetInt("buca.music", 1) == 1; set { prefs.SetInt("buca.music", value ? 1 : 0); prefs.Save(); } }
         public bool ReducedMotion { get => prefs.GetInt("buca.reduce", 0) == 1; set { prefs.SetInt("buca.reduce", value ? 1 : 0); prefs.Save(); } }
+
+        // ---------- Achievements (OUT-9) ----------
+
+        public int Stat(string key) => prefs.GetInt("buca.stat." + key, 0);
+
+        public void BumpStat(string key, int n = 1)
+        {
+            if (n <= 0) return;
+            prefs.SetInt("buca.stat." + key, Stat(key) + n);
+        }
+
+        public void SetStat(string key, int value) => prefs.SetInt("buca.stat." + key, System.Math.Max(0, value));
+
+        // Once per calendar day the game is opened.
+        public void CountPlayDay()
+        {
+            int today = Today;
+            if (prefs.GetInt("buca.stat.lastday", 0) == today) return;
+            prefs.SetInt("buca.stat.lastday", today);
+            BumpStat(Achievements.DaysPlayed);
+            prefs.Save();
+        }
+
+        public void StatAtLeast(string key, int value)
+        {
+            if (value > Stat(key)) prefs.SetInt("buca.stat." + key, value);
+        }
+
+        public bool AchievementClaimed(string key) => prefs.GetInt("buca.ach." + key, 0) == 1;
+        public bool AchievementAnnounced(string key) => prefs.GetInt("buca.ach.seen." + key, 0) == 1;
+        public void AnnounceAchievement(string key) => prefs.SetInt("buca.ach.seen." + key, 1);
+
+        // Its gems, once it's done.
+        public bool ClaimAchievement(string key)
+        {
+            var a = Achievements.Find(key);
+            if (a == null || AchievementClaimed(key) || !Achievements.Done(a, this)) return false;
+            prefs.SetInt("buca.ach." + key, 1);
+            prefs.SetInt("buca.ach.seen." + key, 1);
+            AddGems(a.Gems, "achievement");
+            Analytics.Event("achievement_claim", ("achievement", key), ("gems", a.Gems));
+            return true;
+        }
+
+        // A save from before achievements: what it has already done waits to be claimed, without a pile of toasts.
+        void MigrateAchievements()
+        {
+            if (prefs.GetInt("buca.ach.version", 0) >= 1) return;
+            foreach (var a in Achievements.All) if (Achievements.Done(a, this)) prefs.SetInt("buca.ach.seen." + a.Key, 1);
+            prefs.SetInt("buca.ach.version", 1);
+            prefs.Save();
+        }
 
         // ---------- Boosters (OUT-13) ----------
 
