@@ -88,6 +88,21 @@ namespace OutOfOffice
             savedTicks = seenTicks;
             Migrate();
             MigrateCard();
+            MigrateHires();
+        }
+
+        // Staff who unlocked with stars before they became gem hires (OUT-45): a save that had earned them keeps them.
+        void MigrateHires()
+        {
+            if (prefs.GetInt("buca.hires.version", 0) >= 1) return;
+            int stars = TotalStars;
+            foreach (var (id, starsNeeded) in new[] { ("e.vera", 135), ("e.chair", 150), ("e.max", 165), ("e.boss", 180) })
+            {
+                var item = Cosmetics.Find(id);
+                if (item != null && stars >= starsNeeded) Grant(item);
+            }
+            prefs.SetInt("buca.hires.version", 1);
+            prefs.Save();
         }
 
         // Writes everything to disk. The game calls it when the app is paused or quits, because the OS may kill a
