@@ -74,6 +74,7 @@ namespace OutOfOffice.EditorTools
                 Money();
                 Undos();
                 EnergyPlays();
+                QualityTiers();
                 Data();
             }
             finally
@@ -1273,6 +1274,46 @@ namespace OutOfOffice.EditorTools
                 $"wins carry the play {winFree}; no shot no cost {noShot}; at stake after a shot {atStake}, restart pays {restartPays}; fail ends {failed}, " +
                 $"continue revives {revived}; rewards stack {over}; first rooms free {firstRooms}, later rooms cost {laterRooms}; pass unlimited {pass}; " +
                 $"no rewind refill {noRewind}; price ladder {prices}");
+        }
+
+        // 24. Device tiers (OUT-19): known phones land in the right tier, a hot phone steps down a tier, and the
+        // presets get lighter tier by tier.
+        static void QualityTiers()
+        {
+            var android = RuntimePlatform.Android;
+            bool a06 = Quality.Detect(android, 3700, "Mali-G52 MC2", 8, "samsung SM-A065F") == Tier.Low;
+            bool quad = Quality.Detect(android, 8000, "Adreno (TM) 650", 4, "old quad") == Tier.Low;
+            bool midPhone = Quality.Detect(android, 4096, "Mali-G68 MC4", 8, "mid") == Tier.Mid;
+            bool pixel = Quality.Detect(android, 7900, "Mali-G715-Immortalis MC10", 9, "Pixel 8") == Tier.High;
+            bool flagship = Quality.Detect(android, 11800, "Adreno (TM) 750", 8, "SM-S928B") == Tier.Ultra;
+            bool iphones = Quality.Detect(RuntimePlatform.IPhonePlayer, 6000, "Apple A16 GPU", 6, "iPhone15,2") == Tier.Ultra
+                && Quality.Detect(RuntimePlatform.IPhonePlayer, 4000, "Apple A14 GPU", 6, "iPhone13,2") == Tier.High
+                && Quality.Detect(RuntimePlatform.IPhonePlayer, 3000, "Apple A12 GPU", 6, "iPhone11,8") == Tier.Mid
+                && Quality.Detect(RuntimePlatform.IPhonePlayer, 2000, "Apple A11 GPU", 6, "iPhone10,3") == Tier.Low;
+            bool desktop = Quality.Detect(RuntimePlatform.WindowsEditor, 32000, "NVIDIA", 16, "PC") == Tier.Ultra;
+
+            Quality.Choose((int)Tier.High);
+            bool picked = Quality.Current == Tier.High;
+            Quality.SetHeat(2);  // moderate
+            bool warm = Quality.Current == Tier.Mid && Quality.Heat == 1;
+            Quality.SetHeat(4);  // critical
+            bool hot = Quality.Current == Tier.Mid && Quality.Heat == 2;
+            Quality.SetHeat(0);
+            bool cooled = Quality.Current == Tier.High && Quality.Heat == 0;
+            Quality.Choose(-1);
+
+            bool lighter = true;
+            for (int t = 1; t <= (int)Tier.Ultra; t++)
+            {
+                var lo = Quality.For((Tier)(t - 1));
+                var hi = Quality.For((Tier)t);
+                lighter &= lo.RenderScale <= hi.RenderScale && lo.Msaa <= hi.Msaa && lo.Shadows <= hi.Shadows && lo.Fx <= hi.Fx;
+            }
+            bool lowStays60 = !Quality.For(Tier.Low).HighRefresh && Quality.For(Tier.Low).RenderScale >= 0.8f;
+
+            bool ok = a06 && quad && midPhone && pixel && flagship && iphones && desktop && picked && warm && hot && cooled && lighter && lowStays60;
+            Report("quality-tiers", ok, $"Galaxy A06 low {a06}, quad-core low {quad}, mid phone {midPhone}, Pixel 8 high {pixel}, S24 Ultra ultra {flagship}, " +
+                $"iPhones {iphones}, desktop {desktop}; pick {picked}; warm steps down {warm}, hot holds {hot}, cools back {cooled}; presets lighter by tier {lighter}, low tier sane {lowStays60}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

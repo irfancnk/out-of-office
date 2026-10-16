@@ -68,6 +68,9 @@ namespace OutOfOffice
             musicOn = musicEnabled;
         }
 
+        // Volume levels from the settings sliders (OUT-16), on top of the on/off switches.
+        public float SfxVolume = 1f, MusicVolume = 1f;
+
         // Plays a one-shot. Skips it if the same clip played within `cooldown` or already has `maxInstances` playing.
         // When all voices are busy, the lowest-priority voice that is closest to finishing gets replaced.
         public void Play(AudioClip clip, float volume, float pitch = 1f, float priority = 0.5f, float cooldown = 0.03f, int maxInstances = 3)
@@ -98,7 +101,7 @@ namespace OutOfOffice
             pick.Source.Stop();
             pick.Source.clip = clip;
             pick.Source.pitch = pitch;
-            pick.Source.volume = Mathf.Clamp01(volume);
+            pick.Source.volume = Mathf.Clamp01(volume) * SfxVolume;
             pick.Source.Play();
         }
 
@@ -157,7 +160,7 @@ namespace OutOfOffice
                 bool allowed = ch == music || sfxOn;
                 ch.Volume = Mathf.Lerp(ch.Volume, allowed ? ch.TargetVolume : 0f, a);
                 ch.Pitch = Mathf.Lerp(ch.Pitch, ch.TargetPitch, a);
-                ch.Source.volume = ch.Volume;
+                ch.Source.volume = ch.Volume * (ch == music ? MusicVolume : SfxVolume);
                 ch.Source.pitch = ch.Pitch;
             }
         }

@@ -71,17 +71,20 @@ namespace OutOfOffice
             // Rendering runs at the display rate (120 Hz on ProMotion). Physics stays on a fixed 60 Hz step,
             // and rigidbodies interpolate between steps, so shots behave the same at any frame rate.
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = Screen.currentResolution.refreshRateRatio.value >= 90.0 ? 120 : 60;
+            Application.targetFrameRate = 60;  // until the device tier says whether 120 is worth trying (SetUpQuality)
             Screen.orientation = ScreenOrientation.Portrait;
             Time.fixedDeltaTime = Rules.Dt;
             Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
 
             SetUpServices();  // progress on the server-corrected clock, analytics, A/B buckets, backup (OUT-31..35)
+            SetUpQuality();   // the device tier, its render settings and frame rate (OUT-19)
             SetUpCamera();
             SetUpLighting();
 
             sound = GameAudio.Create();
             sound.SetEnabled(progress.Sfx, progress.Music);
+            sound.SfxVolume = progress.SfxVolume;
+            sound.MusicVolume = progress.MusicVolume;
             Haptics.Prepare();
             FxDot.Prewarm(240);
             ApplyMotionSetting(progress.ReducedMotion);
@@ -160,7 +163,7 @@ namespace OutOfOffice
         void ApplyMotionSetting(bool reduced)
         {
             Secretary.Calm = reduced;
-            Fx.Amount = reduced ? 0.5f : 1f;
+            Fx.Amount = (reduced ? 0.5f : 1f) * Quality.Now.Fx;  // lower tiers draw fewer particles (OUT-19)
             Puck.MotionScale = reduced ? 0.35f : 1f;
         }
 
@@ -198,9 +201,10 @@ namespace OutOfOffice
             };
             WireShop();
             WireEnergy();
+            WireSettings();
             WireReceptionist();
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
-            hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
+            RefreshSettings();
 
             hud.Play = () =>
             {
@@ -235,6 +239,12 @@ namespace OutOfOffice
                 hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
             };
             hud.OpenLab = () => { Tap(); StartLevel(-1); };
+            hud.QuitGame = () =>
+            {
+                progress.Flush();
+                Analytics.Flush();
+                Application.Quit();
+            };
             hud.ToggleDebug = () => { DebugView.Enabled = !DebugView.Enabled; Tap(); };
         }
 
@@ -414,14 +424,14 @@ namespace OutOfOffice
 
         void PaceFrames()
         {
-            if (paceLocked || Application.targetFrameRate <= 60) return;
+            if (paceLocked || Application.targetFrameRate <= 60) return;  // only while 120 is being tried
             float dt = Time.unscaledDeltaTime;
             if (dt > 0.1f) return;  // a load or a pause, not a pacing problem
             paceAverage = Mathf.Lerp(paceAverage, dt, 0.05f);
             paceSlow = paceAverage > 1f / 100f ? paceSlow + dt : 0f;
             if (paceSlow > 2f)
             {
-                Application.targetFrameRate = 60;
+                maxFps = 60;
                 paceLocked = true;
             }
         }
@@ -429,6 +439,7 @@ namespace OutOfOffice
         void Update()
         {
             PaceFrames();
+            TickDevice();
             // Nothing of the room shows under the home screen, so the camera draws none of it there (OUT-36): the menu
             // runs at the full frame rate instead of paying for a hidden 3D board with shadows.
             int visible = hud.CoversBoard ? 0 : ~0;
@@ -437,10 +448,20 @@ namespace OutOfOffice
             TickServices();  // ad and consent SDK callbacks, ad SDK start-up (OUT-31)
             UpdateQuips();
             UpdateQuirks(Time.deltaTime);
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) OnBack();  // Android's back button
             if (state == State.Ready || state == State.Aiming) HandleInput();
             UpdateAim();
             UpdateTrail();
             hud.SetDebug(DebugView.Enabled ? debugView.Stats : null);
+        }
+
+        // The Android back button (escape elsewhere, OUT-18): the top card closes, a room in play pauses, and the home
+        // screen asks before the game is left.
+        void OnBack()
+        {
+            if (ChestStage.Showing) return;
+            if (hud.PressBack()) return;
+            if (state == State.Ready || state == State.Aiming || state == State.Moving) PauseGame();
         }
 
         void HandleInput()

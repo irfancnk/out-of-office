@@ -37,8 +37,13 @@ namespace OutOfOffice
         TMP_FontAsset font;
         Material textMat;
 
+        // A stage is up: it owns the screen, so the back button waits for it (OUT-18).
+        public static bool Showing => live > 0;
+        static int live;
+
         public static void Open(CosmeticItem item, bool duplicate, SkinDef look, string heading, Action<AudioClip, float> play, Action<bool> done, bool reducedMotion = false)
         {
+            live++;
             var go = new GameObject("Gift Stage");
             var stage = go.AddComponent<ChestStage>();
             stage.reduced = reducedMotion;
@@ -167,6 +172,7 @@ namespace OutOfOffice
         {
             if (finished) return;
             finished = true;
+            live = System.Math.Max(0, live - 1);
             if (mainCam != null) mainCam.enabled = true;
             foreach (var c in hidden) if (c != null) c.enabled = true;
             Destroy(canvas.gameObject);

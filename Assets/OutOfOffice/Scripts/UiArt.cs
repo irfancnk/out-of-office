@@ -251,6 +251,29 @@ namespace OutOfOffice
                         d = Mathf.Min(ball, Mathf.Min(l1, Mathf.Min(l2, l3)));
                         break;
                     }
+                    case "vibrate":  // settings (OUT-16): a phone buzzing
+                    {
+                        float phone = Mathf.Max(RoundRect(p, new Vector2(68, 30), new Vector2(124, 162), 14f), -RoundRect(p, new Vector2(80, 50), new Vector2(112, 140), 4f));
+                        float left = Mathf.Min(RoundRect(p, new Vector2(38, 70), new Vector2(50, 122), 6f), RoundRect(p, new Vector2(16, 82), new Vector2(28, 110), 6f));
+                        float right = Mathf.Min(RoundRect(p, new Vector2(142, 70), new Vector2(154, 122), 6f), RoundRect(p, new Vector2(164, 82), new Vector2(176, 110), 6f));
+                        d = Mathf.Min(phone, Mathf.Min(left, right));
+                        break;
+                    }
+                    case "display":  // a screen on a stand
+                    {
+                        float screen = Mathf.Max(RoundRect(p, new Vector2(22, 62), new Vector2(170, 160), 14f), -RoundRect(p, new Vector2(38, 78), new Vector2(154, 144), 5f));
+                        float stand = Mathf.Min(RoundRect(p, new Vector2(86, 38), new Vector2(106, 66), 3f), RoundRect(p, new Vector2(58, 26), new Vector2(134, 42), 7f));
+                        d = Mathf.Min(screen, stand);
+                        break;
+                    }
+                    case "battery":  // a battery, two thirds full
+                    {
+                        float shell = Mathf.Max(RoundRect(p, new Vector2(24, 56), new Vector2(152, 136), 16f), -RoundRect(p, new Vector2(40, 72), new Vector2(136, 120), 6f));
+                        float nub = RoundRect(p, new Vector2(150, 80), new Vector2(170, 112), 6f);
+                        float charge = RoundRect(p, new Vector2(50, 82), new Vector2(106, 110), 4f);
+                        d = Mathf.Min(shell, Mathf.Min(nub, charge));
+                        break;
+                    }
                     case "lock":
                     {
                         float body = RoundRect(p, new Vector2(46, 30), new Vector2(146, 112), 16f);

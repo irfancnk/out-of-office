@@ -359,6 +359,13 @@ namespace OutOfOffice.EditorTools
                 Canvas.ForceUpdateCanvases();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-test-ad.png"), Canvas.ForceUpdateCanvases);
                 Tweens.FinishAll();
+
+                // Settings (OUT-16, OUT-19): sliders, haptics, the graphics tier.
+                hud.UpdateMoreSettings(0.8f, 0.6f, 2, -1, false, "Auto picked LOW for this phone.");
+                hud.ShowSettings();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-settings.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
                 hud.EnergyPoints = () => 15;
 
                 // Home with the first chapter's chest earned and waiting.
@@ -367,6 +374,10 @@ namespace OutOfOffice.EditorTools
                 hud.ShowTitle(Levels.All.Length * 3, 5, Themes.All[0]);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "title-chapter-chest.png"), Canvas.ForceUpdateCanvases);
+                hud.PressBack();  // Android back on the home screen (OUT-18)
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-quit.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
                 hud.HideTitle();
 
                 var sam = Cosmetics.Default;

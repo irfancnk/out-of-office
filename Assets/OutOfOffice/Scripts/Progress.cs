@@ -619,5 +619,13 @@ namespace OutOfOffice
         public bool Sfx { get => prefs.GetInt("buca.sfx", 1) == 1; set { prefs.SetInt("buca.sfx", value ? 1 : 0); prefs.Save(); } }
         public bool Music { get => prefs.GetInt("buca.music", 1) == 1; set { prefs.SetInt("buca.music", value ? 1 : 0); prefs.Save(); } }
         public bool ReducedMotion { get => prefs.GetInt("buca.reduce", 0) == 1; set { prefs.SetInt("buca.reduce", value ? 1 : 0); prefs.Save(); } }
+
+        // Settings (OUT-16, OUT-19). Volumes are written while a slider moves and saved when it is let go.
+        public float SfxVolume { get => prefs.GetInt("buca.vol.sfx", 100) / 100f; set => prefs.SetInt("buca.vol.sfx", Mathf.RoundToInt(Mathf.Clamp01(value) * 100f)); }
+        public float MusicVolume { get => prefs.GetInt("buca.vol.music", 100) / 100f; set => prefs.SetInt("buca.vol.music", Mathf.RoundToInt(Mathf.Clamp01(value) * 100f)); }
+        public int HapticsLevel { get => Mathf.Clamp(prefs.GetInt("buca.haptics", 2), 0, 2); set { prefs.SetInt("buca.haptics", Mathf.Clamp(value, 0, 2)); prefs.Save(); } }
+        public int GraphicsPick { get => Mathf.Clamp(prefs.GetInt("buca.graphics", -1), -1, 3); set { prefs.SetInt("buca.graphics", Mathf.Clamp(value, -1, 3)); prefs.Save(); } }  // -1 automatic
+        public bool BatterySaver { get => prefs.GetInt("buca.saver", 0) == 1; set { prefs.SetInt("buca.saver", value ? 1 : 0); prefs.Save(); } }
+        public void SaveSettings() => prefs.Save();
     }
 }

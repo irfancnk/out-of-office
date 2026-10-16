@@ -149,6 +149,7 @@ namespace OutOfOffice
             BuildHire();
             BuildShop();
             BuildEnergyCard();
+            BuildQuit();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -1343,12 +1344,7 @@ namespace OutOfOffice
             SetDevVisible(Application.isEditor || Debug.isDebugBuild);
         }
 
-        void BuildSettings()
-        {
-            settingsCard = MakeCard("Settings", "SETTINGS", new Vector2(860f, 720f), true);
-            SettingRows(settingsCard.Root, 165f);
-            CloseButton(settingsCard, () => Back());
-        }
+        void BuildSettings() => BuildSettingsCard();  // sliders, haptics, graphics and more (OUT-16, Hud.Settings.cs)
 
         void SettingRows(RectTransform parent, float top)
         {
@@ -1431,7 +1427,7 @@ namespace OutOfOffice
             ShowCard(pauseCard);
         }
 
-        void ShowSettings()
+        public void ShowSettings()
         {
             Remember();
             HideAll();
@@ -2118,6 +2114,7 @@ namespace OutOfOffice
 
         void CloseButton(Card card, System.Action clicked)
         {
+            closeActions[card] = clicked;  // the back button does what the X does (OUT-18)
             var size = card.Root.sizeDelta;
             IconButton(card.Root, "Close", new Vector2(0.5f, 0.5f), new Vector2(size.x / 2f - 30f, size.y / 2f - 30f), 110f, Palette.UiRed, "close", Color.white).Clicked = clicked;
         }
@@ -2153,7 +2150,7 @@ namespace OutOfOffice
         {
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);
