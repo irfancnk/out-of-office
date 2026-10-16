@@ -36,6 +36,7 @@ namespace OutOfOffice.EditorTools
             string[] scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
             if (scenes.Length == 0) scenes = new[] { "Assets/Scenes/SampleScene.unity" };
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath)));
+            AdMobSetup.Apply(dev);  // ad app ids into the manifest, Google's Android libraries into Gradle (OUT-31)
 
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {

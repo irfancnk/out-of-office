@@ -34,6 +34,7 @@ namespace OutOfOffice.EditorTools
                 PlayerSettings.iOS.appleEnableAutomaticSigning = true;
             }
 
+            AdMobSetup.Apply(false);  // ad app ids into Info.plist; CocoaPods brings the iOS ad SDK (OUT-31)
             string[] scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
             if (scenes.Length == 0) scenes = new[] { "Assets/Scenes/SampleScene.unity" };
 

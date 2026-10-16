@@ -21,6 +21,8 @@ namespace OutOfOffice
         public static readonly List<IAnalyticsSink> Sinks = new List<IAnalyticsSink>();
         public static string InstallId = "", Platform = "";
         public static int Session;
+        // Read once on the main thread: Debug.isDebugBuild throws on the SDK threads some callbacks arrive on.
+        static readonly bool DebugBuild = Debug.isDebugBuild;
 
         public static void Event(string name, params (string Key, object Value)[] fields)
         {
@@ -35,7 +37,7 @@ namespace OutOfOffice
                 try { sink.Send(name, data); }
                 catch (Exception) { }  // a broken sink never breaks the game
             }
-            if (!Debug.isDebugBuild) return;
+            if (!DebugBuild) return;
             var line = new StringBuilder("HSEVENT ").Append(name);
             foreach (var (key, value) in fields) line.Append(' ').Append(key).Append('=').Append(value);
             Debug.Log(line.ToString());

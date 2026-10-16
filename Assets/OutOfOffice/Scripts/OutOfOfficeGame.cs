@@ -405,6 +405,7 @@ namespace OutOfOffice
         void Update()
         {
             PaceFrames();
+            TickServices();  // ad and consent SDK callbacks, ad SDK start-up (OUT-31)
             UpdateQuips();
             UpdateQuirks(Time.deltaTime);
             if (state == State.Ready || state == State.Aiming) HandleInput();

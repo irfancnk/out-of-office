@@ -12,6 +12,18 @@ namespace OutOfOffice
         ServerClock serverClock;
         ICloudSave backup;
         int extraShots;  // shots added by continues on this attempt
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+        AdMobAds admob;
+#endif
+
+        // Every frame: SDK callbacks onto the main thread, and the ad SDK's start-up check.
+        void TickServices()
+        {
+            MainThread.Drain();
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+            admob?.Poll();
+#endif
+        }
 
         void SetUpServices()
         {
@@ -30,6 +42,12 @@ namespace OutOfOffice
                 ("os", SystemInfo.operatingSystem), ("version", Application.version), ("gems", progress.Gems), ("pass", progress.PassActive),
                 ("unlocked", progress.Unlocked), ("stars", progress.TotalStars));
             StartCoroutine(ServerTime.Sync(serverClock));
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+            // Real rewarded videos on phones (Google's test ads in development builds); the editor keeps TestAds.
+            admob = new AdMobAds();
+            Ads.Provider = admob;
+            admob.Start();
+#endif
         }
 
         void BackUpSave()
