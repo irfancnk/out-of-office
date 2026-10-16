@@ -76,6 +76,7 @@ namespace OutOfOffice.EditorTools
                 EnergyPlays();
                 QualityTiers();
                 GadgetGuide();
+                BoosterChecks(root.transform);
                 Data();
             }
             finally
@@ -1375,6 +1376,80 @@ namespace OutOfOffice.EditorTools
             bool ok2 = demos && covered && unique && written && migrated && clean && marked;
             Report("gadget-guide", ok2, $"{OutOfOffice.Gadgets.All.Length} gadgets, demo rooms build and read right {demos} {broken}; every gadget in the rooms has a card {covered} {missing}; " +
                 $"keys unique {unique}; names and lines fit {written}; old saves migrated {migrated}; new saves clean {clean}; steps mark {marked}");
+        }
+
+        // 26. Boosters (OUT-13): the Magnet Bed pulls a slow roll beside the bed into it and changes nothing out of its
+        // reach; a Coffee Break holds moving parts while pop walls keep their beat; unlocks, the starting three, use
+        // counts and prices.
+        static void BoosterChecks(Transform parent)
+        {
+            var def = new LevelDef("magnet-bed-check", "Magnet Bed Check", 0f, 2f).WithShape(ShapeDef.Rect(9f, 12f, 1f)).StartAt(0f, -4f);
+            var inst = LevelBuilder.Build(def, parent, false);
+            ShotResult Roll(Vector2 from, Vector2 v, bool magnet, out Vector2 end)
+            {
+                inst.TickMovers(0f, true);
+                inst.Puck.PlaceAt(from);
+                Settle();
+                inst.Puck.Launch(v);
+                end = from;
+                for (int i = 0; i < 1800; i++)
+                {
+                    inst.TickMovers((i + 1) * Rules.Dt, false);
+                    if (magnet && !inst.Puck.Airborne)
+                        inst.Puck.Body.linearVelocity += OutOfOffice.Boosters.BedPull(inst.Puck.Body.position, def.Hole, Rules.Dt);
+                    var info = inst.Puck.Step(Rules.Dt);
+                    end = inst.Puck.Body.position;
+                    if (info.Result != ShotResult.None) return info.Result;
+                    Physics2D.Simulate(Rules.Dt);
+                }
+                return ShotResult.None;
+            }
+            // A slow roll that passes 1.2 to the side of the bed: it stops beside it, unless the bed pulls it in.
+            var beside = def.Hole + new Vector2(1.2f, -1.6f);
+            var plain = Roll(beside, new Vector2(0f, 2.4f), false, out var plainEnd);
+            var pulled = Roll(beside, new Vector2(0f, 2.4f), true, out _);
+            bool pulls = plain == ShotResult.Rest && pulled == ShotResult.Sunk;
+            // Out of its reach, the same roll with and without it ends in the same place.
+            var far = def.Hole + new Vector2(-3.4f, -4.5f);
+            Roll(far, new Vector2(0f, 3f), false, out var farPlain);
+            Roll(far, new Vector2(0f, 3f), true, out var farPulled);
+            bool reach = (farPlain - farPulled).sqrMagnitude < 1e-8f && (farPlain - def.Hole).magnitude > OutOfOffice.Boosters.MagnetRadius;
+            Object.DestroyImmediate(inst.Root);
+
+            var moving = new LevelDef("coffee-break-check", "Coffee Break Check", 0f, 4f).WithShape(ShapeDef.Rect(9f, 12f, 1f)).StartAt(0f, -4f)
+                .Wall(0f, 0f, 2f, 0.6f).Moving(2f, 0f, 2f).PopWall(0f, 2.5f, 4f, 0.5f, 2f, 0f);
+            var mi = LevelBuilder.Build(moving, parent, false);
+            mi.TickMovers(0.5f, true, 0.5f);
+            Vector3 held = mi.Movers[0].transform.position;
+            bool upBefore = mi.PopWalls[0].Collider.enabled;
+            mi.TickMovers(1.5f, true, 0.5f);  // the board's clock runs on; the movers' is held
+            bool still = (mi.Movers[0].transform.position - held).sqrMagnitude < 1e-8f;
+            bool beat = mi.PopWalls[0].Collider.enabled != upBefore;
+            mi.TickMovers(1.5f, true, 1.5f);
+            bool resumes = (mi.Movers[0].transform.position - held).sqrMagnitude > 0.01f;
+            Object.DestroyImmediate(mi.Root);
+
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var p = new Progress(new MemoryPrefs(), clock);
+            var laser = OutOfOffice.Boosters.Find(BoosterKind.Laser);
+            bool locked = !p.BoosterUnlocked(BoosterKind.Laser);
+            for (int i = 0; i <= laser.UnlockRoom; i++) p.Record(i, 1, 9);
+            bool unlocks = p.BoosterUnlocked(BoosterKind.Laser) && !p.BoosterUnlocked(BoosterKind.MagnetBed);
+            p.IntroduceBooster(BoosterKind.Laser);
+            p.IntroduceBooster(BoosterKind.Laser);  // only once
+            bool gift = p.BoosterCount(BoosterKind.Laser) == OutOfOffice.Boosters.StartGift;
+            int used = 0;
+            while (p.UseBooster(BoosterKind.Laser)) used++;
+            bool counts = used == OutOfOffice.Boosters.StartGift && p.BoosterCount(BoosterKind.Laser) == 0;
+            bool ordered = true;
+            for (int i = 1; i < OutOfOffice.Boosters.All.Length; i++)
+                ordered &= OutOfOffice.Boosters.All[i].UnlockRoom > OutOfOffice.Boosters.All[i - 1].UnlockRoom && OutOfOffice.Boosters.All[i].UnlockRoom < Levels.All.Length;
+            bool prices = OutOfOffice.Boosters.BoxGems < OutOfOffice.Boosters.BoxEach * OutOfOffice.Boosters.All.Length * OutOfOffice.Boosters.GemCost;
+
+            bool ok = pulls && reach && still && beat && resumes && locked && unlocks && gift && counts && ordered && prices;
+            Report("boosters", ok, $"magnet bed sinks a roll beside the bed {pulls} (without it: {plain} at {plainEnd}, with it: {pulled}); nothing out of reach {reach}; " +
+                $"coffee break holds movers {still}, pop walls keep the beat {beat}, movers resume {resumes}; locked {locked}, unlocks {unlocks}, three to start once {gift}, " +
+                $"counts {counts}; unlocks in order {ordered}; box discount {prices}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

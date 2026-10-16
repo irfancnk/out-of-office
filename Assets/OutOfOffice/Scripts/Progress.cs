@@ -621,6 +621,42 @@ namespace OutOfOffice
         public bool Music { get => prefs.GetInt("buca.music", 1) == 1; set { prefs.SetInt("buca.music", value ? 1 : 0); prefs.Save(); } }
         public bool ReducedMotion { get => prefs.GetInt("buca.reduce", 0) == 1; set { prefs.SetInt("buca.reduce", value ? 1 : 0); prefs.Save(); } }
 
+        // ---------- Boosters (OUT-13) ----------
+
+        static string BoostKey(BoosterKind k) => "buca.boost." + Boosters.Find(k).Key;
+
+        public int BoosterCount(BoosterKind k) => prefs.GetInt(BoostKey(k), 0);
+
+        // Introduced at its room: open once that room is.
+        public bool BoosterUnlocked(BoosterKind k) => Unlocked > Boosters.Find(k).UnlockRoom;
+
+        public bool BoosterIntroduced(BoosterKind k) => prefs.GetInt(BoostKey(k) + ".intro", 0) == 1;
+
+        // The first meeting: its card, and three to start.
+        public void IntroduceBooster(BoosterKind k)
+        {
+            if (BoosterIntroduced(k)) return;
+            prefs.SetInt(BoostKey(k) + ".intro", 1);
+            AddBoosters(k, Boosters.StartGift, "unlock");
+        }
+
+        public void AddBoosters(BoosterKind k, int n, string source)
+        {
+            if (n <= 0) return;
+            prefs.SetInt(BoostKey(k), BoosterCount(k) + n);
+            prefs.Save();
+            Analytics.Event("booster_earn", ("booster", Boosters.Find(k).Key), ("amount", n), ("source", source), ("count", BoosterCount(k)));
+        }
+
+        public bool UseBooster(BoosterKind k)
+        {
+            int n = BoosterCount(k);
+            if (n <= 0) return false;
+            prefs.SetInt(BoostKey(k), n - 1);
+            prefs.Save();
+            return true;
+        }
+
         // ---------- First-time experience (OUT-11) ----------
 
         public bool SeenGadget(string key) => prefs.GetInt("buca.gadget." + key, 0) == 1;

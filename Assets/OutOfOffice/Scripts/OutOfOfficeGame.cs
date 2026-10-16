@@ -204,6 +204,7 @@ namespace OutOfOffice
             WireEnergy();
             WireSettings();
             WireTutorial();
+            WireBoosters();
             WireReceptionist();
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             RefreshSettings();
@@ -386,6 +387,7 @@ namespace OutOfOffice
             hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
             hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
+            ResetBoosters();  // a new try starts with none active (OUT-13)
             ApplyFailHelp();  // a longer aim line on a room failed twice running (OUT-11)
             UsePerk();
             undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom, perk.FreeUndos);  // a new attempt: three free again, plus the perk's
@@ -564,6 +566,7 @@ namespace OutOfOffice
         {
             history.Push(level.Capture(restPos, shots, levelTime));
             shots++;
+            hud.SetBoosterTray(false);
             energy.MarkAttempt();  // from here, leaving the room ends the play (OUT-48)
             if (levelIndex == 0) progress.MarkFtue("first_shot");
             hud.SetRestartCost(StartOverCost);
@@ -608,7 +611,7 @@ namespace OutOfOffice
         {
             if (level == null || state == State.Paused) return;
             levelTime += Time.fixedDeltaTime;
-            level.TickMovers(levelTime, false);
+            level.TickMovers(levelTime, false, MoverClock);  // a Coffee Break holds the movers (OUT-13)
 
             // A moving part can push a resting puck; then it simulates like any shot, without counting one.
             if ((state == State.Ready || state == State.Aiming) && level.Puck.Body.linearVelocity.sqrMagnitude > 0.09f)
@@ -627,6 +630,7 @@ namespace OutOfOffice
             }
 
             if (state != State.Moving) return;
+            ApplyBoosterPhysics();
             var info = level.Puck.Step(Time.fixedDeltaTime);
             PlayEvents(info);
 
@@ -638,6 +642,7 @@ namespace OutOfOffice
                     sound.StopContinuous();
                     state = State.Ready;
                     if (shotBounces >= PinballBounces) OnPinballFinish();
+                    hud.RefreshBoosters();
                     CheckShotLimit();
                     break;
                 case ShotResult.Sunk:
@@ -931,7 +936,7 @@ namespace OutOfOffice
             }
             Haptics.Play(Haptics.Style.Success);
             sound.Play(Sfx.Reward, 0.55f, 1f, 1f);
-            hud.Say(shots == 1 ? Quips.HoleInOne() : Quips.Rested(), 2.2f);  // a hole-in-one gets its own line (OUT-26)
+            hud.Say(shots == 1 && doOvers == 0 ? Quips.HoleInOne() : Quips.Rested(), 2.2f);  // a hole-in-one gets its own line (OUT-26)
             var head = mascot.transform.position + new Vector3(0f, 0.38f, -0.5f);
             for (int i = 0; i < (reduced ? 1 : 2); i++)
             {
@@ -958,7 +963,7 @@ namespace OutOfOffice
                     ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)), ("coffees", level.StarsCollected), ("stamps", newStamps));
                 TrackQuest(QuestKind.FinishLevels);
                 if (shots <= Def.Par) TrackQuest(QuestKind.ParFinishes);
-                if (shots == 1) TrackQuest(QuestKind.HoleInOne);
+                if (shots == 1 && doOvers == 0) TrackQuest(QuestKind.HoleInOne);  // never after a Do-Over (OUT-13)
             }
             yield return new WaitForSeconds(reduced ? 0.3f : 0.6f);
             state = State.Complete;
@@ -1044,6 +1049,7 @@ namespace OutOfOffice
             KillLevelFx();
             level.Restore(snap);
             levelTime = snap.Time;
+            HoldMovers();
             restPos = snap.Puck;
             mascot.Tumble = false;
             puck.PlaceAt(restPos, true);  // pops back in
@@ -1070,7 +1076,7 @@ namespace OutOfOffice
         void UsePerk()
         {
             perk = StaffPerks.For(progress.Outfit.Employee);
-            AimPreview.Reach = perk.AimReach * aimBoost;
+            AimPreview.Reach = perk.AimReach * aimBoost * BoosterAim;
         }
 
         // After every shot that didn't end in bed: a warning before the last shot, and a failed level after it.
@@ -1158,6 +1164,7 @@ namespace OutOfOffice
             var snap = history.Pop();
             level.Restore(snap);
             levelTime = snap.Time;
+            HoldMovers();
             // The board rewinds, but the shot still counts (OUT-27): otherwise the shot limit and par mean nothing.
             undos++;
             restPos = snap.Puck;

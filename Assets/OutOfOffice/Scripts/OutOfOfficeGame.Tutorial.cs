@@ -28,34 +28,69 @@ namespace OutOfOffice
             };
         }
 
-        // New gadgets in this room, a card each, with the room held still behind them.
+        // Something new to show: its art (made when the card opens), the card's words, and what meeting it does.
+        struct Intro
+        {
+            public System.Func<Texture> Art;
+            public bool Icon;
+            public string Heading, Name, Text;
+            public System.Action Met;
+        }
+
+        // New things in this room, a card each, with the room held still behind them: gadgets it uses for the first
+        // time, then any booster unlocked here (OUT-13), which comes with three to start.
         void IntroduceGadgets()
         {
             if (levelIndex < 0) return;
-            var fresh = new List<Gadget>();
+            var intros = new List<Intro>();
             foreach (var g in Gadgets.In(Def))
-                if (!progress.SeenGadget(g.Key)) fresh.Add(g);
-            if (fresh.Count == 0) return;
+            {
+                if (progress.SeenGadget(g.Key)) continue;
+                var gadget = g;
+                intros.Add(new Intro
+                {
+                    Art = () => GadgetPreview.Get(gadget.Key), Heading = "NEW IN THE OFFICE", Name = gadget.Name, Text = gadget.Text,
+                    Met = () => { progress.MarkGadget(gadget.Key); progress.MarkFtue("gadget_" + gadget.Key); },
+                });
+            }
+            foreach (var b in Boosters.All)
+            {
+                if (!progress.BoosterUnlocked(b.Kind) || progress.BoosterIntroduced(b.Kind)) continue;
+                var booster = b;
+                intros.Add(new Intro
+                {
+                    Art = () => UiArt.Icon3D(booster.Icon)?.texture, Icon = true, Heading = "NEW BOOSTER", Name = booster.Name,
+                    Text = booster.Text + $" Here are {Boosters.StartGift} to start.",
+                    Met = () =>
+                    {
+                        progress.IntroduceBooster(booster.Kind);
+                        progress.MarkFtue("booster_" + booster.Key);
+                        hud.MarkNewBooster(true);
+                        hud.SetBoostersShown(BoostersHere);
+                    },
+                });
+            }
+            if (intros.Count == 0) return;
             CancelAim(false);
             stateBeforePause = State.Ready;
             state = State.Paused;
             Time.timeScale = 0f;
-            ShowGadgetCard(fresh, 0);
+            ShowIntroCard(intros, 0);
         }
 
-        void ShowGadgetCard(List<Gadget> fresh, int i)
+        void ShowIntroCard(List<Intro> intros, int i)
         {
-            if (i >= fresh.Count)
+            if (i >= intros.Count)
             {
                 Time.timeScale = 1f;
                 if (state == State.Paused) state = State.Ready;
                 return;
             }
-            var g = fresh[i];
-            progress.MarkGadget(g.Key);
-            progress.MarkFtue("gadget_" + g.Key);
+            var intro = intros[i];
+            intro.Met();
             sound.Play(Sfx.Reward, 0.45f, 1.2f, 0.6f);
-            hud.ShowGadget(g, "NEW IN THE OFFICE", fresh.Count > 1 ? $"{i + 1}/{fresh.Count}" : "", true, () => ShowGadgetCard(fresh, i + 1));
+            hud.ShowIntro(intro.Art(), intro.Icon, intro.Heading, intro.Name, intro.Text, intros.Count > 1 ? $"{i + 1}/{intros.Count}" : "", true,
+                () => ShowIntroCard(intros, i + 1));
         }
 
         // Every frame: the hand on the first room, while the employee waits for a first shot.

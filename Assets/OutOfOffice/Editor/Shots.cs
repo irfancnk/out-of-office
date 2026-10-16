@@ -318,6 +318,23 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-hud.png"), Canvas.ForceUpdateCanvases);
 
+                // Boosters (OUT-13): the tray open in a room, and a new booster's card.
+                hud.BoosterUnlocked = k => true;
+                hud.BoosterCount = k => k == BoosterKind.Laser ? 2 : k == BoosterKind.Overtime ? 1 : 0;
+                hud.BoosterUsable = k => k != BoosterKind.DoOver;
+                hud.BoosterActive = k => k == BoosterKind.CoffeeBreak;
+                hud.SetBoostersShown(true);
+                hud.SetBoosterTray(true);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-boosters.png"), Canvas.ForceUpdateCanvases);
+                hud.SetBoosterTray(false);
+                var magnetBed = OutOfOffice.Boosters.Find(BoosterKind.MagnetBed);
+                hud.ShowIntro(UiArt.Icon3D(magnetBed.Icon).texture, true, "NEW BOOSTER", magnetBed.Name, magnetBed.Text + " Here are 3 to start.", "", true, null);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-booster-new.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
+                hud.SetBoostersShown(false);
+
                 hud.ShowComplete(9, 3, 2, 3, true, false, 2);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete.png"), Canvas.ForceUpdateCanvases);

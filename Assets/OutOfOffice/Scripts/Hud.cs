@@ -153,6 +153,7 @@ namespace OutOfOffice
             BuildGadgetCard();  // the first-time experience (OUT-11)
             BuildGuide();
             BuildHand();
+            BuildBoosters();  // OUT-13
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -548,6 +549,10 @@ namespace OutOfOffice
                 ShopRow(r, "tv", "FREE ENERGY", free ? $"+{Catalog.AdEnergy} energy, no video needed." : $"Watch a short video: +{Catalog.AdEnergy} energy.",
                     unlimited ? "ACTIVE" : ready ? (free ? "TAKE" : "WATCH") : "LATER", ready && !unlimited, Palette.UiBlue, () => EnergyWithAd?.Invoke());
             });
+            // Boosters (OUT-13): a box of every one unlocked so far.
+            if (System.Array.Exists(Boosters.All, b => BoosterUnlocked?.Invoke(b.Kind) ?? false))
+                rows.Add(r => ShopRow(r, "briefcase", "BOOSTER BOX", $"{Boosters.BoxEach} of every booster you've unlocked.", $"{Boosters.BoxGems} GEMS",
+                    gemsNow >= Boosters.BoxGems, GemPurple, () => BuyBoosterBox?.Invoke()));
             if (!passFirst) GemRows();
             rows.Add(r =>
             {
@@ -2157,6 +2162,7 @@ namespace OutOfOffice
 
         public void HideAll()
         {
+            SetBoosterTray(false);
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
             foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard })

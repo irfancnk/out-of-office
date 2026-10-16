@@ -99,11 +99,15 @@ namespace OutOfOffice
 
         public float Time;  // level clock of the last tick: drives movers and pop-up spikes
 
-        public void TickMovers(float time, bool snap)
+        public void TickMovers(float time, bool snap) => TickMovers(time, snap, time);
+
+        // moverTime: the clock for moving desks and turnstiles. A Coffee Break (OUT-13) holds it still while pop walls and
+        // pop-up spikes keep their beat on `time`.
+        public void TickMovers(float time, bool snap, float moverTime)
         {
             Time = time;
             foreach (var w in PopWalls) w.Collider.enabled = w.Up(time);
-            foreach (var m in Movers) m.Tick(time, snap);
+            foreach (var m in Movers) m.Tick(moverTime, snap);
         }
 
         // Presses a switch once and opens its gates. Returns false if it was already pressed.

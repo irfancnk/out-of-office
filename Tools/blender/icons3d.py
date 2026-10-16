@@ -441,6 +441,95 @@ def hand():
     face_camera(parts, tilt=-10, turn=18)
 
 
+def laser():
+    # Booster (OUT-13) "Laser Pointer": a chunky pen with a glowing red tip and its dot.
+    body = material("Pen", hexc("#3E4C7A"), 0.3, coat=0.6)
+    metal = material("Metal", hexc("#C8D2E6"), 0.25, metal=0.8)
+    red = material("Red", hexc("#FF3B3B"), 0.2, emit=2.5)
+    parts = [cyl(0.2, 1.8, (0, 0, 0), body, verts=40, bevel=0.06)]
+    parts.append(cyl(0.21, 0.3, (0, 0, 0.92), metal, verts=40, bevel=0.04))
+    parts.append(cyl(0.12, 0.16, (0, 0, 1.12), metal, verts=32, bevel=0.03, r2=0.08))
+    parts.append(sphere(0.07, (0, 0, 1.22), red))
+    parts.append(box((0.12, 0.08, 0.5), (0.21, 0, 0.25), metal, 0.03))           # clip
+    parts.append(sphere(0.16, (0, 0, 1.75), red))                                  # the dot it throws
+    pivot = bpy.data.objects.new("Pivot", None)
+    bpy.context.scene.collection.objects.link(pivot)
+    for o in parts:
+        o.parent = pivot
+    pivot.rotation_euler = (math.radians(-30), math.radians(-40), math.radians(20))
+
+
+def alarm():
+    # Booster "Overtime" (+3 shots): a red twin-bell alarm clock.
+    red = material("Red", hexc("#FF5A4E"), 0.3, coat=0.6)
+    face = material("Face", hexc("#FFF6E8"), 0.4)
+    ink = material("Ink", hexc("#2A1E36"), 0.4)
+    gold = material("Gold", hexc("#FFC531"), 0.25, metal=0.6, coat=0.5)
+    parts = [cyl(0.8, 0.5, (0, 0, 0), red, rot=(math.pi / 2, 0, 0), verts=64, bevel=0.1)]
+    parts.append(cyl(0.64, 0.06, (0, -0.25, 0), face, rot=(math.pi / 2, 0, 0), verts=64, bevel=0.0))
+    parts.append(box((0.07, 0.04, 0.42), (0, -0.3, 0.17), ink, 0.02))
+    parts.append(box((0.3, 0.04, 0.07), (0.13, -0.3, 0), ink, 0.02))
+    for side in (-1, 1):
+        bell = sphere(0.3, (side * 0.52, 0.0, 0.72), gold, scale=(1, 1, 0.7))
+        leg = cyl(0.07, 0.3, (side * 0.45, 0.0, -0.82), ink, rot=(0, side * 0.5, 0), verts=16, bevel=0.0)
+        parts += [bell, leg]
+    parts.append(box((0.8, 0.08, 0.08), (0, 0, 0.98), ink, 0.03))
+    face_camera(parts, tilt=-8, turn=20)
+
+
+def mulligan():
+    # Booster "Do-over": the undo arrow in gold.
+    arc_arrow(-25, 185, False)
+    for m in bpy.data.materials:
+        if m.name.startswith("Arrow"):
+            bsdf = m.node_tree.nodes["Principled BSDF"]
+            bsdf.inputs["Base Color"].default_value = hexc("#FFC233")
+            bsdf.inputs["Metallic"].default_value = 0.35
+    for light in bpy.data.lights:
+        light.energy *= 1.6  # gold takes the full light the white arrows don't
+
+
+def magnet():
+    # Booster "Magnet Bed": a classic red horseshoe magnet with silver poles.
+    red = material("Red", hexc("#FF4A4A"), 0.3, coat=0.6)
+    steel = material("Steel", hexc("#D6DEEC"), 0.2, metal=0.9)
+    data = bpy.data.curves.new("Horseshoe", "CURVE")
+    data.dimensions = "3D"
+    data.bevel_depth = 0.26
+    data.bevel_resolution = 6
+    data.use_fill_caps = True
+    spline = data.splines.new("POLY")
+    steps = 40
+    spline.points.add(steps)
+    for i in range(steps + 1):
+        a = math.pi * i / steps
+        spline.points[i].co = (0.62 * math.cos(a), 0.0, 0.62 * math.sin(a), 1.0)
+    arc = bpy.data.objects.new("Arc", data)
+    bpy.context.scene.collection.objects.link(arc)
+    bpy.context.view_layer.objects.active = arc
+    arc.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    finish(arc, red)
+    parts = [arc]
+    for side in (-1, 1):
+        parts.append(cyl(0.26, 0.5, (side * 0.62, 0, -0.25), red, verts=32, bevel=0.0))
+        parts.append(cyl(0.27, 0.32, (side * 0.62, 0, -0.66), steel, verts=32, bevel=0.03))
+    face_camera(parts, tilt=-14, turn=22)
+
+
+def briefcase():
+    # The booster button: an office briefcase, brown leather with gold clasps.
+    leather = material("Leather", hexc("#B4693A"), 0.45, coat=0.3)
+    dark = material("Dark", hexc("#7A4222"), 0.5)
+    gold = material("Gold", hexc("#FFC531"), 0.25, metal=0.6, coat=0.5)
+    parts = [box((1.7, 0.6, 1.15), (0, 0, 0), leather, 0.16)]
+    parts.append(box((1.72, 0.62, 0.08), (0, 0, 0.18), dark, 0.03))                # the lid seam
+    parts.append(torus(0.32, 0.07, (0, 0, 0.66), dark, rot=(math.pi / 2, 0, 0), scale=(1.2, 1, 0.9)))
+    for side in (-1, 1):
+        parts.append(box((0.2, 0.08, 0.16), (side * 0.5, -0.31, 0.18), gold, 0.03))
+    face_camera(parts, tilt=-10, turn=24)
+
+
 def restart():
     arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
 
@@ -450,7 +539,8 @@ def undo():
 
 
 PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
-         "restart": restart, "undo": undo, "bolt": bolt, "tv": tv, "hand": hand}
+         "restart": restart, "undo": undo, "bolt": bolt, "tv": tv, "hand": hand,
+         "laser": laser, "alarm": alarm, "mulligan": mulligan, "magnet": magnet, "briefcase": briefcase}
 
 
 def render(name):

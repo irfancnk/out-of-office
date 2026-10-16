@@ -138,6 +138,8 @@ namespace OutOfOffice
 
         Card gadgetCard;
         RawImage gadgetArt;
+        Image gadgetBack;
+        RectTransform gadgetArtRect;
         TextMeshProUGUI gadgetName, gadgetText, gadgetCount;
         RectTransform gadgetNew;
         System.Action gadgetDone;
@@ -152,7 +154,9 @@ namespace OutOfOffice
             var maskImage = Img(mask, UiArt.Button, Color.white);
             Sliced(maskImage, 536f, 0.11f);
             mask.gameObject.AddComponent<Mask>().showMaskGraphic = false;
-            gadgetArt = Rect("Art", mask, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
+            gadgetBack = Img(Rect("Back", mask, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero), Shapes.Square, Inset);  // under icons with a clear background
+            gadgetArtRect = Rect("Art", mask, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            gadgetArt = gadgetArtRect.gameObject.AddComponent<RawImage>();
             gadgetArt.raycastTarget = false;
             gadgetNew = Rect("New", frame, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -16f), new Vector2(170f, 74f));
             gadgetNew.localRotation = Quaternion.Euler(0f, 0f, 9f);
@@ -178,15 +182,22 @@ namespace OutOfOffice
         }
 
         // heading: the ribbon ("NEW IN THE OFFICE", or the field guide's). counter: "1/2" when several arrive at once.
-        public void ShowGadget(Gadget g, string heading, string counter, bool isNew, System.Action done)
+        public void ShowGadget(Gadget g, string heading, string counter, bool isNew, System.Action done) =>
+            ShowIntro(GadgetArt?.Invoke(g.Key), false, heading, g.Name, g.Text, counter, isNew, done);
+
+        // The intro card for anything new: a gadget with its live preview, or a booster (OUT-13) with its icon, which is
+        // drawn smaller on a light backdrop.
+        public void ShowIntro(Texture art, bool icon, string heading, string name, string text, string counter, bool isNew, System.Action done)
         {
             Remember();
             HideAll();
             gadgetCard.Title.text = heading;
-            gadgetArt.texture = GadgetArt?.Invoke(g.Key);
-            gadgetArt.color = gadgetArt.texture != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-            gadgetName.text = g.Name;
-            gadgetText.text = g.Text;
+            gadgetArt.texture = art;
+            gadgetArt.color = art != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            gadgetArtRect.offsetMin = icon ? new Vector2(70f, 70f) : Vector2.zero;
+            gadgetArtRect.offsetMax = icon ? new Vector2(-70f, -70f) : Vector2.zero;
+            gadgetName.text = name;
+            gadgetText.text = text;
             gadgetCount.text = counter;
             gadgetNew.gameObject.SetActive(isNew);
             gadgetDone = done;
