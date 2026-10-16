@@ -109,6 +109,8 @@ namespace OutOfOffice
             cheekL = Part("Cheek L", MascotArt.Cheek, 20, CheekPos(-1f), 0.14f, out cheekLR);
             cheekR = Part("Cheek R", MascotArt.Cheek, 20, CheekPos(1f), 0.14f, out cheekRR);
             nose = Part("Nose", MascotArt.Nose, 20, NosePos, 0.05f, out noseR);
+            marks = Part("Marks", MascotArt.Freckles, 20, Vector2.zero, 0.5f, out marksR);
+            marksR.enabled = false;
             eyeL = Part("Eye L", MascotArt.EyeOpen, 21, EyePos(-1f), 0.2f, out eyeLR);
             eyeR = Part("Eye R", MascotArt.EyeOpen, 21, EyePos(1f), 0.2f, out eyeRR);
             browL = Part("Brow L", MascotArt.Brow, 21, BrowPos(-1f), 0.12f, out browLR);
@@ -165,6 +167,14 @@ namespace OutOfOffice
                 case FaceItem.Glasses: sprite = MascotArt.Glasses; size = 0.52f; order = 22; faceItemPos = new Vector2(0f, 0.01f); break;
                 case FaceItem.BowTie: sprite = MascotArt.BowTie; size = 0.17f; order = 22; faceItemPos = new Vector2(0f, -0.2f); break;
                 case FaceItem.Freckles: sprite = MascotArt.Freckles; size = 0.5f; order = 20; faceItemPos = new Vector2(0f, -0.045f); break;
+                case FaceItem.Monocle: sprite = MascotArt.Monocle; size = 0.52f; order = 22; faceItemPos = new Vector2(0f, 0.01f); break;
+                case FaceItem.HeartShades: sprite = MascotArt.HeartShades; size = 0.52f; order = 22; faceItemPos = new Vector2(0f, 0.01f); break;
+                case FaceItem.Aviators: sprite = MascotArt.Aviators; size = 0.52f; order = 22; faceItemPos = new Vector2(0f, 0.01f); break;
+                case FaceItem.RoundSpecs: sprite = MascotArt.RoundSpecs; size = 0.5f; order = 22; faceItemPos = new Vector2(0f, 0.01f); break;
+                case FaceItem.VrGoggles: sprite = MascotArt.VrGoggles; size = 0.56f; order = 22; faceItemPos = new Vector2(0f, 0.015f); break;
+                case FaceItem.Handlebar: sprite = MascotArt.Handlebar; size = 0.22f; order = 22; faceItemPos = new Vector2(0f, -0.07f); break;
+                case FaceItem.ClownNose: sprite = MascotArt.ClownNose; size = 0.105f; order = 22; faceItemPos = new Vector2(0f, -0.045f); break;
+                case FaceItem.BandAid: sprite = MascotArt.BandAid; size = 0.24f; order = 22; faceItemPos = new Vector2(0.03f, -0.025f); break;
                 default: sprite = MascotArt.Mustache; size = 0.18f; order = 22; faceItemPos = new Vector2(0f, -0.072f); break;
             }
             faceItemR.sprite = sprite;
@@ -225,6 +235,13 @@ namespace OutOfOffice
             part.localScale = r.scale * Mathf.Lerp(1f, scale, k);
         }
 
+        // The person's own face (OUT-42), resolved once per skin.
+        FaceDef features = FaceDef.Default;
+        Sprite openEye, tiredEye, restMouth;
+        float restMouthScale = 1f;
+        Transform marks;
+        SpriteRenderer marksR;
+
         Transform faceItem;
         SpriteRenderer faceItemR;
         FaceItem faceItemKind;
@@ -233,9 +250,20 @@ namespace OutOfOffice
         public void SetSkin(SkinDef skin)
         {
             SetFaceItem(skin.Face);
+            features = skin.Features ?? FaceDef.Default;
+            openEye = MascotArt.EyeFor(features, MascotArt.Lid.Open);
+            tiredEye = null;  // made on first use: few faces ever look tired
+            restMouth = MascotArt.RestMouthFor(features.Mouth, out float mouthSize);
+            restMouthScale = mouthSize / 0.1f;
+            browLR.sprite = browRR.sprite = MascotArt.BrowFor(features.Brows);
+            noseR.sprite = MascotArt.NoseFor(features.Nose, out float noseSize);
+            nose.GetComponent<PartScale>().Base = Vector3.one * (noseSize / (noseR.sprite.rect.width / noseR.sprite.pixelsPerUnit));
+            var markSprite = MascotArt.MarksFor(features.Marks);
+            marksR.enabled = markSprite != null;
+            if (markSprite != null) marksR.sprite = markSprite;
             // Blush, nose, and brows come from the person's own coloring, so every skin tone reads naturally.
             var blush = Color.Lerp(skin.SkinTone, new Color(1f, 0.42f, 0.45f), 0.6f);
-            cheekLR.color = cheekRR.color = new Color(blush.r, blush.g, blush.b, 0.5f);
+            cheekLR.color = cheekRR.color = new Color(blush.r, blush.g, blush.b, (features.Marks & FaceMarks.Rosy) != 0 ? 0.8f : 0.5f);
             var shade = skin.SkinTone * 0.72f;
             noseR.color = new Color(shade.r, shade.g, shade.b, 0.6f);
             var brow = Color.Lerp(skin.HairColor, Color.black, 0.3f);
@@ -628,9 +656,9 @@ namespace OutOfOffice
                 case Eyes.Closed: eyeSprite = MascotArt.EyeClosed; break;
                 case Eyes.Star: eyeSprite = MascotArt.EyeStar; eyeScale = 1.1f + 0.08f * Mathf.Sin(Time.time * 9f); break;
                 case Eyes.Sleepy: eyeSprite = MascotArt.EyeSleepy; break;
-                case Eyes.Tired: eyeSprite = MascotArt.EyeTired; break;
-                case Eyes.Wide: eyeSprite = MascotArt.EyeOpen; eyeScale = 1.22f; break;
-                default: eyeSprite = MascotArt.EyeOpen; break;
+                case Eyes.Tired: eyeSprite = tiredEye != null ? tiredEye : (tiredEye = MascotArt.EyeFor(features, MascotArt.Lid.Tired)); break;
+                case Eyes.Wide: eyeSprite = openEye ?? MascotArt.EyeOpen; eyeScale = 1.22f; break;
+                default: eyeSprite = openEye ?? MascotArt.EyeOpen; break;
             }
             if (blinking) { eyeSprite = MascotArt.EyeClosed; eyeScale = 1f; }
             if (Mode == MascotMode.Aiming && e == Eyes.Open) eyeY = 1f - 0.25f * AimPower;  // a determined squint
@@ -670,16 +698,18 @@ namespace OutOfOffice
                 case Mouth.Wavy: mouthSprite = MascotArt.MouthWavy; break;
                 case Mouth.Grin: mouthSprite = MascotArt.MouthGrin; break;
                 case Mouth.Flat: mouthSprite = MascotArt.MouthFlat; mouthScale = 0.7f; break;
-                default: mouthSprite = MascotArt.MouthSmile; break;
+                default: mouthSprite = restMouth ?? MascotArt.MouthSmile; mouthScale = restMouthScale; break;
             }
             mouthR.sprite = mouthSprite;
             SetPart(mouthT, MouthPos + lookShift * 0.8f, mouthScale, 1f, 0f);
             SetPart(cheekL, CheekPos(-1f) + lookShift * 0.6f, 1f, 1f, 0f);
             SetPart(cheekR, CheekPos(1f) + lookShift * 0.6f, 1f, 1f, 0f);
+            if (marksR.enabled) SetPart(marks, lookShift * 0.7f, 1f, 1f, 0f);
             if (faceItemKind != FaceItem.None)
             {
                 // Glasses sit a little crooked (it has been a long week) and wobble after knocks.
-                bool specs = faceItemKind == FaceItem.Glasses || faceItemKind == FaceItem.Sunglasses || faceItemKind == FaceItem.StarShades;
+                bool specs = faceItemKind == FaceItem.Glasses || faceItemKind == FaceItem.Sunglasses || faceItemKind == FaceItem.StarShades
+                    || faceItemKind == FaceItem.HeartShades || faceItemKind == FaceItem.Aviators || faceItemKind == FaceItem.RoundSpecs;
                 SetPart(faceItem, faceItemPos + lookShift * 0.8f, 1f, 1f, specs ? -4f + Mathf.Clamp(glassesTilt, -10f, 10f) : 0f);
             }
 
@@ -708,7 +738,7 @@ namespace OutOfOffice
 
     // Procedural face sprites, drawn with signed distances at 128 px. White is not used for strokes, so faces read on
     // every body color.
-    public static class MascotArt
+    public static partial class MascotArt
     {
         static readonly Color Ink = new Color(0.2f, 0.12f, 0.11f);
         static readonly Color MouthIn = new Color(0.5f, 0.17f, 0.2f);
@@ -1031,20 +1061,21 @@ namespace OutOfOffice
             return c;
         }
 
-        static Sprite Get(string key, System.Func<float, float, Color> shade)
+        // res: sampled pixels across. Face features use fewer (OUT-42): they are drawn small, and each person brings new ones.
+        static Sprite Get(string key, System.Func<float, float, Color> shade, int res = 192)
         {
             if (cache.TryGetValue(key, out var s) && s != null) return s;
             // Drawn in 128 px coordinates but sampled at Res, so faces stay crisp on close-ups and the app icon.
-            const int Res = 192;
-            const float step = S / (float)Res;
+            int Res = res;
+            float step = S / (float)Res;
             aa = 1f / step;
-            var px = new Color[Res * Res];
+            var px = new Color32[Res * Res];  // a quarter of the garbage of Color
             for (int y = 0; y < Res; y++)
             for (int x = 0; x < Res; x++)
                 px[y * Res + x] = shade((x + 0.5f) * step, (y + 0.5f) * step);
             aa = 1f;
             var tex = new Texture2D(Res, Res, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear };
-            tex.SetPixels(px);
+            tex.SetPixels32(px);
             tex.Apply(true, true);
             return cache[key] = Sprite.Create(tex, new Rect(0, 0, Res, Res), new Vector2(0.5f, 0.5f), Res);
         }

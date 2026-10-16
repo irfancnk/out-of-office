@@ -26,46 +26,140 @@ namespace OutOfOffice.EditorTools
             string dir = System.Environment.GetEnvironmentVariable("OOO_SHOTS");
             if (string.IsNullOrEmpty(dir)) dir = Path.Combine(Path.GetTempPath(), "out-of-office-shots");
             Directory.CreateDirectory(dir);
-            try { Heroes(dir); Closeups(dir); }
+            try { Heroes(dir); Faces(dir); Closeups(dir); }
             catch (System.Exception e) { Debug.LogException(e); code = 3; }
             EditorApplication.Exit(code);
         }
 
-        // Every employee as the big title portrait, side by side: the size players judge the art at.
+        // The whole staff as title portraits, side by side in wardrobe order (OUT-43): interns first, the boss last.
+        // Rendered at the title size and halved, so the sheet stays a sensible size.
         static void Heroes(string dir)
         {
-            string[] staff = { "e.ava", "e.leo", "e.mia", "e.sam", "e.jax", "e.nova", "e.kai", "e.otto", "e.luna", "e.ivy", "e.zara", "e.rex" };
-            const int cell = 768, perRow = 6;
-            int rows = (staff.Length + perRow - 1) / perRow;
-            var sheet = new Texture2D(cell * perRow, cell * rows, TextureFormat.RGBA32, false);
+            var staff = Cosmetics.InSlot(Slot.Employee);
+            const int full = 768, cell = full / 2, perRow = 8;
+            int rows = (staff.Count + perRow - 1) / perRow;
             var back = new Color32(233, 226, 214, 255);
-            var fill = new Color32[sheet.width * sheet.height];
-            for (int i = 0; i < fill.Length; i++) fill[i] = back;
-            sheet.SetPixels32(fill);
+            var sheet = Sheet(cell * perRow, cell * rows, back);
             var (root, _) = Stage(Themes.All[0]);  // the shot stage's sun and ambient light the portraits
             Object.DestroyImmediate(IconStudio.RenderHeroNow(Cosmetics.Compose(Cosmetics.Default)));  // warm-up: the first render of a run comes out washed
             try
             {
-                for (int i = 0; i < staff.Length; i++)
+                for (int i = 0; i < staff.Count; i++)
                 {
                     var o = Cosmetics.Default;
-                    o.Employee = staff[i];
+                    o.Employee = staff[i].Id;
                     o.Face = "f.none";
                     var hero = IconStudio.RenderHeroNow(Cosmetics.Compose(o));
-                    var px = hero.GetPixels32();
-                    for (int p = 0; p < px.Length; p++)
-                    {
-                        float a = px[p].a / 255f;
-                        px[p] = Color32.Lerp(back, new Color32(px[p].r, px[p].g, px[p].b, 255), a);
-                    }
-                    sheet.SetPixels32(i % perRow * cell, (rows - 1 - i / perRow) * cell, cell, cell, px);
+                    sheet.SetPixels32(i % perRow * cell, (rows - 1 - i / perRow) * cell, cell, cell, Halve(hero.GetPixels32(), full, back));
                     Object.DestroyImmediate(hero);
                 }
             }
             finally { Object.DestroyImmediate(root); }
+            Save(sheet, Path.Combine(dir, "heroes.png"));
+        }
+
+        // Every employee's face close up (OUT-42), in wardrobe order, to check no two look alike.
+        static void Faces(string dir)
+        {
+            var staff = Cosmetics.InSlot(Slot.Employee);
+            const int cell = 192, perRow = 8;
+            int rows = (staff.Count + perRow - 1) / perRow;
+            var sheet = Sheet(cell * perRow, cell * rows, new Color32(233, 226, 214, 255));
+            var (root, _) = Stage(Themes.All[0]);
+            try
+            {
+                for (int i = 0; i < staff.Count; i++)
+                {
+                    var o = Cosmetics.Default;
+                    o.Employee = staff[i].Id;
+                    o.Face = "f.none";
+                    o.Hat = "h.tuft";
+                    var face = IconStudio.RenderFaceNow(Cosmetics.Compose(o));
+                    sheet.SetPixels32(i % perRow * cell, (rows - 1 - i / perRow) * cell, cell, cell, face.GetPixels32());
+                    Object.DestroyImmediate(face);
+                }
+            }
+            finally { Object.DestroyImmediate(root); }
+            Save(sheet, Path.Combine(dir, "faces.png"));
+
+            // A few up close, one of each kind of mark, to judge the fine lines.
+            string[] detail = { "e.theo", "e.gus", "e.otto", "e.neo", "e.ada", "e.chad", "e.mia", "e.boss" };
+            const int big = 384;
+            var closeups = Sheet(big * 4, big * 2, new Color32(233, 226, 214, 255));
+            (root, _) = Stage(Themes.All[0]);
+            try
+            {
+                for (int i = 0; i < detail.Length; i++)
+                {
+                    var o = Cosmetics.Default;
+                    o.Employee = detail[i];
+                    o.Face = "f.none";
+                    o.Hat = "h.tuft";
+                    var face = IconStudio.RenderFaceNow(Cosmetics.Compose(o), big);
+                    closeups.SetPixels32(i % 4 * big, (1 - i / 4) * big, big, big, face.GetPixels32());
+                    Object.DestroyImmediate(face);
+                }
+            }
+            finally { Object.DestroyImmediate(root); }
+            Save(closeups, Path.Combine(dir, "faces-detail.png"));
+
+            // The new face items (OUT-44) up close on one face.
+            string[] stickers = { "f.monocle", "f.heartshades", "f.aviators", "f.roundspecs", "f.handlebar", "f.clownnose", "f.bandaid", "f.vrgoggles" };
+            var worn = Sheet(big * 4, big * 2, new Color32(233, 226, 214, 255));
+            (root, _) = Stage(Themes.All[0]);
+            try
+            {
+                for (int i = 0; i < stickers.Length; i++)
+                {
+                    var o = Cosmetics.Default;
+                    o.Face = stickers[i];
+                    o.Hat = "h.tuft";
+                    var face = IconStudio.RenderFaceNow(Cosmetics.Compose(o), big);
+                    worn.SetPixels32(i % 4 * big, (1 - i / 4) * big, big, big, face.GetPixels32());
+                    Object.DestroyImmediate(face);
+                }
+            }
+            finally { Object.DestroyImmediate(root); }
+            Save(worn, Path.Combine(dir, "face-items.png"));
+        }
+
+        static Texture2D Sheet(int w, int h, Color32 back)
+        {
+            var sheet = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var fill = new Color32[w * h];
+            for (int i = 0; i < fill.Length; i++) fill[i] = back;
+            sheet.SetPixels32(fill);
+            return sheet;
+        }
+
+        static void Save(Texture2D sheet, string path)
+        {
             sheet.Apply();
-            File.WriteAllBytes(Path.Combine(dir, "heroes.png"), sheet.EncodeToPNG());
+            File.WriteAllBytes(path, sheet.EncodeToPNG());
             Object.DestroyImmediate(sheet);
+        }
+
+        // A square image at half size (2 x 2 box filter), flattened onto the background.
+        static Color32[] Halve(Color32[] px, int size, Color32 back)
+        {
+            int half = size / 2;
+            var outPx = new Color32[half * half];
+            for (int y = 0; y < half; y++)
+            for (int x = 0; x < half; x++)
+            {
+                float r = 0f, g = 0f, b = 0f;
+                for (int dy = 0; dy < 2; dy++)
+                for (int dx = 0; dx < 2; dx++)
+                {
+                    var p = px[(y * 2 + dy) * size + x * 2 + dx];
+                    float a = p.a / 255f;
+                    r += Mathf.Lerp(back.r, p.r, a);
+                    g += Mathf.Lerp(back.g, p.g, a);
+                    b += Mathf.Lerp(back.b, p.b, a);
+                }
+                outPx[y * half + x] = new Color32((byte)(r / 4f), (byte)(g / 4f), (byte)(b / 4f), 255);
+            }
+            return outPx;
         }
 
         [MenuItem("Out of Office/Render Review Shots")]
@@ -83,6 +177,7 @@ namespace OutOfOffice.EditorTools
                 foreach (var id in new[] { "ring", "figure8", "hairpin", "crossroads", "easy", "boardroom" })  // the last two: the receptionist in her corner
                     LevelShot(id, dir, true);
                 TitleShot(dir);
+                Faces(dir);
                 Closeups(dir);
                 Icon(Path.Combine(dir, "icon.png"));
             }
@@ -259,6 +354,10 @@ namespace OutOfOffice.EditorTools
                 hud.ShowSkins(Slot.Face);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-wardrobe-face.png"), Canvas.ForceUpdateCanvases);
+                hud.ShowSkins(Slot.Employee);  // the staff by department (OUT-43)
+                hud.FinishWardrobeTiles();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-wardrobe-staff.png"), Canvas.ForceUpdateCanvases);
 
                 hud.ShowLevels();
                 Tweens.FinishAll();

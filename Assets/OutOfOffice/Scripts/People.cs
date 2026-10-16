@@ -41,12 +41,15 @@ namespace OutOfOffice
             var trousers = Look.Person(skirt ? SkirtColor : TrouserColor, 0.15f);
 
             BuildTorso(roll, skin, shirt, trousers);
+            Dress(roll.Find("Torso"), skin);
+            // A blazer or a cardigan has its own sleeves.
+            var sleeves = (skin.Extras & (PersonLook.Blazer | PersonLook.Cardigan)) != 0 ? Look.Person(skin.Jacket, 0.15f) : shirt;
             foreach (float side in new[] { -1f, 1f })
             {
                 // Arms: a puffy sleeve, a short round forearm, and a mitten hand.
                 var arm = Pivot(roll, side < 0f ? "Arm L" : "Arm R", new Vector3(side * 0.218f, 0f, 0.07f));
                 arm.localRotation = Quaternion.Euler(0f, side * 8f, 0f);
-                Round("Sleeve", new Vector3(0.135f, 0.13f, 0.13f), shirt, arm, new Vector3(0f, 0f, 0.045f));
+                Round("Sleeve", new Vector3(0.135f, 0.13f, 0.13f), sleeves, arm, new Vector3(0f, 0f, 0.045f));
                 Round("Forearm", new Vector3(0.088f, 0.088f, 0.1f), skinMat, arm, new Vector3(0f, 0f, 0.11f));
                 Round("Hand", new Vector3(0.112f, 0.106f, 0.1f), skinMat, arm, new Vector3(0f, -0.004f, 0.168f));
                 if ((skin.Extras & PersonLook.Tattoos) != 0)
@@ -106,6 +109,41 @@ namespace OutOfOffice
             var tie = Pivot(torso, "Tie", new Vector3(0.006f, -0.148f, -0.222f));
             tie.localRotation = Quaternion.Euler(14f, 0f, 6f);
             Round("Blade", new Vector3(0.055f, 0.02f, 0.13f), tieMat, tie, new Vector3(0f, 0f, 0.068f), false, 2.8f);
+        }
+
+        // Department clothes over the shirt (OUT-43). A blazer or cardigan is two side panels that leave a V of shirt and
+        // tie in front; a sweater vest covers the chest under the knot; an ID badge clips on beside the tie.
+        static void Dress(Transform torso, SkinDef skin)
+        {
+            if (torso == null) return;
+            var look = skin.Extras;
+            var cloth = Look.Person(skin.Jacket, (look & PersonLook.Blazer) != 0 ? 0.25f : 0.1f);
+            if ((look & (PersonLook.Blazer | PersonLook.Cardigan)) != 0)
+            {
+                bool blazer = (look & PersonLook.Blazer) != 0;
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    Round("Jacket", new Vector3(0.25f, 0.345f, 0.36f), cloth, torso, new Vector3(side * 0.088f, 0.004f, -0.125f), true, blazer ? 2.6f : 2.2f);
+                    if (blazer)
+                    {
+                        var lapel = Round("Lapel", new Vector3(0.062f, 0.022f, 0.15f), Look.Person(skin.Jacket * 0.78f, 0.3f), torso, new Vector3(side * 0.052f, -0.162f, -0.205f));
+                        lapel.transform.localRotation = Quaternion.Euler(0f, -side * 24f, 0f);
+                    }
+                }
+                if (!blazer)
+                    for (int i = 0; i < 3; i++)
+                        Round("Button", Vector3.one * 0.024f, Look.Person(Color.Lerp(skin.Jacket, Color.white, 0.6f), 0.5f), torso, new Vector3(-0.034f, -0.168f, -0.2f + i * 0.075f));
+            }
+            if ((look & PersonLook.Vest) != 0)
+                Round("Vest", new Vector3(0.402f, 0.34f, 0.24f), cloth, torso, new Vector3(0f, 0f, -0.085f), true, 2.5f);
+            if ((look & PersonLook.Lanyard) != 0)
+            {
+                // An ID badge clipped to the shirt: a white card with a coloured band, a photo, and the clip.
+                Round("Badge", new Vector3(0.082f, 0.016f, 0.1f), Look.Person(Color.white, 0.4f), torso, new Vector3(0.082f, -0.17f, -0.115f));
+                Round("Badge Band", new Vector3(0.084f, 0.018f, 0.026f), cloth, torso, new Vector3(0.082f, -0.171f, -0.154f));
+                Round("Badge Photo", new Vector3(0.026f, 0.019f, 0.03f), Look.Person(Themes.Hex(0x7A8699), 0.3f), torso, new Vector3(0.068f, -0.172f, -0.11f));
+                Round("Badge Clip", new Vector3(0.03f, 0.02f, 0.03f), Look.Person(Themes.Hex(0x9AA3B0), 0.7f), torso, new Vector3(0.082f, -0.168f, -0.176f));
+            }
         }
 
         static void BuildHead(Transform roll, SkinDef skin, Material skinMat)
@@ -214,6 +252,31 @@ namespace OutOfOffice
                     Bangs(f, hair, 0.85f, 0f);
                     Round("Hair Tie", new Vector3(0.1f, 0.06f, 0.1f), Look.Person(skin.Body, 0.3f), f, new Vector3(0f, 0.28f, -0.14f), false, 2.8f);
                     Round("Tail", new Vector3(0.15f, 0.17f, 0.36f), hair, f, new Vector3(0f, 0.33f, 0.04f)).transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
+                    break;
+                case HairStyle.Bald:
+                    break;  // nothing to comb
+                case HairStyle.Slick:
+                    // Slicked straight back: a smooth shell set back from the forehead, and a glossy ridge over the crown.
+                    Shell(f, hair, 1.035f, 0.08f, 0.02f);
+                    Round("Slick", new Vector3(0.46f, 0.34f, 0.13f), hair, f, new Vector3(0f, 0.03f, -0.235f)).transform.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+                    break;
+                case HairStyle.Combover:
+                    // Bald on top but not giving up: hair round the back and sides, and three brave strands across.
+                    Round("Back", new Vector3(0.5f, 0.22f, 0.3f), hair, f, new Vector3(0f, 0.17f, 0f));
+                    foreach (float side in new[] { -1f, 1f })
+                        Round("Side", new Vector3(0.085f, 0.2f, 0.17f), hair, f, new Vector3(side * 0.27f, 0.05f, -0.03f));
+                    for (int i = 0; i < 3; i++)
+                        Round("Strand", new Vector3(0.36f, 0.055f, 0.034f), hair, f, new Vector3(0.02f, -0.05f + i * 0.06f, -0.262f)).transform.localRotation = Quaternion.Euler(0f, 0f, 12f);
+                    break;
+                case HairStyle.Pigtails:
+                    // Two bunches, one each side, with ties.
+                    Shell(f, hair, 1.04f, 0.055f, 0.03f);
+                    Bangs(f, hair, 0.9f, 0f);
+                    foreach (float side in new[] { -1f, 1f })
+                    {
+                        Round("Pigtail", new Vector3(0.14f, 0.14f, 0.24f), hair, f, new Vector3(side * 0.33f, 0.07f, 0.02f)).transform.localRotation = Quaternion.Euler(0f, side * 28f, 0f);
+                        Round("Hair Tie", new Vector3(0.075f, 0.075f, 0.05f), Look.Person(skin.Body, 0.3f), f, new Vector3(side * 0.29f, 0.07f, -0.08f), false, 2.8f);
+                    }
                     break;
                 case HairStyle.Buzz:
                     // A neat buzz cut, close to the head.

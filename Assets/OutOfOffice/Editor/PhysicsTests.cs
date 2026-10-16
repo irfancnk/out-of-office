@@ -64,6 +64,7 @@ namespace OutOfOffice.EditorTools
                 SaveMigration();
                 Wardrobe();
                 OutfitSlots();
+                StaffRoster();
                 DailyClock();
                 SaveFlush();
                 ChapterChest();
@@ -1105,6 +1106,42 @@ namespace OutOfOffice.EditorTools
             bool ok = wallet && bought && closed && tie && pass && gate && cap && cooldown && newDay && adFree;
             Report("money", ok, $"wallet {wallet}; purchases once {bought}, closed store sells nothing {closed}; pass {pass} (gold tie {tie}); " +
                 $"ads gated in first rooms {gate}, daily cap {cap} ({rewarded}), cooldown {cooldown}, resets daily {newDay}, ad-free skips video {adFree}");
+        }
+
+        // 23. Staff (OUT-42, OUT-43): every employee has a department, a job title and a face of their own; every
+        // department has people; the wardrobe lists them in department order; star goals stay within reach; the
+        // original twelve keep their ids.
+        static void StaffRoster()
+        {
+            var staff = Cosmetics.InSlot(Slot.Employee);
+            var faces = new HashSet<string>();
+            bool titled = true, faced = true, unique = true, ordered = true;
+            for (int i = 0; i < staff.Count; i++)
+            {
+                var s = staff[i];
+                titled &= !string.IsNullOrEmpty(s.Title);
+                faced &= s.Features != null;
+                if (s.Features != null) unique &= faces.Add(s.Features.Key);
+                if (i > 0) ordered &= staff[i - 1].Dept <= s.Dept;
+            }
+            var perDept = new int[System.Enum.GetValues(typeof(Department)).Length];
+            foreach (var s in staff) perDept[(int)s.Dept]++;
+            bool everyDept = System.Array.TrueForAll(perDept, n => n >= 2);
+            int maxStars = Levels.All.Length * 3, topGoal = 0;
+            foreach (var s in staff) topGoal = Mathf.Max(topGoal, s.StarsNeeded);
+            bool reachable = topGoal <= maxStars;
+            bool kept = true;
+            foreach (var id in new[] { "ava", "leo", "mia", "sam", "jax", "nova", "kai", "otto", "luna", "ivy", "zara", "rex" })
+                kept &= Cosmetics.Find("e." + id) != null;
+            // A face composes into the look the game builds.
+            var o = Cosmetics.Default;
+            o.Employee = "e.boss";
+            var look = Cosmetics.Compose(o);
+            bool composed = look.Features != null && look.Features.Eyes == EyeShape.Narrow && (look.Extras & PersonLook.Blazer) != 0;
+
+            bool ok = staff.Count >= 36 && titled && faced && unique && ordered && everyDept && reachable && kept && composed;
+            Report("staff", ok, $"{staff.Count} employees in {perDept.Length} departments ({string.Join(",", perDept)}); titles {titled}, faces {faced} " +
+                $"all different {unique}; listed by department {ordered}; top star goal {topGoal} of {maxStars}; old ids kept {kept}; composed {composed}");
         }
 
         // 22. Undos (OUT-41): three free per attempt, then gems or an ad, the shop when neither; restart resets; the

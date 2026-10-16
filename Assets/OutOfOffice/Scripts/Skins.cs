@@ -5,12 +5,14 @@ namespace OutOfOffice
     // Headwear on top of the employee's head. Purely cosmetic. (Tuft is "no hat": the hair shows.)
     public enum Accessory { Tuft, Bow, Sprout, Antenna, CatEars, Beanie, PartyHat, Crown, Horns, Flower, Halo, Propeller, Cap, BunnyEars, Headphones, ChefHat, TopHat, WizardHat }
 
-    public enum HairStyle { Bob, Short, Bun, Curly, Mohawk, Long, Afro, Spiky, Ponytail, Buzz }
+    public enum HairStyle { Bob, Short, Bun, Curly, Mohawk, Long, Afro, Spiky, Ponytail, Buzz, Bald, Slick, Combover, Pigtails }
 
     // Extra details on a person (OUT-30). Cosmetic only.
     // Blouse, Skirt and Hoops dress the receptionist (OUT-38): a blouse with a bow instead of the shirt and tie, a pencil
     // skirt over bare shins and heels, and chunky gold hoops.
-    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4, Blouse = 8, Skirt = 16, Hoops = 32 }
+    // Blazer, Cardigan, Vest and Lanyard dress the departments (OUT-43): management and the C-suite in blazers, HR in
+    // cardigans, finance in sweater vests, engineering with a lanyard and badge. Their colour is SkinDef.Jacket.
+    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4, Blouse = 8, Skirt = 16, Hoops = 32, Blazer = 64, Cardigan = 128, Vest = 256, Lanyard = 512 }
 
     // A look for the employee. Every look uses the same round collider and physics.
     // Body is the tie color; the shirt stays office white.
@@ -23,6 +25,8 @@ namespace OutOfOffice
         public HairStyle Hair = HairStyle.Bob;
         public PersonLook Extras;
         public Color Shirt;                // shirt or blouse color; left clear, office white
+        public Color Jacket;               // blazer, cardigan, vest or lanyard colour
+        public FaceDef Features;           // the person's own face (OUT-42); null: the default face
         public Accessory Accessory;
         public FaceItem Face;
         public int StarsNeeded;

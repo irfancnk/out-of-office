@@ -1489,6 +1489,7 @@ namespace OutOfOffice
             public Image Bg;
             public RawImage Icon;
             public TextMeshProUGUI Label;
+            public TextMeshProUGUI Sub;  // staff: the job title
             public GameObject Check;
         }
 
@@ -1519,6 +1520,7 @@ namespace OutOfOffice
             foreach (var kv in skinTabs) kv.Value.root.gameObject.SetActive(kv.Key == wardrobeTab);
             string worn = (CurrentOutfit?.Invoke() ?? Cosmetics.Default).Get(wardrobeTab);
             foreach (var t in tab.tiles) PaintTile(t, t.Item.Id == worn);
+            if (wardrobeTab == Slot.Employee) RefreshStaffHeaders();
             wardrobeContent.sizeDelta = new Vector2(0f, tab.root.sizeDelta.y);
             if (tabChanged) wardrobeContent.anchoredPosition = Vector2.zero;
             RefreshWardrobeIcons();
@@ -1535,10 +1537,50 @@ namespace OutOfOffice
         {
             t.Bg.color = equipped ? theme.Accent : t.Owned ? Inset : Themes.Hex(0xE2DAEA);
             t.Label.color = equipped ? Color.white : Ink;
+            if (t.Sub != null) t.Sub.color = equipped ? new Color(1f, 1f, 1f, 0.85f) : new Color(Ink.r, Ink.g, Ink.b, 0.7f);
             t.Check.SetActive(equipped);
         }
 
-        const float SkinTileW = 210f, SkinTileH = 270f;
+        const float SkinTileW = 210f, SkinTileH = 270f, StaffTileH = 300f, StaffHeaderH = 84f;
+
+        // The staff tab's department headers (OUT-43), with how many of each department you have.
+        readonly List<(Department dept, TextMeshProUGUI count)> staffHeaders = new List<(Department, TextMeshProUGUI)>();
+
+        // Tiles of a big tab still to build: a dozen are built at once, the rest a few a frame (OUT-36, OUT-43).
+        readonly List<(RectTransform root, CosmeticItem item, Vector2 pos, float height, List<SkinTile> into)> pendingTiles =
+            new List<(RectTransform, CosmeticItem, Vector2, float, List<SkinTile>)>();
+        const int TilesAtOnce = 12, TilesPerFrame = 3;
+
+        // Builds every tile still waiting, at once (review shots, where Update does not run).
+        public void FinishWardrobeTiles()
+        {
+            while (pendingTiles.Count > 0)
+            {
+                int before = pendingTiles.Count;
+                BuildPendingTiles();
+                if (pendingTiles.Count == before) break;  // the rest belong to tabs not on screen
+            }
+        }
+
+        void BuildPendingTiles()
+        {
+            if (pendingTiles.Count == 0) return;
+            pendingTiles.RemoveAll(p => p.root == null);  // tabs rebuilt since
+            // Only the tab on screen builds; the others wait until they are opened.
+            string worn = (CurrentOutfit?.Invoke() ?? Cosmetics.Default).Get(wardrobeTab);
+            int built = 0;
+            for (int i = 0; i < pendingTiles.Count && built < TilesPerFrame; )
+            {
+                var (r, item, pos, height, into) = pendingTiles[i];
+                if (!r.gameObject.activeInHierarchy) { i++; continue; }
+                pendingTiles.RemoveAt(i);
+                var t = SkinTileFor(r, item, pos, height);
+                into.Add(t);
+                PaintTile(t, item.Id == worn);
+                built++;
+            }
+            if (built > 0) RefreshWardrobeIcons();
+        }
 
         (RectTransform root, List<SkinTile> tiles) BuildSkinTab(Slot slot)
         {
@@ -1549,23 +1591,76 @@ namespace OutOfOffice
                 Destroy(old.root.gameObject);
             }
             var items = Cosmetics.InSlot(slot);
-            int rows = (items.Count + 3) / 4;
-            var root = Rect("Tab " + slot, wardrobeContent, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, rows * (SkinTileH + 16f) + 20f));
+            bool staff = slot == Slot.Employee;
+            float tileH = staff ? StaffTileH : SkinTileH;
+            var root = Rect("Tab " + slot, wardrobeContent, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
             root.pivot = new Vector2(0.5f, 1f);
             var tiles = new List<SkinTile>(items.Count);
-            for (int i = 0; i < items.Count; i++) tiles.Add(SkinTileFor(root, items[i], i));
+            if (staff) staffHeaders.Clear();
+
+            // Lay the tab out: four tiles a row, and on the staff tab a header over each department (they come sorted).
+            float y = -10f;
+            int col = 0;
+            Department? dept = null;
+            foreach (var item in items)
+            {
+                if (staff && item.Dept != dept)
+                {
+                    if (col != 0) { y -= tileH + 16f; col = 0; }
+                    dept = item.Dept;
+                    staffHeaders.Add((item.Dept, StaffHeader(root, item.Dept, y)));
+                    y -= StaffHeaderH;
+                }
+                var pos = new Vector2((col - 1.5f) * (SkinTileW + 14f), y - tileH / 2f);
+                if (tiles.Count < TilesAtOnce) tiles.Add(SkinTileFor(root, item, pos, tileH));
+                else pendingTiles.Add((root, item, pos, tileH, tiles));
+                if (++col == 4) { col = 0; y -= tileH + 16f; }
+            }
+            if (col != 0) y -= tileH + 16f;
+            root.sizeDelta = new Vector2(0f, -y + 10f);
             skinTabs[slot] = (root, tiles);
             if (watch != null) FrameWatch.Note($"{tiles.Count} tiles {watch.Elapsed.TotalMilliseconds:0}ms");
             return (root, tiles);
         }
 
-        SkinTile SkinTileFor(RectTransform parent, CosmeticItem item, int i)
+        static Color DepartmentColor(Department d) =>
+            d == Department.Interns ? Themes.Hex(0xFF8A3D) : d == Department.Employees ? Themes.Hex(0x5B8DEF) : d == Department.Engineering ? Themes.Hex(0x2F6FE0)
+            : d == Department.HR ? Themes.Hex(0xE86A9A) : d == Department.Sales ? Themes.Hex(0x3DAE6B) : d == Department.Finance ? Themes.Hex(0x7E8A3A)
+            : d == Department.Management ? Themes.Hex(0x4A5A86) : d == Department.CLevel ? Themes.Hex(0x34344A) : Themes.Hex(0xD9A21E);
+
+        TextMeshProUGUI StaffHeader(RectTransform root, Department dept, float y)
         {
-            const float tileW = SkinTileW, tileH = SkinTileH;
+            var bar = Rect("Header " + dept, root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y - StaffHeaderH / 2f + 4f), new Vector2(880f, 64f));
+            Sliced(Img(bar, UiArt.Pill, DepartmentColor(dept)), 64f, 0.5f);
+            var name = Txt(Rect("Name", bar, Vector2.zero, Vector2.one, new Vector2(30f, 2f), new Vector2(-60f, 0f)), Cosmetics.DepartmentName(dept), 38f, Color.white, Ink, 0.3f, false);
+            name.alignment = TextAlignmentOptions.MidlineLeft;
+            var count = Txt(Rect("Count", bar, Vector2.zero, Vector2.one, new Vector2(-30f, 2f), new Vector2(-60f, 0f)), "", 34f, Color.white, Ink, 0.3f, false);
+            count.alignment = TextAlignmentOptions.MidlineRight;
+            return count;
+        }
+
+        void RefreshStaffHeaders()
+        {
+            foreach (var (dept, count) in staffHeaders)
+            {
+                if (count == null) continue;
+                int have = 0, all = 0;
+                foreach (var item in Cosmetics.All)
+                    if (item.Slot == Slot.Employee && item.Dept == dept)
+                    {
+                        all++;
+                        if (OwnsItem?.Invoke(item) ?? false) have++;
+                    }
+                count.text = $"{have}/{all}";
+            }
+        }
+
+        SkinTile SkinTileFor(RectTransform parent, CosmeticItem item, Vector2 pos, float tileH)
+        {
+            const float tileW = SkinTileW;
             bool owned = OwnsItem?.Invoke(item) ?? false;
-            int col = i % 4, row = i / 4;
-            var tile = Rect(item.Id, parent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2((col - 1.5f) * (tileW + 14f), -tileH / 2f - 10f - row * (tileH + 16f)), new Vector2(tileW, tileH));
+            bool staff = item.Slot == Slot.Employee;
+            var tile = Rect(item.Id, parent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), pos, new Vector2(tileW, tileH));
             var t = new SkinTile { Item = item, Owned = owned };
             t.Bg = Img(tile, UiArt.Button, Inset);
             Sliced(t.Bg, tileH, 0.18f);
@@ -1581,8 +1676,15 @@ namespace OutOfOffice
             t.Icon.raycastTarget = false;
             t.Icon.color = item.Slot == Slot.Color ? item.Body : new Color(1f, 1f, 1f, 0.2f);  // until the icon is drawn
 
+            // Staff show their job title under the name (OUT-43), even before they join.
+            if (staff && !string.IsNullOrEmpty(item.Title))
+            {
+                t.Sub = Body(Rect("Title", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(tileW - 10f, 30f)), item.Title, 18f, Ink, Ink);
+                t.Sub.fontSize = Mathf.Clamp((tileW - 26f) / (0.68f * item.Title.Length), 12f, 19f);
+            }
+            float captionY = staff ? 62f : 46f;
             string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
-            t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, 46f), new Vector2(tileW - 10f, 50f)),
+            t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, captionY), new Vector2(tileW - 10f, 50f)),
                 caption, 30f, Ink, Ink);
             // Long names shrink to fit the tile (OUT-29), by their length: TMP's auto-size runs several layouts per label,
             // which made opening a tab freeze on a budget phone (OUT-36). Caps in this face run about 0.6 em wide.
@@ -1597,7 +1699,7 @@ namespace OutOfOffice
                 Img(Rect("Lock", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(60f, 60f)), UiArt.Icon(item.FromChest ? "chest" : "lock"), Color.white)
                     .gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.35f);
                 if (!item.FromChest)
-                    Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-30f, 48f), new Vector2(40f, 40f)), UiArt.Star, Color.white);
+                    Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-30f, captionY + 2f), new Vector2(40f, 40f)), UiArt.Star, Color.white);
                 return t;
             }
             tile.gameObject.AddComponent<UiPress>().Clicked = () =>
@@ -1945,6 +2047,7 @@ namespace OutOfOffice
         void Update()
         {
             if (Screen.safeArea != lastSafe) ApplySafeArea();
+            BuildPendingTiles();
             if (Screen.width != lastScreen.x || Screen.height != lastScreen.y) FitScaler();
             if (title.gameObject.activeSelf && !ReducedMotion)
             {

@@ -298,6 +298,25 @@ namespace OutOfOffice
             }
         }
 
+        // A head close-up, read back, for the editor's sheet of faces (OUT-42).
+        public static Texture2D RenderFaceNow(SkinDef look, int size = ItemSize)
+        {
+            var rig = new GameObject("Face Rig");
+            var rt = new RenderTexture(size, size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
+            try
+            {
+                var cam = ItemCamera(rig.transform, Origin, rt, true);
+                Pose(rig.transform, Origin, look, cam);
+                cam.Render();
+                return ReadBack(rt, false);
+            }
+            finally
+            {
+                rt.Release();
+                Remove(rig);
+            }
+        }
+
         // Every item icon at once, read back, for editor review shots.
         public static void RenderItemsNow(Outfit outfit)
         {
