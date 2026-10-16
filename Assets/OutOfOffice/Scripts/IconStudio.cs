@@ -21,25 +21,33 @@ namespace OutOfOffice
             public string Key;
             public SkinDef Look;
             public int Size;
-            public bool Hero;
+            public bool Hero, Head;
         }
 
         public static void RenderHero(SkinDef look) =>
             Run(new List<Job> { new Job { Key = "hero", Look = look, Size = HeroSize, Hero = true } });
 
-        // One icon per wardrobe item not rendered yet: Puffy in the current outfit, with that one item swapped in.
+        // One icon per wardrobe item: the player's own employee in their current outfit, with that one item swapped in,
+        // so every tile shows what it would look like on you (OUT-29). Hats and face items are framed on the head,
+        // where the change is; staff and ties show the whole body. `force` re-renders after an outfit change.
         public static void RenderItems(Outfit outfit, bool force = false)
         {
             var jobs = new List<Job>();
             foreach (var item in Cosmetics.All)
             {
                 if (!force && ItemIcons.ContainsKey(item.Id)) continue;
-                var d = Cosmetics.Default;
-                var o = new Outfit { Employee = d.Employee, Color = d.Color, Hat = "h.tuft", Face = "f.none" }.With(item);
-                jobs.Add(new Job { Key = item.Id, Look = Cosmetics.Compose(o), Size = 160 });
+                var o = outfit.With(item);
+                jobs.Add(new Job { Key = item.Id, Look = Cosmetics.Compose(o), Size = ItemSize, Head = item.Slot == Slot.Hat || item.Slot == Slot.Face });
             }
             if (jobs.Count > 0) Run(jobs);
         }
+
+        const int ItemSize = 192;
+
+        // The item icon camera: the whole employee, or a head-and-hat close-up with room above for tall hats.
+        static Camera ItemCamera(Transform parent, Vector3 pos, RenderTexture rt, bool head) => head
+            ? MakeCamera(parent, pos + new Vector3(0f, 0.04f, -0.68f), 2f, 28f, rt, PortraitBack)
+            : MakeCamera(parent, pos + new Vector3(0f, 0f, -0.46f), 2.35f, 28f, rt, PortraitBack);
 
         static void Run(List<Job> jobs)
         {
@@ -66,10 +74,10 @@ namespace OutOfOffice
                     targets[i] = new RenderTexture(job.Size, job.Size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
                     Camera cam;
                     if (job.Hero) cam = HeroCamera(rig.transform, pos, targets[i]);
-                    else cam = MakeCamera(rig.transform, pos + new Vector3(0f, 0f, -0.42f), 2.3f, 28f, targets[i], PortraitBack);
+                    else cam = ItemCamera(rig.transform, pos, targets[i], job.Head);
                     var m = puck.GetComponent<Mascot>();
                     m.ViewCamera = cam;
-                    m.Pose(job.Hero ? Eyes.Tired : Eyes.Open, Mouth.Smile);
+                    m.Pose(Eyes.Open, Mouth.Smile);
                 }
                 yield return null;  // Puck and Mascot place the body and face
                 yield return new WaitForEndOfFrame();
@@ -142,10 +150,10 @@ namespace OutOfOffice
         // The title screen hero: almost from the front, so the employee stands up like a character on a stage.
         static Camera HeroCamera(Transform parent, Vector3 pos, RenderTexture rt)
         {
-            var focus = pos + new Vector3(0f, 0f, -0.4f);
-            var cam = MakeCamera(parent, focus, 2.2f, 26f, rt, new Color(0f, 0f, 0f, 0f));
+            var focus = pos + new Vector3(0f, 0f, -0.47f);  // room above the head for tall hats (OUT-29)
+            var cam = MakeCamera(parent, focus, 2.4f, 26f, rt, new Color(0f, 0f, 0f, 0f));
             cam.transform.rotation = Quaternion.Euler(-72f, 0f, 0f);
-            cam.transform.position = focus - cam.transform.forward * 2.2f;
+            cam.transform.position = focus - cam.transform.forward * 2.4f;
             return cam;
         }
 
@@ -161,7 +169,7 @@ namespace OutOfOffice
                 var m = LevelBuilder.MakeMascot(rig.transform, pos, look).GetComponent<Mascot>();
                 m.ViewCamera = cam;
                 m.Mode = MascotMode.Idle;
-                m.Pose(Eyes.Tired, Mouth.Smile);
+                m.Pose(Eyes.Open, Mouth.Smile);
                 for (int i = 0; i < 8; i++) m.TickPresentation(1f / 60f);
                 cam.Render();
                 return ReadBack(rt, false);
@@ -171,6 +179,35 @@ namespace OutOfOffice
                 rt.Release();
                 DestroyImmediate(rig);
             }
+        }
+
+        // Every item icon at once, for editor review shots (coroutines don't run there).
+        public static void RenderItemsNow(Outfit outfit)
+        {
+            foreach (var item in Cosmetics.All)
+            {
+                var rig = new GameObject("Item Rig");
+                var pos = Origin + new Vector3(0f, -60f, 0f);
+                var rt = new RenderTexture(ItemSize, ItemSize, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
+                try
+                {
+                    var cam = ItemCamera(rig.transform, pos, rt, item.Slot == Slot.Hat || item.Slot == Slot.Face);
+                    var m = LevelBuilder.MakeMascot(rig.transform, pos, Cosmetics.Compose(outfit.With(item))).GetComponent<Mascot>();
+                    m.ViewCamera = cam;
+                    m.Mode = MascotMode.Idle;
+                    m.Pose(Eyes.Open, Mouth.Smile);
+                    for (int i = 0; i < 8; i++) m.TickPresentation(1f / 60f);
+                    cam.Render();
+                    if (ItemIcons.TryGetValue(item.Id, out var old) && old != null) DestroyImmediate(old);
+                    ItemIcons[item.Id] = ReadBack(rt, false);
+                }
+                finally
+                {
+                    rt.Release();
+                    DestroyImmediate(rig);
+                }
+            }
+            Rendered?.Invoke();
         }
 
         static Camera MakeCamera(Transform parent, Vector3 target, float distance, float fov, RenderTexture rt, Color back)

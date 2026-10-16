@@ -26,9 +26,36 @@ namespace OutOfOffice.EditorTools
             string dir = System.Environment.GetEnvironmentVariable("OOO_SHOTS");
             if (string.IsNullOrEmpty(dir)) dir = Path.Combine(Path.GetTempPath(), "out-of-office-shots");
             Directory.CreateDirectory(dir);
-            try { Closeups(dir); }
+            try { Heroes(dir); Closeups(dir); }
             catch (System.Exception e) { Debug.LogException(e); code = 3; }
             EditorApplication.Exit(code);
+        }
+
+        // Every employee as the big title portrait, side by side: the size players judge the art at.
+        static void Heroes(string dir)
+        {
+            string[] staff = { "e.ava", "e.leo", "e.mia", "e.sam" };
+            var sheet = new Texture2D(768 * staff.Length, 768, TextureFormat.RGBA32, false);
+            var fill = new Color32[768 * 768];
+            for (int i = 0; i < fill.Length; i++) fill[i] = new Color32(233, 226, 214, 255);
+            for (int i = 0; i < staff.Length; i++)
+            {
+                var o = Cosmetics.Default;
+                o.Employee = staff[i];
+                if (i > 0) o.Face = "f.none";
+                var hero = IconStudio.RenderHeroNow(Cosmetics.Compose(o));
+                var px = hero.GetPixels32();
+                for (int p = 0; p < px.Length; p++)
+                {
+                    float a = px[p].a / 255f;
+                    px[p] = Color32.Lerp(fill[p], new Color32(px[p].r, px[p].g, px[p].b, 255), a);
+                }
+                sheet.SetPixels32(i * 768, 0, 768, 768, px);
+                Object.DestroyImmediate(hero);
+            }
+            sheet.Apply();
+            File.WriteAllBytes(Path.Combine(dir, "heroes.png"), sheet.EncodeToPNG());
+            Object.DestroyImmediate(sheet);
         }
 
         [MenuItem("Out of Office/Render Review Shots")]
@@ -188,6 +215,19 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "title-chapter-chest.png"), Canvas.ForceUpdateCanvases);
                 hud.HideTitle();
+
+                var sam = Cosmetics.Default;
+                sam.Employee = "e.sam";
+                hud.CurrentOutfit = () => sam;
+                hud.OwnsItem = item => true;
+                IconStudio.RenderItemsNow(sam);
+                IconStudio.HeroIcon = IconStudio.RenderHeroNow(Cosmetics.Compose(sam));
+                hud.ShowSkins(Slot.Hat);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-wardrobe.png"), Canvas.ForceUpdateCanvases);
+                hud.ShowSkins(Slot.Face);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-wardrobe-face.png"), Canvas.ForceUpdateCanvases);
 
                 hud.ShowLevels();
                 Tweens.FinishAll();

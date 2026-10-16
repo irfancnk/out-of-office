@@ -1135,9 +1135,9 @@ namespace OutOfOffice
             skinsCard = MakeCard("Wardrobe", "WARDROBE", new Vector2(980f, 1560f), true);
             var c = skinsCard.Root;
             // Live preview: Puffy in the current outfit on a sunburst disc.
-            var disc = Rect("Disc", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -330f), new Vector2(380f, 380f));
+            var disc = Rect("Disc", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -365f), new Vector2(430f, 430f));
             Img(disc, Shapes.Circle, Themes.Hex(0xE9EEF6));
-            var prev = Rect("Preview", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -320f), new Vector2(380f, 380f));
+            var prev = Rect("Preview", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -350f), new Vector2(470f, 470f));  // big enough to see a hat or a face item (OUT-29)
             wardrobePreview = prev.gameObject.AddComponent<RawImage>();
             wardrobePreview.raycastTarget = false;
             prev.gameObject.AddComponent<Bobber>().Hud = this;
@@ -1147,7 +1147,7 @@ namespace OutOfOffice
             for (int i = 0; i < tabs.Length; i++)
             {
                 var (slot, label) = tabs[i];
-                var r = Rect(label, c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2((i - 1.5f) * 222f, -590f), new Vector2(206f, 96f));
+                var r = Rect(label, c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2((i - 1.5f) * 222f, -634f), new Vector2(206f, 96f));
                 var bg = Img(r, UiArt.Button, Inset);
                 Sliced(bg, 96f, 0.4f);
                 bg.raycastTarget = true;
@@ -1157,7 +1157,7 @@ namespace OutOfOffice
             }
 
             // Scrolling grid of items.
-            var view = Rect("Viewport", c, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 470f), new Vector2(900f, 860f));
+            var view = Rect("Viewport", c, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 440f), new Vector2(900f, 800f));
             view.gameObject.AddComponent<RectMask2D>();
             Img(view, UiArt.Pill, new Color(1f, 1f, 1f, 0.001f)).raycastTarget = true;
             wardrobeContent = Rect("Content", view, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, 800f));
@@ -1169,6 +1169,12 @@ namespace OutOfOffice
             scroll.scrollSensitivity = 30f;
             CloseButton(skinsCard, () => Back());
             IconStudio.Rendered += RefreshWardrobeIcons;
+        }
+
+        public void ShowSkins(Slot tab)
+        {
+            wardrobeTab = tab;
+            ShowSkins();
         }
 
         public void ShowSkins()
@@ -1217,10 +1223,10 @@ namespace OutOfOffice
                 var stripe = Img(Rect("Rarity", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(tileW - 40f, 12f)), UiArt.Pill, Cosmetics.RarityColor(item.Rarity));
                 Sliced(stripe, 12f, 0.5f);
 
-                var frame = Rect("Portrait", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(160f, 160f));
-                Img(frame, UiArt.RoundButton, Color.white);
-                var maskR = Rect("Mask", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(138f, 138f));
-                Img(maskR, UiArt.Pill, Color.white);
+                var frame = Rect("Portrait", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(184f, 184f));
+                Sliced(Img(frame, UiArt.Button, Color.white), 184f, 0.22f);
+                var maskR = Rect("Mask", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(166f, 166f));
+                Sliced(Img(maskR, UiArt.Button, Color.white), 166f, 0.2f);  // a rounded square: no hat or chin cut off by a circle
                 maskR.gameObject.AddComponent<Mask>().showMaskGraphic = false;
                 var raw = Rect("Icon", maskR, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
                 raw.raycastTarget = false;
@@ -1231,7 +1237,10 @@ namespace OutOfOffice
 
                 string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
                 var label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, 46f), new Vector2(tileW - 10f, 50f)),
-                    caption, caption.Length > 9 ? 24f : 30f, equipped ? Color.white : Ink, Ink);
+                    caption, 30f, equipped ? Color.white : Ink, Ink);
+                label.enableAutoSizing = true;  // long names shrink to fit the tile instead of spilling over (OUT-29)
+                label.fontSizeMin = 15f;
+                label.fontSizeMax = 30f;
                 if (equipped)
                 {
                     Img(Rect("Check", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -16f), new Vector2(58f, 58f)), UiArt.RoundButton, Palette.UiGreen);

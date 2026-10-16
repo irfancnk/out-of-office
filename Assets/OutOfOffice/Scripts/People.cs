@@ -26,7 +26,7 @@ namespace OutOfOffice
         static readonly Color BrassColor = Themes.Hex(0xD8B25C);
 
         // The head, in its tipped frame: half sizes. The front (-Y) sits at Mascot.HeadRadius, where the face is printed.
-        static readonly Vector3 Skull = new Vector3(0.285f, Mascot.HeadRadius, 0.26f);
+        static readonly Vector3 Skull = new Vector3(0.272f, Mascot.HeadRadius, 0.25f);
 
         public static void Build(Transform parent, SkinDef skin)
         {
@@ -39,16 +39,16 @@ namespace OutOfOffice
             foreach (float side in new[] { -1f, 1f })
             {
                 // Arms: a puffy sleeve, a short round forearm, and a mitten hand.
-                var arm = Pivot(roll, side < 0f ? "Arm L" : "Arm R", new Vector3(side * 0.2f, 0f, 0.07f));
+                var arm = Pivot(roll, side < 0f ? "Arm L" : "Arm R", new Vector3(side * 0.218f, 0f, 0.07f));
                 arm.localRotation = Quaternion.Euler(0f, side * 8f, 0f);
-                Round("Sleeve", new Vector3(0.12f, 0.115f, 0.12f), shirt, arm, new Vector3(0f, 0f, 0.045f));
-                Round("Forearm", new Vector3(0.075f, 0.075f, 0.1f), skinMat, arm, new Vector3(0f, 0f, 0.11f));
-                Round("Hand", new Vector3(0.1f, 0.095f, 0.09f), skinMat, arm, new Vector3(0f, -0.004f, 0.165f));
+                Round("Sleeve", new Vector3(0.135f, 0.13f, 0.13f), shirt, arm, new Vector3(0f, 0f, 0.045f));
+                Round("Forearm", new Vector3(0.088f, 0.088f, 0.1f), skinMat, arm, new Vector3(0f, 0f, 0.11f));
+                Round("Hand", new Vector3(0.112f, 0.106f, 0.1f), skinMat, arm, new Vector3(0f, -0.004f, 0.168f));
 
                 // Legs: a round trouser leg and a bean of a shoe that pokes out in front.
                 var leg = Pivot(roll, side < 0f ? "Leg L" : "Leg R", new Vector3(side * 0.078f, 0f, 0.215f));
-                Round("Trousers", new Vector3(0.14f, 0.15f, 0.14f), trousers, leg, new Vector3(0f, 0f, 0.05f));
-                Round("Shoe", new Vector3(0.135f, 0.19f, 0.075f), Look.Person(ShoeColor, 0.55f), leg, new Vector3(0f, -0.03f, 0.1f));
+                Round("Trousers", new Vector3(0.155f, 0.165f, 0.14f), trousers, leg, new Vector3(0f, 0f, 0.05f));
+                Round("Shoe", new Vector3(0.15f, 0.205f, 0.085f), Look.Person(ShoeColor, 0.55f), leg, new Vector3(0f, -0.035f, 0.1f));
             }
             BuildHead(roll, skin, skinMat);
         }
@@ -57,20 +57,20 @@ namespace OutOfOffice
         {
             // Origin at the waist. A jelly-bean shirt over round hips, with a belt ring where they meet.
             var torso = Pivot(roll, "Torso", new Vector3(0f, 0f, 0.25f));
-            Round("Shirt", new Vector3(0.36f, 0.3f, 0.34f), shirt, torso, new Vector3(0f, 0f, -0.13f), true, 2.6f);
-            Round("Waist", new Vector3(0.33f, 0.28f, 0.16f), trousers, torso, new Vector3(0f, 0f, 0.0f), false, 2.6f);
-            Round("Belt", new Vector3(0.336f, 0.286f, 0.036f), Look.Person(BeltColor, 0.35f), torso, new Vector3(0f, 0f, -0.03f), false, 3.2f);
-            Round("Buckle", new Vector3(0.052f, 0.03f, 0.036f), Look.Person(BrassColor, 0.7f), torso, new Vector3(0f, -0.141f, -0.03f));
+            Round("Shirt", new Vector3(0.39f, 0.33f, 0.35f), shirt, torso, new Vector3(0f, 0f, -0.13f), true, 2.5f);
+            Round("Waist", new Vector3(0.36f, 0.305f, 0.17f), trousers, torso, new Vector3(0f, 0f, 0.0f), false, 2.5f);
+            Round("Belt", new Vector3(0.368f, 0.312f, 0.036f), Look.Person(BeltColor, 0.35f), torso, new Vector3(0f, 0f, -0.03f), false, 3.2f);
+            Round("Buckle", new Vector3(0.052f, 0.03f, 0.036f), Look.Person(BrassColor, 0.7f), torso, new Vector3(0f, -0.153f, -0.03f));
 
             // A collar of two small rounded tabs on the top front, and the loosened tie hanging below.
             foreach (float side in new[] { -1f, 1f })
             {
-                var flap = Round("Collar", new Vector3(0.075f, 0.03f, 0.045f), shirt, torso, new Vector3(side * 0.04f, -0.104f, -0.262f));
+                var flap = Round("Collar", new Vector3(0.075f, 0.03f, 0.045f), shirt, torso, new Vector3(side * 0.042f, -0.112f, -0.262f));
                 flap.transform.localRotation = Quaternion.Euler(-30f, side * 25f, 0f);
             }
             var tieMat = Look.Person(skin.Body, 0.3f);
-            Round("Knot", new Vector3(0.046f, 0.032f, 0.042f), tieMat, torso, new Vector3(0.004f, -0.122f, -0.24f));
-            var tie = Pivot(torso, "Tie", new Vector3(0.006f, -0.136f, -0.222f));
+            Round("Knot", new Vector3(0.046f, 0.032f, 0.042f), tieMat, torso, new Vector3(0.004f, -0.132f, -0.24f));
+            var tie = Pivot(torso, "Tie", new Vector3(0.006f, -0.148f, -0.222f));
             tie.localRotation = Quaternion.Euler(14f, 0f, 6f);
             Round("Blade", new Vector3(0.055f, 0.02f, 0.13f), tieMat, tie, new Vector3(0f, 0f, 0.068f), false, 2.8f);
         }
@@ -84,7 +84,7 @@ namespace OutOfOffice
             frame.localRotation = Tilt;
             Round("Skull", Skull * 2f, skinMat, frame, Vector3.zero, true, 2.3f).transform.SetParent(head, true);
             foreach (float side in new[] { -1f, 1f })
-                Round("Ear", new Vector3(0.06f, 0.08f, 0.1f), skinMat, frame, new Vector3(side * 0.292f, 0.03f, 0.03f));
+                Round("Ear", new Vector3(0.06f, 0.08f, 0.1f), skinMat, frame, new Vector3(side * 0.28f, 0.03f, 0.03f));
 
             var hair = Look.Person(skin.HairColor, 0.18f);
             BuildHair(frame, skin, hair);
@@ -116,12 +116,14 @@ namespace OutOfOffice
                 case HairStyle.Bun:
                     // Pulled back smooth into a round bun on top, with a tie around it.
                     Shell(f, hair, 1.04f, 0.055f, 0.03f);
+                    Bangs(f, hair, 0.85f, 0f);
                     Round("Bun", new Vector3(0.21f, 0.21f, 0.19f), hair, f, new Vector3(0f, 0.11f, -0.33f));
                     Round("Hair Tie", new Vector3(0.17f, 0.17f, 0.045f), Look.Person(skin.Body, 0.3f), f, new Vector3(0f, 0.11f, -0.265f), false, 2.8f);
                     break;
                 case HairStyle.Short:
                     // Short and neat, with a little quiff that has given up on the week.
                     Shell(f, hair, 1.045f, 0.06f, 0.035f);
+                    Bangs(f, hair, 0.9f, 1f);
                     foreach (float side in new[] { -1f, 1f })
                         Round("Sideburn", new Vector3(0.06f, 0.12f, 0.15f), hair, f, new Vector3(side * 0.282f, 0.0f, -0.1f));
                     Round("Quiff", new Vector3(0.22f, 0.14f, 0.11f), hair, f, new Vector3(0.06f, -0.17f, -0.25f)).transform.localRotation = Quaternion.Euler(-10f, 0f, -8f);
@@ -129,6 +131,7 @@ namespace OutOfOffice
                 default:
                     // Big curls: a thick shell under a crown of round lumps.
                     Shell(f, hair, 1.08f, 0.05f, 0.03f);
+                    Bangs(f, hair, 1.15f, 0f);
                     var rng = new System.Random(5);
                     for (int i = 0; i < 9; i++)
                     {
@@ -140,6 +143,21 @@ namespace OutOfOffice
                         lump.transform.localRotation = Quaternion.Euler(0f, 0f, (float)rng.NextDouble() * 40f);
                     }
                     break;
+            }
+        }
+
+        // Soft bangs: a row of round puffs along the hairline, above the brows, so the hair reads as hair and not as
+        // a helmet (OUT-29). `fullness` scales the puffs; `sweep` tilts the row to one side.
+        static void Bangs(Transform f, Material hair, float fullness, float sweep)
+        {
+            const float above = 37f * Mathf.Deg2Rad;  // how far above the face center the hairline sits
+            for (int i = 0; i < 3; i++)
+            {
+                float x = (i - 1) * 0.115f;
+                float lift = above + sweep * (i - 1) * 0.08f;
+                var at = new Vector3(x, -Mathf.Cos(lift) * Skull.y * 0.98f, -Mathf.Sin(lift) * Skull.z * 1.02f);
+                var puff = Round("Bang", new Vector3(0.15f, 0.085f, 0.1f) * fullness, hair, f, at);
+                puff.transform.localRotation = Quaternion.Euler(-lift * Mathf.Rad2Deg * 0.6f, 0f, (i - 1) * -12f + sweep * 10f);
             }
         }
 

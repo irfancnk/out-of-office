@@ -28,7 +28,7 @@ namespace OutOfOffice
             face.SetParent(head != null ? head : transform, false);
             var brow = new Color(0.32f, 0.33f, 0.37f);
             Part(MascotArt.EyeOpen, Mascot.EyePos(-1f), 0.19f, 21, 0f, Color.white);
-            Part(MascotArt.EyeOpen, Mascot.EyePos(1f), 0.19f, 21, 0f, Color.white);
+            Part(MascotArt.EyeOpen, Mascot.EyePos(1f), 0.19f, 21, 0f, Color.white).flipX = true;  // lashes flick outward on both eyes
             // Stern brows, pulled down at the middle: this is urgent, apparently.
             Part(MascotArt.Brow, Mascot.BrowPos(-1f) + new Vector2(0f, -0.01f), 0.13f, 21, -16f, brow);
             Part(MascotArt.Brow, Mascot.BrowPos(1f) + new Vector2(0f, -0.01f), 0.13f, 21, 16f, brow);
@@ -44,7 +44,7 @@ namespace OutOfOffice
             alert.gameObject.SetActive(false);
         }
 
-        void Part(Sprite sprite, Vector2 pos, float size, int order, float angle, Color color)
+        SpriteRenderer Part(Sprite sprite, Vector2 pos, float size, int order, float angle, Color color)
         {
             var t = new GameObject("Part").transform;
             t.SetParent(face, false);
@@ -57,6 +57,7 @@ namespace OutOfOffice
             sr.color = color;
             float s = size / (sprite.rect.width / sprite.pixelsPerUnit);
             t.localScale = new Vector3(s, s, 1f);
+            return sr;
         }
 
         void LateUpdate() => Tick(null);

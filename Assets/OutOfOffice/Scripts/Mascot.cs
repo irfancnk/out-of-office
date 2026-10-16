@@ -407,7 +407,7 @@ namespace OutOfOffice
                     if (puck.Airborne || speed > 9f) { baseEyes = Eyes.Wide; baseMouth = Mouth.O; }
                     else if (riding) { baseEyes = Eyes.Happy; baseMouth = Mouth.Open; }
                     else if (speed > 3f) { baseEyes = Eyes.Open; baseMouth = Mouth.Flat; }
-                    else { baseEyes = Eyes.Tired; baseMouth = Mouth.Smile; }
+                    else { baseEyes = Eyes.Open; baseMouth = Mouth.Smile; }
                     if (!riding) leanTarget = speed > 1f ? vel / speed * Mathf.Min(10f, speed * 0.8f) : Vector2.zero;
                     break;
                 case MascotMode.Idle:
@@ -436,7 +436,7 @@ namespace OutOfOffice
                 }
                 return;
             }
-            baseEyes = Eyes.Tired;
+            baseEyes = idleTime > 12f ? Eyes.Tired : Eyes.Open;  // bright-eyed, drowsy only before dozing off (OUT-29)
             baseMouth = Mouth.Smile;
             if (idleTime > 22f)
             {
@@ -637,7 +637,7 @@ namespace OutOfOffice
 
             eyeLR.sprite = eyeRR.sprite = eyeSprite;
             eyeLR.flipX = false;
-            eyeRR.flipX = e == Eyes.Squeeze || e == Eyes.Tired;  // > <, and mirrored tired lids
+            eyeRR.flipX = e == Eyes.Squeeze || e == Eyes.Tired || e == Eyes.Open || e == Eyes.Wide;  // > <, and mirrored lids and lashes
             Vector2 lookShift = look * 0.012f;
             float spinEyes = e == Eyes.Dizzy ? Time.time * 540f : 0f;
             SetPart(eyeL, EyePos(-1f) + lookShift, eyeScale, eyeY, spinEyes);
@@ -713,43 +713,45 @@ namespace OutOfOffice
         static readonly Color Ink = new Color(0.2f, 0.12f, 0.11f);
         static readonly Color MouthIn = new Color(0.5f, 0.17f, 0.2f);
         static readonly Color Tongue = new Color(0.96f, 0.5f, 0.52f);
-        static readonly Color IrisGlow = new Color(0.45f, 0.29f, 0.2f);
-        static readonly Color IrisLight = new Color(0.66f, 0.46f, 0.32f);
         static readonly Dictionary<string, Sprite> cache = new Dictionary<string, Sprite>();
         const int S = 128;
 
-        // A big, warm brown eye: near-black at the top, a chestnut glow at the bottom, one big catch light and a small one.
-        public static Sprite EyeOpen => Get("eyeOpen", (x, y) =>
-        {
-            float d = Ellipse(x, y, 64, 64, 34, 48);
-            Color c = Color.Lerp(IrisGlow, Ink, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((y - 20f) / 52f)));
-            float crescent = Mathf.Max(Ellipse(x, y, 64, 40, 24, 16), -Ellipse(x, y, 64, 52, 28, 16));
-            c = Color.Lerp(c, IrisLight, Cover(crescent - 2f) * 0.55f);
-            c = Color.Lerp(c, Color.white, Cover(Ellipse(x, y, 50, 84, 12, 14)));
-            c = Color.Lerp(c, Color.white, Cover(Circle(x, y, 78, 44, 6f)) * 0.9f);
-            // A soft light rim, so the eye still reads on deep skin tones.
-            return WithRim(c, d, 4f);
-        });
+        // A big, glossy, cute eye (OUT-29): a dark outline, a warm iris that brightens toward the bottom with a lighter
+        // ring, a deep pupil, a big catch light up top and a small one below, and a soft lash line along the top.
+        public static Sprite EyeOpen => Get("eyeOpen", (x, y) => GlossyEye(x, y, 99f));
 
-        // Calmly exhausted: the same eye under a heavy, slightly drooping lid, with a faint shadow underneath.
-        public static Sprite EyeTired => Get("eyeTired", (x, y) =>
+        // Relaxed, not exhausted: the same glossy eye under a soft, level lid. No eye bags.
+        public static Sprite EyeTired => Get("eyeTired", (x, y) => GlossyEye(x, y, 80f + (x - 64f) * 0.08f));  // a touch lower at the outer corner
+
+        static readonly Color IrisDeep = new Color(0.33f, 0.2f, 0.14f);
+        static readonly Color IrisWarm = new Color(0.78f, 0.52f, 0.3f);
+
+        // lidLine: the eye is cut off above it by a lid stroke (99 = wide open).
+        static Color GlossyEye(float x, float y, float lidLine)
         {
-            float d = Ellipse(x, y, 64, 66, 34, 46);
-            float lidLine = 74f + (x - 64f) * 0.16f;  // droops toward the outer corner (the right eye is mirrored)
-            Color c = Color.Lerp(IrisGlow, Ink, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((y - 24f) / 44f)));
-            c = Color.Lerp(c, Color.white, Cover(Ellipse(x, y, 52, 60, 10, 11)));
-            c = Color.Lerp(c, Color.white, Cover(Circle(x, y, 77, 40, 5f)) * 0.9f);
-            float shape = Mathf.Max(d, y - lidLine);
-            float lid = Mathf.Max(Mathf.Abs(y - lidLine) - 5.5f, Mathf.Abs(x - 64f) - 40f);
-            if (lid < shape) { var ink = Ink; ink.a = Cover(lid); return ink; }
+            float eye = Ellipse(x, y, 64, 62, 36, 46);
+            float shape = Mathf.Max(eye, y - lidLine);
+            // The lash line: a thicker ink stroke along the top of the eye (or along the lid), with a flick outward.
+            float top = lidLine < 99f
+                ? Mathf.Max(Mathf.Abs(y - lidLine) - 5f, Mathf.Abs(x - 64f) - 39f)
+                : Mathf.Max(Mathf.Abs(eye) - 4.5f, 62f - y);
+            float flick = Segment(x, y, 36, Mathf.Min(lidLine, 100f) - 4f, 25, Mathf.Min(lidLine, 100f) + 4f) - 3.5f;  // outer corner (left eye; the right is mirrored)
+            float lash = Mathf.Min(top, flick);
             if (shape > 0f)
             {
-                // The under-eye bag: a soft mauve arc below the eye.
-                float bag = Mathf.Max(Mathf.Abs(Circle(x, y, 64, 44, 38)) - 3f, y - 22f);
-                return new Color(0.55f, 0.32f, 0.38f, Cover(bag) * 0.35f);
+                if (lash < 1.5f) { var ink = Ink; ink.a = Cover(lash); return ink; }
+                return new Color(1f, 1f, 1f, 0f);
             }
+            float t = Mathf.Clamp01((y - 16f) / 92f);
+            Color c = Color.Lerp(IrisWarm, IrisDeep, Mathf.SmoothStep(0f, 1f, t));             // warm at the bottom
+            c = Color.Lerp(c, Color.Lerp(IrisWarm, Color.white, 0.25f), Cover(Mathf.Abs(Ellipse(x, y, 64, 56, 24, 30)) - 3f) * 0.45f);  // iris ring
+            c = Color.Lerp(c, Ink, Cover(Ellipse(x, y, 64, 60, 15, 19)) * 0.85f);              // pupil
+            c = Color.Lerp(c, Color.white, Cover(Ellipse(x, y, 49, 80, 13, 15)));               // big catch light
+            c = Color.Lerp(c, Color.white, Cover(Circle(x, y, 78, 38, 6.5f)) * 0.9f);          // small catch light
+            c = Color.Lerp(c, Ink, Cover(-eye - 3f));                                          // thin outline inside the edge
+            c = Color.Lerp(c, Ink, Cover(lash));
             return WithRim(c, shape, 4f);
-        });
+        }
 
         // An eyebrow: a short, slightly arched stroke with round ends. White, tinted by the hair color.
         public static Sprite Brow => Get("brow", (x, y) =>

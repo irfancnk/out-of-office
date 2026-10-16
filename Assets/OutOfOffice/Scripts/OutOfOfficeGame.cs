@@ -125,6 +125,7 @@ namespace OutOfOffice
                 mascot.Hop();
             }
             IconStudio.RenderHero(look);
+            IconStudio.RenderItems(progress.Outfit, true);  // tiles show items on the outfit you wear now (OUT-29)
         }
 
         // Rolls a chest, saves the prize, and plays the opening scene. The prize may be worn right away.
