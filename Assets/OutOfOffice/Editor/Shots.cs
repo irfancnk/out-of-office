@@ -144,6 +144,7 @@ namespace OutOfOffice.EditorTools
                 hud.BestStars = id => id == "first" || id == "easy" ? 3 : id == "bank" || id == "ring" ? 2 : 0;
                 hud.SetQuestBadge(2);
                 hud.UntilQuestReset = () => new System.TimeSpan(7, 42, 0);
+                hud.CoffeeCardStamps = () => 7;
                 hud.ShowTitle(23, 9, theme);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "title.png"), Canvas.ForceUpdateCanvases);
@@ -156,7 +157,7 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-hud.png"), Canvas.ForceUpdateCanvases);
 
-                hud.ShowComplete(9, 3, 2, 3, true);
+                hud.ShowComplete(9, 3, 2, 3, true, false, 2);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete.png"), Canvas.ForceUpdateCanvases);
 

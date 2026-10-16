@@ -53,6 +53,8 @@ namespace OutOfOffice
     //   buca.own.<item>            1 once a chest has given that item
     //   buca.chests.opened         chests opened so far (ChestsOpened; input for the chest pity timer, OUT-14)
     //   buca.chapter.chest.N       1 once chapter N's all-stars chest is claimed
+    //   buca.coffee.<id>           most coffees collected on a finished run of a level (each stamps the card once)
+    //   buca.card.stamps, .claimed punch card: stamps earned in total, full cards opened; buca.card.version migration
     //   buca.quest.day             the day today's quest progress belongs to (yyyymmdd)
     //   buca.quest.pN, .cN         progress and claimed flag of today's quest N
     //   buca.daily.chest           the day the free daily chest was last claimed (yyyymmdd)
@@ -80,6 +82,7 @@ namespace OutOfOffice
             long.TryParse(prefs.GetString("buca.clock.seen", "0"), out seenTicks);
             savedTicks = seenTicks;
             Migrate();
+            MigrateCard();
         }
 
         // Writes everything to disk. The game calls it when the app is paused or quits, because the OS may kill a
@@ -315,6 +318,54 @@ namespace OutOfOffice
         }
 
         public int ChestsOpened => prefs.GetInt("buca.chests.opened", 0);
+
+        // ---------- Coffee punch card (OUT-24) ----------
+
+        // Every coffee in every level stamps the card once, the first time it is collected on a finished run, so the
+        // card can't be farmed by replaying one easy room. A full card opens a chest; extra stamps carry over.
+        public const int StampsPerCard = 10;
+
+        public int CoffeesBest(string id) => prefs.GetInt("buca.coffee." + id, 0);
+        public int Stamps => prefs.GetInt("buca.card.stamps", 0);
+        public int CardsClaimed => prefs.GetInt("buca.card.claimed", 0);
+        public int CardStamps => Mathf.Min(StampsPerCard, Stamps - CardsClaimed * StampsPerCard);  // on the current card
+        public bool CardReady => Stamps >= (CardsClaimed + 1) * StampsPerCard;
+
+        // Stamps the coffees a finished run collected beyond the level's best. Returns the new stamps.
+        public int StampCoffees(int index, int collected)
+        {
+            string id = Levels.All[index].Id;
+            int fresh = Mathf.Clamp(collected, 0, Levels.All[index].Stars.Count) - CoffeesBest(id);
+            if (fresh <= 0) return 0;
+            prefs.SetInt("buca.coffee." + id, CoffeesBest(id) + fresh);
+            prefs.SetInt("buca.card.stamps", Stamps + fresh);
+            prefs.Save();
+            return fresh;
+        }
+
+        public bool ClaimCard()
+        {
+            if (!CardReady) return false;
+            prefs.SetInt("buca.card.claimed", CardsClaimed + 1);
+            prefs.Save();
+            return true;
+        }
+
+        // Saves from before the card: a 3-star level proves every coffee there was collected, so it is stamped now.
+        void MigrateCard()
+        {
+            if (prefs.GetInt("buca.card.version", 0) >= 1) return;
+            int stamps = Stamps;
+            foreach (var l in Levels.All)
+            {
+                if (Best(l.Id) < 3 || CoffeesBest(l.Id) >= l.Stars.Count) continue;
+                stamps += l.Stars.Count - CoffeesBest(l.Id);
+                prefs.SetInt("buca.coffee." + l.Id, l.Stars.Count);
+            }
+            prefs.SetInt("buca.card.stamps", stamps);
+            prefs.SetInt("buca.card.version", 1);
+            prefs.Save();
+        }
 
         // ---------- Chapter chests ----------
 

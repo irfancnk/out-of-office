@@ -140,6 +140,7 @@ namespace OutOfOffice
                 }
                 hud.RefreshQuests();
                 hud.RefreshChapterChest();
+                hud.RefreshCoffeeCard();
                 hud.SetQuestBadge(progress.ChestsWaiting);
             }, progress.ReducedMotion);
             hud.SetQuestBadge(progress.ChestsWaiting);
@@ -183,6 +184,9 @@ namespace OutOfOffice
             hud.OpenDailyChest = () => { if (progress.ClaimDailyChest()) OpenChest("EMPLOYEE APPRECIATION"); };
             hud.ChapterChestClaimed = c => progress.ChapterChestClaimed(c);
             hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!"); };
+            hud.CoffeeCardStamps = () => progress.CardStamps;
+            hud.CoffeeCardReady = () => progress.CardReady;
+            hud.ClaimCoffeeCard = () => { if (progress.ClaimCard()) OpenChest("ON THE HOUSE!"); };
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
             hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
@@ -799,6 +803,7 @@ namespace OutOfOffice
             var puck = level.Puck;
             puck.Body.simulated = false;
             int earned = StarsFor(shots);
+            int newStamps = 0;
             bool reduced = progress.ReducedMotion;
             celebrating = true;
             mascot.Tumble = false;
@@ -859,8 +864,9 @@ namespace OutOfOffice
             if (levelIndex >= 0)
             {
                 progress.Record(levelIndex, earned, shots);
+                newStamps = progress.StampCoffees(levelIndex, level.StarsCollected);
                 Analytics.Event("level_complete", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("par", Def.Par),
-                    ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)));
+                    ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)), ("coffees", level.StarsCollected), ("stamps", newStamps));
                 TrackQuest(QuestKind.FinishLevels);
                 if (shots <= Def.Par) TrackQuest(QuestKind.ParFinishes);
                 if (shots == 1) TrackQuest(QuestKind.HoleInOne);
@@ -868,7 +874,7 @@ namespace OutOfOffice
             yield return new WaitForSeconds(reduced ? 0.3f : 0.6f);
             state = State.Complete;
             sound.Play(Sfx.Complete, 0.6f, 1f, 1f);
-            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel);
+            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel, newStamps);
         }
 
         // The blanket rises and falls with slow sleepy breaths.

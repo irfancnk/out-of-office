@@ -423,6 +423,17 @@ namespace OutOfOffice
             var gift = SideButton(area, "Gift", new Vector2(0f, 1f), new Vector2(125f, -720f), Themes.Hex(0xFFB22E), "chest", out giftPlate, out giftPlateImage);
             gift.Clicked = () => ShowQuests();
             giftBadge = Badge(gift.transform as RectTransform, "!");
+            // The coffee punch card, under the gift: every new coffee is a stamp, a full card opens a chest.
+            var card = SideButton(area, "Coffee Card", new Vector2(0f, 1f), new Vector2(125f, -960f), Themes.Hex(0xC9784A), "chest", out coffeeCardPlate, out coffeeCardPlateImage);
+            var cardIcon = card.transform.Find("Icon").GetComponent<Image>();
+            cardIcon.sprite = UiArt.Cup;
+            cardIcon.rectTransform.sizeDelta *= 1.25f;
+            card.Clicked = () =>
+            {
+                if (CoffeeCardReady?.Invoke() ?? false) ClaimCoffeeCard?.Invoke();
+                else ShowLevels();  // go and find more coffees
+            };
+            coffeeCardBadge = Badge(card.transform as RectTransform, "!");
             var outfit = SideButton(area, "Next Outfit", new Vector2(1f, 1f), new Vector2(-125f, -720f), Themes.Hex(0xFF5FA2), "shirt", out nextOutfitText, out _);
             outfit.Clicked = () => ShowSkins();
             var plateStar = Rect("Star", nextOutfitText.transform.parent as RectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 2f), new Vector2(54f, 54f));
@@ -654,6 +665,22 @@ namespace OutOfOffice
             welcomeIcon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
+        public System.Func<int> CoffeeCardStamps;
+        public System.Func<bool> CoffeeCardReady;
+        public System.Action ClaimCoffeeCard;
+        TextMeshProUGUI coffeeCardPlate;
+        Image coffeeCardPlateImage;
+        RectTransform coffeeCardBadge;
+
+        public void RefreshCoffeeCard()
+        {
+            if (coffeeCardPlate == null) return;
+            bool ready = CoffeeCardReady?.Invoke() ?? false;
+            coffeeCardPlate.text = ready ? "FREE!" : $"{CoffeeCardStamps?.Invoke() ?? 0}/{Progress.StampsPerCard}";
+            coffeeCardPlateImage.color = ready ? Palette.UiGreen : FrameDark;
+            coffeeCardBadge.gameObject.SetActive(ready);
+        }
+
         public System.Func<int, bool> ChapterChestClaimed;
         public System.Action<int> ClaimChapterChest;
         static readonly Color ChapterChestGold = Themes.Hex(0xFFC23A);
@@ -702,6 +729,7 @@ namespace OutOfOffice
             chapterChestChapter = c;
             chapterChestFull = got >= max;
             RefreshChapterChest();
+            RefreshCoffeeCard();
 
             bool ready = DailyChestReady?.Invoke() ?? false;
             var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;
@@ -1370,7 +1398,8 @@ namespace OutOfOffice
         }
 
         // finalLevel: the last room there is, so NEXT becomes HOME instead of replaying it.
-        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups, bool finalLevel = false)
+        // newStamps: coffees that stamped the punch card for the first time on this run.
+        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups, bool finalLevel = false, int newStamps = 0)
         {
             HideAll();
             completeCard.Title.text = stars >= 3 ? "PERFECT!" : stars == 2 ? "GREAT!" : "NICE!";
@@ -1378,7 +1407,10 @@ namespace OutOfOffice
             completeShots.text = shots.ToString();
             completePar.text = par.ToString();
             completeShots.color = shots <= par ? Themes.Hex(0x2EAD4B) : Ink;
-            completeExtra.text = finalLevel ? "OFFICE CLEARED! MORE ROOMS SOON" : allPickups ? "FULLY CAFFEINATED!" : shots <= par ? "UNDER PAR!" : "";
+            string stamped = newStamps > 0 ? $"+{newStamps} COFFEE STAMP{(newStamps > 1 ? "S" : "")}" : "";
+            completeExtra.text = finalLevel ? "OFFICE CLEARED! MORE ROOMS SOON"
+                : stamped.Length > 0 ? (allPickups ? "FULLY CAFFEINATED! " : "") + stamped
+                : allPickups ? "FULLY CAFFEINATED!" : shots <= par ? "UNDER PAR!" : "";
             completeNextLabel.text = finalLevel ? "HOME" : "NEXT";
             completeNextIcon.sprite = UiArt.Icon(finalLevel ? "home" : "play");
             ShowCard(completeCard);

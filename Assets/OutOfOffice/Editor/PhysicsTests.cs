@@ -68,6 +68,7 @@ namespace OutOfOffice.EditorTools
                 SaveFlush();
                 ChapterChest();
                 Openers();
+                CoffeeCard();
             }
             finally
             {
@@ -976,6 +977,30 @@ namespace OutOfOffice.EditorTools
             bool once = p.ChapterMastered(0) && p.ClaimChapterChest(0) && !p.ClaimChapterChest(0) && p.ChapterChestClaimed(0);
             bool others = !p.ChapterMastered(1) && !p.ChapterChestClaimed(1) && !p.ChapterMastered(-1) && !p.ChapterMastered(Themes.All.Length);
             Report("chapter-chest", early && once && others, $"locked until all stars {early}, claim once {once}, other chapters untouched {others}");
+        }
+
+        // 18. Coffee punch card: new coffees stamp once, replays don't, a full card opens once and extra stamps carry
+        //     over, and an older save is credited for its 3-star rooms (OUT-24).
+        static void CoffeeCard()
+        {
+            var p = new Progress(new MemoryPrefs());
+            int a = Levels.IndexOf("first"), b = Levels.IndexOf("easy");
+            int first = p.StampCoffees(a, 2), replaySame = p.StampCoffees(a, 2), better = p.StampCoffees(a, 3), overCount = p.StampCoffees(a, 9);
+            bool stamping = first == 2 && replaySame == 0 && better == 1 && overCount == 0 && p.CoffeesBest("first") == 3;
+            for (int i = 0; i < Levels.All.Length && p.Stamps < 12; i++) p.StampCoffees(i, Levels.All[i].Stars.Count);
+            bool ready = p.CardReady && p.CardStamps == Progress.StampsPerCard;
+            bool claimOnce = p.ClaimCard() && !p.ClaimCard();
+            bool carry = p.CardStamps == p.Stamps - Progress.StampsPerCard && p.CardStamps > 0 && !p.CardReady;
+
+            var old = new MemoryPrefs();
+            old.SetInt("buca.best.first", 3);
+            old.SetInt("buca.best.easy", 2);
+            var migrated = new Progress(old);
+            bool migrate = migrated.Stamps == Levels.All[a].Stars.Count && migrated.CoffeesBest("easy") == 0 && migrated.StampCoffees(a, 3) == 0
+                           && new Progress(old).Stamps == migrated.Stamps && b >= 0;
+            bool ok = stamping && ready && claimOnce && carry && migrate;
+            Report("coffee-card", ok, $"stamps once {stamping}; full card {ready}, opens once {claimOnce}, carry-over {carry} ({p.CardStamps}/{Progress.StampsPerCard}); " +
+                $"old save credited {migrate} ({migrated.Stamps} stamps)");
         }
 
         // 17. Every room's opener is short enough to read in the second it is shown (OUT-22).
