@@ -29,8 +29,7 @@ namespace OutOfOffice.EditorTools
             PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Low);
             PlayerSettings.stripEngineCode = true;
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/OutOfOffice/Icon/AppIcon.png");
-            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            AppIcons.Apply(NamedBuildTarget.Android);  // every Android slot, or the launcher shows the Unity logo
             EditorUserBuildSettings.buildAppBundle = false;  // an APK installs straight onto a phone; Play wants an AAB later
 
             string[] scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();

@@ -25,9 +25,8 @@ namespace OutOfOffice.EditorTools
             PlayerSettings.SetIl2CppCompilerConfiguration(NamedBuildTarget.iOS, Il2CppCompilerConfiguration.Release);
             PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.iOS, ManagedStrippingLevel.Low);
             PlayerSettings.stripEngineCode = true;
-            // App icon: Puffy by the hole (rendered by IconStudio). Unity scales it to every required size.
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/OutOfOffice/Icon/AppIcon.png");
-            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            // App icon: Puffy by the hole, in every iOS slot. Unity scales it to every required size.
+            AppIcons.Apply(NamedBuildTarget.iOS);
             if (team.Length > 0)
             {
                 PlayerSettings.iOS.appleDeveloperTeamID = team;
