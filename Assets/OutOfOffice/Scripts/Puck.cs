@@ -372,8 +372,15 @@ namespace OutOfOffice
                 }
                 else if (onRimEdge && dist > Rules.HoleRadius + Rules.PuckRadius) onRimEdge = false;
 
-                if (Captures(dist, speed))
+                // Swept: a fast puck covers about the whole capture zone in one step, so test the closest approach
+                // along this step's path, not only where the step ended.
+                Vector2 from = pos - vel * dt;
+                Vector2 path = pos - from;
+                float along = path.sqrMagnitude > 1e-8f ? Mathf.Clamp01(Vector2.Dot(Hole - from, path) / path.sqrMagnitude) : 1f;
+                Vector2 closest = from + path * along;
+                if (Captures((Hole - closest).magnitude, speed))
                 {
+                    if (along < 1f) Body.position = closest;  // the bed scene starts where it actually hit
                     Body.linearVelocity = vel;
                     info.Result = ShotResult.Sunk;
                     return info;
@@ -409,13 +416,17 @@ namespace OutOfOffice
 
         bool OverHole(Vector2 pos) => (Hole - pos).magnitude < Rules.HoleRadius;
 
-        // The one capture rule, for rolling and landing pucks alike: the center must be well inside the opening,
-        // and the allowed speed shrinks toward the edge of that region.
-        public static bool Captures(float distToHole, float speed)
+        // The one capture rule, for rolling and landing pucks alike: the center must be well inside the opening.
+        // Over most of the bed any speed counts; toward the edge of the capture region the allowed speed shrinks.
+        public static bool Captures(float distToHole, float speed) => speed < CaptureSpeedAt(distToHole);
+
+        public static float CaptureSpeedAt(float distToHole)
         {
-            float captureR = Rules.HoleRadius * Rules.CaptureEdge;
-            if (distToHole >= captureR) return false;
-            return speed < Mathf.Lerp(Rules.CaptureSpeedCenter, Rules.CaptureSpeedEdge, distToHole / captureR);
+            float coreR = Rules.HoleRadius * Rules.CaptureCore, captureR = Rules.HoleRadius * Rules.CaptureEdge;
+            if (distToHole >= captureR) return 0f;
+            if (distToHole <= coreR) return float.PositiveInfinity;
+            float t = (distToHole - coreR) / (captureR - coreR);
+            return Rules.CaptureSpeedEdge + (Rules.CaptureSpeedCore - Rules.CaptureSpeedEdge) * (1f - t) * (1f - t);
         }
 
         // Removes the rebound from glancing contacts on stationary wood (see Rules.GlideRatio). Only the outward

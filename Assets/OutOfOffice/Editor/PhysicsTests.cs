@@ -700,8 +700,8 @@ namespace OutOfOffice.EditorTools
             Report("rest", unsettled == 0 && longest < 12f, $"{shots} shots, never settled: {unsettled}, slowest settle {longest:0.0}s");
         }
 
-        // 8. Hole capture on a clean board: fair centered shots drop, fast ones skim across on the first pass,
-        //    and a near miss outside the opening is neither captured nor pulled sideways.
+        // 8. Hole capture on a clean board: shots over most of the bed drop at any speed, fast edge grazes skim across
+        //    on the first pass, and a near miss outside the opening is neither captured nor pulled sideways.
         static void Capture(LevelInstance unused)
         {
             var root = new GameObject("CaptureTest");
@@ -709,7 +709,8 @@ namespace OutOfOffice.EditorTools
             Vector2 hole = inst.Puck.Hole;
             var lines = new StringBuilder();
             bool ok = true;
-            foreach (var (offset, speed, expect) in new[] { (0f, 4f, true), (0f, 9f, true), (0f, 14f, false), (0f, 18f, false), (0.3f, 4f, true), (0.45f, 8f, false), (0.85f, 3f, false) })
+            // OUT-23: anywhere over most of the bed counts at any speed, full power included; fast grazes near the edge still skim.
+            foreach (var (offset, speed, expect) in new[] { (0f, 4f, true), (0f, 14f, true), (0f, 27f, true), (0.2f, 24f, true), (0.3f, 4f, true), (0.38f, 10f, true), (0.45f, 8f, false), (0.45f, 20f, false), (0.85f, 3f, false) })
             {
                 // Roll toward the hole from 3 units below at a lateral offset; speed is measured on arrival.
                 float launch = speed;

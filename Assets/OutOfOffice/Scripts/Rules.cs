@@ -74,7 +74,10 @@ namespace OutOfOffice
         // ---------- Hole capture ----------
         // The puck only feels the hole once its center is over the opening (no pull from outside the rim).
         public const float HoleTilt = 9f;           // inward acceleration at the rim edge while the center is over the opening
-        public const float CaptureSpeedCenter = 11f;  // max speed that still drops in when dead center
+        // Landing on most of the bed counts at any speed: a full-power shot through the middle is a win, not a
+        // bounce (OUT-23). Outside that core the allowed speed falls off quadratically, so fast grazes still lip out.
+        public const float CaptureCore = 0.5f;        // fraction of the hole radius: inside it, any speed drops in
+        public const float CaptureSpeedCore = 32f;    // allowed speed at the core's edge (above any launch or boost speed)
         public const float CaptureSpeedEdge = 4.5f;   // max speed that still drops in at the capture edge
         public const float CaptureEdge = 0.82f;     // fraction of the hole radius the center must reach to drop
 
