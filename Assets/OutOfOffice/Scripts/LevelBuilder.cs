@@ -696,11 +696,16 @@ namespace OutOfOffice
             spin.SetParent(holder, false);
             var paper = Look.Lit(Themes.Hex(0xFFF6EA), 0.5f);
             var sleeve = Look.Lit(Themes.Hex(0xFF6B5E), 0.55f);
-            // A soft-block takeaway cup: paper body, a red sleeve, a white lid, and the sip hole.
-            Look.AddMesh("Cup", Meshes.SoftBox(new Vector3(0.38f, 0.38f, 0.5f), 0.08f), paper, spin, new Vector3(0f, 0f, -0.27f));
-            Look.AddMesh("Sleeve", Meshes.SoftBox(new Vector3(0.4f, 0.4f, 0.19f), 0.06f), sleeve, spin, new Vector3(0f, 0f, -0.26f), false);
-            Look.AddMesh("Lid", Meshes.SoftBox(new Vector3(0.44f, 0.44f, 0.09f), 0.04f), Look.Lit(Color.white, 0.7f), spin, new Vector3(0f, 0f, -0.55f), false);
-            Look.AddMesh("Sip", Meshes.SoftBox(new Vector3(0.1f, 0.06f, 0.02f), 0.01f), Look.Flat(Themes.Hex(0x5A3322), 0.3f), spin, new Vector3(0.11f, 0f, -0.6f), false);
+            // A round takeaway cup, to match the round people (OUT-1): a tapered paper body, a red sleeve band, a domed
+            // white lid with a rim, and the sip hole. Lathed upward from the cup's base.
+            var bottom = new Vector3(0f, 0f, -0.02f);
+            Look.AddMesh("Cup", Meshes.Lathe(new List<Vector2> { new Vector2(0f, 0f), new Vector2(0.14f, 0f), new Vector2(0.155f, 0.02f), new Vector2(0.19f, 0.47f), new Vector2(0f, 0.47f) }, 28),
+                paper, spin, bottom);
+            Look.AddMesh("Sleeve", Meshes.Lathe(new List<Vector2> { new Vector2(0.16f, 0.13f), new Vector2(0.172f, 0.13f), new Vector2(0.188f, 0.33f), new Vector2(0.176f, 0.33f) }, 28),
+                sleeve, spin, bottom, false);
+            Look.AddMesh("Lid", Meshes.Lathe(new List<Vector2> { new Vector2(0f, 0.46f), new Vector2(0.2f, 0.46f), new Vector2(0.212f, 0.49f), new Vector2(0.2f, 0.52f),
+                new Vector2(0.15f, 0.545f), new Vector2(0.06f, 0.56f), new Vector2(0f, 0.562f) }, 28), Look.Lit(Color.white, 0.7f), spin, bottom, false);
+            Look.AddMesh("Sip", Meshes.Blob(new Vector3(0.075f, 0.045f, 0.016f), 2.6f), Look.Flat(Themes.Hex(0x5A3322), 0.3f), spin, new Vector3(0.09f, 0f, -0.575f), false);
             spin.gameObject.AddComponent<Wiggle>().Init(Wiggle.Mode.Spin, 0f, 1.2f);
             holder.gameObject.AddComponent<Wiggle>().Init(Wiggle.Mode.Bob, 0.1f, 2.4f);
             for (int i = 0; i < 2; i++)

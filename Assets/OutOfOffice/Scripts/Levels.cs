@@ -319,7 +319,7 @@ namespace OutOfOffice
                 .Wall(2.95f, 0.8f, 3.1f, 0.6f)
                 .Post(BlockKind.Bouncer, -2.9f, 4.6f, 0.5f)
                 .Post(BlockKind.Bouncer, 2.9f, 4.6f, 0.5f)
-                .Star(0f, -2.4f).Star(0f, 0.8f).Star(0f, 2.9f),
+                .Star(0f, -2.4f).Star(0f, 0.8f).Star(-2.5f, 3.1f),  // two on the way, one for a bank toward the chair
 
             new LevelDef("easy", "Quick Sync", 0f, 5.3f).WithHint("GO AROUND THE DESK").WithPar(2)
                 .Wall(0f, 1.2f, 5.4f, 2.6f).Rounded(0.6f)
@@ -449,7 +449,7 @@ namespace OutOfOffice
                 .PopWall(0f, -1.5f, 9f, 0.5f, 2.4f, 0f)
                 .PopWall(0f, 1.5f, 9f, 0.5f, 2.4f, 0.33f)
                 .PopWall(0f, 4.2f, 9f, 0.5f, 2.4f, 0.66f)
-                .Star(-3f, 0f).Star(3f, 2.9f).Star(0f, 5.4f),
+                .Star(-3f, 0f).Star(3f, 2.9f).Star(-3.1f, 5.6f),
 
             new LevelDef("hairpin", "Corridor Politics", 4.25f, -10.8f).WithHint("UP, AROUND, AND BACK DOWN").WithPar(4)
                 .WithShape(ShapeDef.Polygon(1.2f, -7f, -13f, -1.5f, -13f, -1.5f, 6f, 1.5f, 6f, 1.5f, -13f, 7f, -13f, 7f, 13f, -7f, 13f))
@@ -489,13 +489,13 @@ namespace OutOfOffice
                 .Ramp(-2.4f, -2.4f, 3f, 2.4f)
                 .Gap(-0.95f, 0.9f, 7.3f, 1.8f)
                 .Wall(1.6f, 4.2f, 0.6f, 3.2f)
-                .Star(-2.4f, -4.4f).Star(-2.4f, 0.9f).Star(-2.4f, 3.4f),
+                .Star(-2.4f, 0.9f).Star(3.6f, 0.9f).Star(-0.5f, 3.8f),  // one over the jump, one on the bridge, one behind the wall
 
             new LevelDef("popspikes", "Floor Staples", 0f, 6.4f).WithHint("CROSS WHEN STAPLES ARE DOWN").WithPar(2)
                 .Spikes(0f, -1.8f, 9f, 1.1f, 2.4f, 0f)
                 .Spikes(0f, 1.2f, 9f, 1.1f, 2.4f, 0.33f)
                 .Spikes(0f, 4f, 9f, 1.1f, 2.4f, 0.66f)
-                .Star(-3.2f, -0.3f).Star(3.5f, 2.6f).Star(0f, 5.3f),
+                .Star(-3.2f, -0.3f).Star(3.5f, 2.6f).Star(-2.8f, 5.5f),
 
             new LevelDef("magnet", "Coffee Gravity", 2.8f, 6f).WithHint("THE COFFEE MACHINE PULLS YOU").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.4f))
@@ -588,7 +588,7 @@ namespace OutOfOffice
                 .Crate(0f, 0f, 1.3f)
                 .Rail(BlockKind.Wall, 0f, -4.6f, 4f, 1.7f, 4f)
                 .Crate(3.2f, 4f, 1.4f)
-                .Star(0f, -1.6f).Star(2.6f, 2f).Star(-0.4f, 5.6f),
+                .Star(1.4f, -0.2f).Star(2.6f, 2f).Star(-0.4f, 5.6f),  // beside the middle box: hug it on the way up
 
             new LevelDef("speedpad", "Fast Track", 0f, 6.2f).WithHint("SPEED STRIPS BEAT THE RUG").WithPar(2)
                 .StartAt(0f, -6.5f)
@@ -597,7 +597,7 @@ namespace OutOfOffice
                 .Mud(0f, 1.6f, 9f, 3f)
                 .SpikeBall(-1.7f, 5f, 0.4f)
                 .SpikeBall(1.7f, 5f, 0.4f)
-                .Star(0f, -1.2f).Star(0f, 1.6f).Star(0f, 4f),
+                .Star(0f, -1.2f).Star(-3f, 2.2f).Star(3.1f, 4.6f),  // the side strip, and one daringly close to a stapler
 
             new LevelDef("whirlpool", "Spilled Latte", 0f, 6.2f).WithHint("SPILLS SPIN YOU ROUND").WithPar(2)
                 .Vortex(0f, 1f, 2.6f)
@@ -644,7 +644,7 @@ namespace OutOfOffice
                 .Hazard(0f, -2f, 2.6f, 0.45f).Moving(3f, 0f, 3f)
                 .Hazard(0f, 1.2f, 2.2f, 0.45f).Moving(3.1f, 0f, 2.4f, 1.2f)
                 .Hazard(0f, 4.2f, 2.6f, 0.45f).Moving(3f, 0f, 3.4f, 0.6f)
-                .Star(0f, -0.4f).Star(2f, 2.7f).Star(0f, 5.5f),
+                .Star(0f, -0.4f).Star(2f, 2.7f).Star(-2.6f, 5.8f),
 
             new LevelDef("turnstile", "Reception Gates", 3f, 6f).WithHint("SPIN, THEN SLIP THROUGH").WithPar(2)
                 .Bouncer(0f, 0.4f, 3.6f, 0.5f).Spinning(80f)
@@ -687,7 +687,7 @@ namespace OutOfOffice
                 .Breakable(3f, 0f, 3f, 0.6f)
                 .Breakable(-1.2f, 3.4f, 6.6f, 0.6f)
                 .Wall(3.3f, 3.4f, 2.4f, 0.6f)
-                .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(0f, 4.8f),
+                .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(-3.4f, 5.2f),  // the last one is behind the folders
 
             // ---------- Chapter 6, Executive Floor (levels 46-54): mail belts, sliding doors, air con, elevators ----------
             new LevelDef("conveyor", "Mail Belt", -3f, 6.3f).WithHint("THE BELTS CARRY YOU").WithPar(3)
@@ -755,7 +755,7 @@ namespace OutOfOffice
                 .Portal(3.2f, -3f, -3.2f, 3.6f, 0f, 0f)
                 .SpikeBall(0f, 3.4f, 0.4f).Moving(2.4f, 0f, 2.8f)
                 .Ice(0f, -3f, 9f, 2f)
-                .Star(-3.2f, -3f).Star(3.2f, 4.2f).Star(0f, 5f),
+                .Star(-3.2f, -3f).Star(3.2f, 4.2f).Star(-1.7f, 5.4f),
 
             new LevelDef("green", "Executive Putting Green", 0f, 4.6f).WithHint("JUMP THE WATER FEATURE").WithPar(2)
                 .WithShape(ShapeDef.Circle(7f))
@@ -838,13 +838,13 @@ namespace OutOfOffice
                 .Spikes(0f, 3.6f, 9f, 0.9f, 2.2f, 0f)
                 .Post(BlockKind.Bouncer, -2.6f, 0f, 0.45f)
                 .Post(BlockKind.Bouncer, 2.6f, 0f, 0.45f)
-                .Star(-3.6f, 1.6f).Star(3.6f, 1.6f).Star(0f, 5.2f),
+                .Star(-3.6f, 1.6f).Star(3.6f, 1.6f).Star(-2.8f, 5.4f),
 
             new LevelDef("deadline", "Deadline", 0f, 6.6f).WithHint("THREE DEADLINES. GO!").WithPar(2)
                 .Hazard(0f, -2f, 2.4f, 0.45f).Moving(3f, 0f, 2.2f)
                 .Hazard(0f, 1f, 2.4f, 0.45f).Moving(3f, 0f, 1.8f, 0.5f)
                 .Hazard(0f, 4f, 2.4f, 0.45f).Moving(3f, 0f, 2f, 0.25f)
-                .Star(-3.6f, -0.5f).Star(3.6f, 2.5f).Star(0f, 5.4f),
+                .Star(-3.6f, -0.5f).Star(3.6f, 2.5f).Star(-2.4f, 5.7f),
 
             new LevelDef("finale", "Lights Out", 0f, 6.5f).WithHint("EVERYTHING AT ONCE!").WithPar(3)
                 .Taller(8f, ShapeDef.Chamfered(9f, 24f, 1.6f))

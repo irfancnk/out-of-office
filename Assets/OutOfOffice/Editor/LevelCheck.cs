@@ -92,6 +92,7 @@ namespace OutOfOffice.EditorTools
             bool timed = inst.Movers.Count > 0 || inst.PopWalls.Count > 0 || inst.Zones.Exists(z => z.Kind == ZoneKind.Spikes);
             float[] phases = timed ? new[] { 0f, 0.8f, 1.6f } : new[] { 0f };
             int shots = 0, wins = 0, hazards = 0, maxStars = 0;
+            var touched = new bool[def.Stars.Count];  // coffees any explored shot collected, to name the unreachable ones
             var rests = new Dictionary<Vector3Int, LevelSnapshot>();
             string example = "-";
 
@@ -101,6 +102,7 @@ namespace OutOfOffice.EditorTools
             {
                 start.Time = t0;
                 var o = Shoot(inst, start, Aim(angle, p / 10f));
+                Touch(touched, o);
                 shots++;
                 maxStars = Mathf.Max(maxStars, o.Stars);
                 if (o.Result == ShotResult.Sunk)
@@ -115,7 +117,7 @@ namespace OutOfOffice.EditorTools
             // Deeper shots, golf style, from a spread of resting places (and the switch/crate state they produced).
             var frontier = rests;
             // Keep exploring up to par even after a win, so stars on multi-shot routes are counted too.
-            for (int depth = 2; depth <= MaxShots && (minShots == 0 || depth <= def.Par) && !(minShots > 0 && maxStars >= def.Stars.Count); depth++)
+            for (int depth = 2; depth <= MaxShots && (minShots == 0 || depth <= def.Par + 1) && !(minShots > 0 && maxStars >= def.Stars.Count); depth++)
             {
                 var next = new Dictionary<Vector3Int, LevelSnapshot>();
                 int found = 0;
@@ -125,6 +127,7 @@ namespace OutOfOffice.EditorTools
                     for (int p = 2; p <= 10; p += 2)
                     {
                         var o = Shoot(inst, snap, Aim(angle, p / 10f));
+                        Touch(touched, o);
                         maxStars = Mathf.Max(maxStars, o.Stars + Count(snap.Stars));
                         if (o.Result == ShotResult.Sunk) { if (found++ == 0 && minShots == 0) example = $"{depth} shots, last {angle} deg power {p / 10f:0.0}"; }
                         else if (o.Result == ShotResult.Rest) Remember(next, o.After);
@@ -137,9 +140,54 @@ namespace OutOfOffice.EditorTools
             ok = minShots > 0;
             string parNote = !ok ? "" : minShots > def.Par ? $"  PAR {def.Par} TOO LOW (min {minShots})" : minShots < def.Par - 1 ? $"  PAR {def.Par} LOOSE (min {minShots})" : "";
             string starNote = def.Stars.Count == 0 ? "no stars" : $"stars reached {maxStars}/{def.Stars.Count}";
-            return ok
-                ? $"OK  min shots {minShots}  par {def.Par}  one-shot win {100f * wins / shots,5:0.0}%  hazard {100f * hazards / shots,4:0.0}%  {starNote}  e.g. {example}{parNote}"
-                : $"UNSOLVED in {MaxShots} shots  ({starNote})";
+            bool solved = ok;
+            starNote += CoffeeRules(def, maxStars, touched, out bool coffeeOk);
+            ok = solved && coffeeOk;
+            string stats = $"min shots {minShots}  par {def.Par}  one-shot win {100f * wins / shots,5:0.0}%  hazard {100f * hazards / shots,4:0.0}%  {starNote}  e.g. {example}{parNote}";
+            return !solved ? $"UNSOLVED in {MaxShots} shots  ({starNote})" : coffeeOk ? "OK  " + stats : "BAD " + stats;
+        }
+
+        // Coffee placement rules (OUT-25). Coffees should reward a clever line, not sit where the player goes anyway:
+        //   - every coffee can be collected within par + 1 shots, together with finishing
+        //   - none sits on the start or on the bed
+        //   - they are not all lined up on the plain straight shot from the start to the bed
+        public const float CoffeeClearance = 1.2f;   // from the start and from the bed
+        public const float StraightLane = 0.7f;      // how close to the start-bed line counts as "on the straight shot"
+
+        static string CoffeeRules(LevelDef def, int reached, bool[] touched, out bool ok)
+        {
+            ok = true;
+            if (def.Stars.Count == 0) return "";
+            var notes = new StringBuilder();
+            if (reached < def.Stars.Count)
+            {
+                ok = false;
+                notes.Append("  COFFEE UNREACHABLE");
+                for (int i = 0; i < touched.Length; i++)
+                    if (!touched[i]) notes.Append($" never touched ({def.Stars[i].x:0.#},{def.Stars[i].y:0.#})");
+            }
+            int onLine = 0;
+            foreach (var s in def.Stars)
+            {
+                if ((s - def.Start).magnitude < CoffeeClearance) { ok = false; notes.Append($"  COFFEE ON START ({s.x:0.#},{s.y:0.#})"); }
+                if ((s - def.Hole).magnitude < CoffeeClearance) { ok = false; notes.Append($"  COFFEE ON BED ({s.x:0.#},{s.y:0.#})"); }
+                if (DistanceToSegment(s, def.Start, def.Hole) < StraightLane) onLine++;
+            }
+            if (onLine == def.Stars.Count && def.Stars.Count > 1) { ok = false; notes.Append($"  COFFEES ALL ON THE STRAIGHT SHOT"); }
+            return $" (on straight shot {onLine}){notes}";
+        }
+
+        static void Touch(bool[] touched, ShotOutcome o)
+        {
+            if (o.After?.Stars == null) return;
+            for (int i = 0; i < touched.Length && i < o.After.Stars.Length; i++) touched[i] |= o.After.Stars[i];
+        }
+
+        static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude) : 0f;
+            return (p - (a + ab * t)).magnitude;
         }
 
         static Vector2 Aim(int angle, float power)
