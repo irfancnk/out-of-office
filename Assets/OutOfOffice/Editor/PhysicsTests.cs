@@ -66,6 +66,7 @@ namespace OutOfOffice.EditorTools
                 OutfitSlots();
                 DailyClock();
                 SaveFlush();
+                ChapterChest();
             }
             finally
             {
@@ -958,6 +959,21 @@ namespace OutOfOffice.EditorTools
             p.Flush();
             bool ok = lazy && prefs.Saves == before + 1 && p.QuestProgress(qi) == 1;
             Report("save-flush", ok, $"quest step saved lazily {lazy}, flush writes {prefs.Saves - before}");
+        }
+
+        // 16. The chest at the end of a chapter's star bar opens only with every star in that chapter, and only once.
+        static void ChapterChest()
+        {
+            var prefs = new MemoryPrefs();
+            var p = new Progress(prefs);
+            int first = Themes.ChapterStart[0], end = Themes.ChapterStart[1];
+            for (int i = first; i < end - 1; i++) prefs.SetInt("buca.best." + Levels.All[i].Id, 3);
+            prefs.SetInt("buca.best." + Levels.All[end - 1].Id, 2);
+            bool early = !p.ChapterMastered(0) && !p.ClaimChapterChest(0);
+            prefs.SetInt("buca.best." + Levels.All[end - 1].Id, 3);
+            bool once = p.ChapterMastered(0) && p.ClaimChapterChest(0) && !p.ClaimChapterChest(0) && p.ChapterChestClaimed(0);
+            bool others = !p.ChapterMastered(1) && !p.ChapterChestClaimed(1) && !p.ChapterMastered(-1) && !p.ChapterMastered(Themes.All.Length);
+            Report("chapter-chest", early && once && others, $"locked until all stars {early}, claim once {once}, other chapters untouched {others}");
         }
 
         static float Min(List<float> v) { float m = float.MaxValue; foreach (var x in v) m = Mathf.Min(m, x); return m; }

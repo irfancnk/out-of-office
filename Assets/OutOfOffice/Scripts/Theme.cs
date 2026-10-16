@@ -124,7 +124,8 @@ namespace OutOfOffice
             },
         };
 
-        // First level index of each chapter, plus the level count at the end.
+        // First level index of each chapter, plus the level count at the end. Levels.cs marks each chapter with a
+        // matching comment; LevelCheck fails if this table and the level list disagree.
         public static readonly int[] ChapterStart = { 0, 11, 20, 29, 37, 45, 54, 64 };
 
         // The theme LevelBuilder uses. The game sets it before it builds a level.

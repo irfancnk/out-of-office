@@ -51,7 +51,8 @@ namespace OutOfOffice
     //   buca.skin                  pre-wardrobe skin id; read when no outfit is saved yet
     //   buca.outfit.<slot>         equipped item per slot (employee, color, hat, face)
     //   buca.own.<item>            1 once a chest has given that item
-    //   buca.chests.opened         chests opened so far (input for the chest pity timer, OUT-14)
+    //   buca.chests.opened         chests opened so far (ChestsOpened; input for the chest pity timer, OUT-14)
+    //   buca.chapter.chest.N       1 once chapter N's all-stars chest is claimed
     //   buca.quest.day             the day today's quest progress belongs to (yyyymmdd)
     //   buca.quest.pN, .cN         progress and claimed flag of today's quest N
     //   buca.daily.chest           the day the free daily chest was last claimed (yyyymmdd)
@@ -311,6 +312,30 @@ namespace OutOfOffice
             prefs.SetInt("buca.chests.opened", prefs.GetInt("buca.chests.opened", 0) + 1);
             prefs.Save();
             return item;
+        }
+
+        public int ChestsOpened => prefs.GetInt("buca.chests.opened", 0);
+
+        // ---------- Chapter chests ----------
+
+        // Every star in a chapter earns its chest, once.
+        public bool ChapterMastered(int chapter)
+        {
+            if (chapter < 0 || chapter >= Themes.All.Length) return false;
+            int end = Mathf.Min(Themes.ChapterStart[chapter + 1], Levels.All.Length);
+            for (int i = Themes.ChapterStart[chapter]; i < end; i++)
+                if (Best(Levels.All[i].Id) < 3) return false;
+            return true;
+        }
+
+        public bool ChapterChestClaimed(int chapter) => prefs.GetInt("buca.chapter.chest." + chapter, 0) == 1;
+
+        public bool ClaimChapterChest(int chapter)
+        {
+            if (!ChapterMastered(chapter) || ChapterChestClaimed(chapter)) return false;
+            prefs.SetInt("buca.chapter.chest." + chapter, 1);
+            prefs.Save();
+            return true;
         }
 
         // ---------- Daily quests ----------

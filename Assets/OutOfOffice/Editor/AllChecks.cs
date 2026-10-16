@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEngine;
 
 namespace OutOfOffice.EditorTools
 {
@@ -8,15 +9,18 @@ namespace OutOfOffice.EditorTools
         [MenuItem("Out of Office/Run All Checks")]
         public static void RunFromMenu()
         {
-            PhysicsTests.Run();
-            LevelCheck.Run(Levels.All);
+            int failures = RunAll();
+            Debug.Log($"HSALL done, failures: {failures}");
         }
 
         public static void Run()
         {
-            int physics = PhysicsTests.Run();
-            int levels = LevelCheck.Run(Levels.All);
-            EditorApplication.Exit(physics == 0 && levels == 0 ? 0 : 4);
+            int failures = RunAll();
+            Debug.Log($"HSALL done, failures: {failures}");
+            EditorApplication.Exit(failures == 0 ? 0 : 4);
         }
+
+        // Physics and save rules, every level solvable, and the cosmetic rig and face placement.
+        static int RunAll() => PhysicsTests.Run() + LevelCheck.Run(Levels.All) + PresentationChecks.Run();
     }
 }

@@ -119,3 +119,6 @@ InitTestScene*.unity*
 # Website (site/) tooling
 node_modules/
 .wrangler/
+
+# Editor tooling created on first open
+.vscode/

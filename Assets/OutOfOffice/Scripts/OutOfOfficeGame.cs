@@ -139,6 +139,7 @@ namespace OutOfOffice
                     ApplyOutfit();
                 }
                 hud.RefreshQuests();
+                hud.RefreshChapterChest();
                 hud.SetQuestBadge(progress.ChestsWaiting);
             }, progress.ReducedMotion);
             hud.SetQuestBadge(progress.ChestsWaiting);
@@ -180,6 +181,8 @@ namespace OutOfOffice
             hud.ChestsWaiting = () => progress.ChestsWaiting;
             hud.ClaimQuest = i => { if (progress.ClaimQuest(i)) OpenChest("TASK COMPLETE!"); };
             hud.OpenDailyChest = () => { if (progress.ClaimDailyChest()) OpenChest("EMPLOYEE APPRECIATION"); };
+            hud.ChapterChestClaimed = c => progress.ChapterChestClaimed(c);
+            hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!"); };
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
             hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); };

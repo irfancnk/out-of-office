@@ -159,6 +159,18 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete.png"), Canvas.ForceUpdateCanvases);
 
+                hud.ShowComplete(Levels.All.Length, 2, 3, 3, false, true);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete-final.png"), Canvas.ForceUpdateCanvases);
+
+                // Home with the first chapter's chest earned and waiting.
+                hud.BestStars = id => 3;
+                hud.ChapterChestClaimed = c => false;
+                hud.ShowTitle(Levels.All.Length * 3, 5, Themes.All[0]);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "title-chapter-chest.png"), Canvas.ForceUpdateCanvases);
+                hud.HideTitle();
+
                 hud.ShowLevels();
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-levels.png"), Canvas.ForceUpdateCanvases);

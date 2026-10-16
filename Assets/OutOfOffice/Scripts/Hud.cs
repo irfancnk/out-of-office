@@ -191,7 +191,7 @@ namespace OutOfOffice
 
             var titleBlock = Capsule(hudRoot, "Level", new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(340f, 116f), Shade);
             chapterPill = Capsule(titleBlock, "Chapter", new Vector2(0.5f, 1f), new Vector2(0f, 14f), new Vector2(200f, 40f), theme.Accent);
-            chapterText = Txt(chapterPill, "TOY ROOM", 24f, Color.white, Ink, 0.3f, false);
+            chapterText = Txt(chapterPill, Themes.All[0].Name, 24f, Color.white, Ink, 0.3f, false);
             chapterText.characterSpacing = 4f;
             chapterPill.gameObject.SetActive(false);  // the chapter shows in the level banner; the bar stays slim
             levelText = Txt(Rect("Number", titleBlock, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(340f, 64f)),
@@ -517,9 +517,21 @@ namespace OutOfOffice
             Sliced(Img(chapterFill, UiArt.Button, Palette.UiGreen), 76f, 0.5f);
             chapterCount = Txt(Rect("Count", bar, Vector2.zero, Vector2.one, new Vector2(-30f, 2f), Vector2.zero), "0/0", 46f, Color.white, FrameDark, 0.35f, true);
             var chest = Rect("Chest", bar, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 8f), new Vector2(124f, 124f));
-            var chestIcon = Img(chest, UiArt.Icon("chest"), Themes.Hex(0xFFC23A));
+            var chestIcon = Img(chest, UiArt.Icon("chest"), ChapterChestGold);
             chestIcon.gameObject.AddComponent<Outline>().effectColor = FrameDark;
             chestIcon.GetComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            // The chest at the end of the bar is the reward for every star in the chapter. Until then it opens the
+            // level list like the rest of the bar.
+            chestIcon.raycastTarget = true;
+            chapterChestIcon = chestIcon;
+            chest.gameObject.AddComponent<UiPress>().Clicked = () =>
+            {
+                if (chapterChestReady) ClaimChapterChest?.Invoke(chapterChestChapter);
+                else ShowLevels();
+            };
+            chapterChestBadge = Badge(chest, "!");
+            chapterChestShake = chest.gameObject.AddComponent<Rattle>();
+            chapterChestShake.enabled = false;
             var plate = Rect("Name", header, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-340f, -34f), new Vector2(400f, 64f));
             Sliced(Img(plate, UiArt.Pill, FrameDark), 64f, 0.5f);
             chapterName = Txt(Rect("Text", plate, Vector2.zero, Vector2.one, new Vector2(0f, 2f), new Vector2(-30f, 0f)), "", 32f, Trim, FrameDark, 0.2f, false);
@@ -642,6 +654,38 @@ namespace OutOfOffice
             welcomeIcon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
+        public System.Func<int, bool> ChapterChestClaimed;
+        public System.Action<int> ClaimChapterChest;
+        static readonly Color ChapterChestGold = Themes.Hex(0xFFC23A);
+        Image chapterChestIcon;
+        RectTransform chapterChestBadge;
+        Rattle chapterChestShake;
+        int chapterChestChapter;
+        bool chapterChestFull, chapterChestReady;
+
+        // Ready: rattles with a badge. Claimed: faded. Otherwise: shown as the prize to aim for.
+        public void RefreshChapterChest()
+        {
+            if (chapterChestIcon == null) return;
+            bool claimed = ChapterChestClaimed?.Invoke(chapterChestChapter) ?? false;
+            chapterChestReady = chapterChestFull && !claimed;
+            chapterChestIcon.color = claimed ? new Color(0.75f, 0.7f, 0.8f, 0.55f) : ChapterChestGold;
+            chapterChestBadge.gameObject.SetActive(chapterChestReady);
+            chapterChestShake.enabled = chapterChestReady;
+            if (!chapterChestReady) chapterChestShake.transform.localRotation = Quaternion.identity;
+        }
+
+        // A quick shake every couple of seconds, like something inside wants out.
+        class Rattle : MonoBehaviour
+        {
+            void Update()
+            {
+                float t = Time.unscaledTime % 2.2f;
+                float angle = Calm || t > 0.5f ? 0f : Mathf.Sin(t * 40f) * 9f * (1f - t / 0.5f);
+                transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+            }
+        }
+
         void RefreshHome(int stars, int levelNumber, Theme levelTheme)
         {
             totalStars.text = stars.ToString();
@@ -655,6 +699,9 @@ namespace OutOfOffice
             chapterCount.text = $"{got}/{max}";
             chapterFill.anchorMax = new Vector2(Mathf.Max(0.12f, got / (float)max), 1f);
             chapterFill.gameObject.SetActive(got > 0);
+            chapterChestChapter = c;
+            chapterChestFull = got >= max;
+            RefreshChapterChest();
 
             bool ready = DailyChestReady?.Invoke() ?? false;
             var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;

@@ -39,8 +39,14 @@ namespace OutOfOffice.EditorTools
         {
             var previousMode = Physics2D.simulationMode;
             Physics2D.simulationMode = SimulationMode2D.Script;
-            var report = new StringBuilder("HOLESHOT LEVEL CHECK\n");
+            var report = new StringBuilder("OUT OF OFFICE LEVEL CHECK\n");
             int bad = 0;
+            if (levels == Levels.All)
+            {
+                string chapters = CheckChapters(out bool chaptersOk);
+                if (!chaptersOk) bad++;
+                report.AppendLine($"HSLEVEL chapters {(chaptersOk ? "PASS" : "FAIL")} {chapters}");
+            }
             var watch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
@@ -68,6 +74,16 @@ namespace OutOfOffice.EditorTools
             report.AppendLine($"HSLEVEL done in {watch.Elapsed.TotalSeconds:0.0}s, levels failing: {bad}");
             Debug.Log(report.ToString());
             return bad;
+        }
+
+        // Themes.ChapterStart must give every theme a non-empty run of levels and end at the level count, or the
+        // home screen's chapter bar and the level banners point at the wrong chapter.
+        static string CheckChapters(out bool ok)
+        {
+            var starts = Themes.ChapterStart;
+            ok = starts.Length == Themes.All.Length + 1 && starts[0] == 0 && starts[starts.Length - 1] == Levels.All.Length;
+            for (int c = 1; c < starts.Length; c++) ok &= starts[c] > starts[c - 1];
+            return $"{Themes.All.Length} chapters, starts {string.Join(",", starts)}, {Levels.All.Length} levels";
         }
 
         static string CheckLevel(LevelInstance inst, LevelDef def, out bool ok)

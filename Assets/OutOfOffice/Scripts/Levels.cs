@@ -313,7 +313,7 @@ namespace OutOfOffice
     {
         public static readonly LevelDef[] All =
         {
-            // ---------- Toy Room: learn to aim, bank, and ride ----------
+            // ---------- Chapter 1, Open-Plan Office (levels 1-11): aim, bank off walls, ride the desks ----------
             new LevelDef("first", "Onboarding", 0f, 4.5f).WithHint("DRAG BACK, AIM, RELEASE")
                 .Wall(-2.95f, 0.8f, 3.1f, 0.6f)
                 .Wall(2.95f, 0.8f, 3.1f, 0.6f)
@@ -399,6 +399,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 3f, -4f, 0.45f)
                 .Star(0f, -3.6f).Star(-0.2f, 1.4f).Star(1.2f, 5.6f),
 
+            // ---------- Chapter 2, Office Kitchen (levels 12-20): chairs, vents, switches, spills ----------
             new LevelDef("rubber", "Swivel Chairs", -3f, 6.3f).WithHint("CHAIRS BOUNCE YOU AROUND").WithPar(2)
                 .Rail(BlockKind.Wall, 0.3f, -4.6f, 4f, -0.9f, 4f, -0.9f, 5.6f)
                 .Post(BlockKind.Bouncer, 3.3f, 6.6f, 0.6f)
@@ -426,7 +427,6 @@ namespace OutOfOffice
                 .SpikeBall(3f, 3.2f, 0.4f).Moving(1f, 0f, 2.6f)
                 .Star(-3f, -1f).Star(-3f, 4f).Star(1.4f, 6.6f),
 
-            // ---------- Garden: switches, spinners, portals, jumps, wind, pop-up spikes ----------
             new LevelDef("switch", "Badge Reader", 0f, 6.2f).WithHint("PRESS THE BADGE READER FIRST").WithPar(3)
                 .Rail(BlockKind.Wall, 0f, -2.2f, 8.1f, -2.2f, 3.6f)
                 .Rail(BlockKind.Wall, 0f, 2.2f, 8.1f, 2.2f, 3.6f)
@@ -475,6 +475,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 0f, 5.2f, 0.45f)
                 .Star(0f, -2.8f).Star(-1.3f, 2.6f).Star(1.3f, 2.6f),
 
+            // ---------- Chapter 3, Meeting Room (levels 21-29): mail chutes, jumps, hallways, timing ----------
             new LevelDef("portal", "Mail Chute", 1.6f, 5.4f).WithHint("IN ONE CHUTE, OUT THE OTHER").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.4f))
                 .Rail(BlockKind.Wall, 0f, -4.6f, 3f, 4.6f, 3f)
@@ -549,6 +550,7 @@ namespace OutOfOffice
                 .PopWall(2.25f, 2f, 4.5f, 0.5f, 2.2f, 0f)
                 .Star(-3f, 0.25f).Star(3f, 0.25f).Star(0f, 4.2f),
 
+            // ---------- Chapter 4, Manager's Office (levels 30-37): gaps, cacti, speed strips, pacing managers ----------
             new LevelDef("hopscotch", "Budget Gaps", 0f, 6.2f).WithHint("BOUNCE OVER THE GAPS").WithPar(2)
                 .Gap(0f, -1f, 9.2f, 1.6f)
                 .Gap(0f, 3f, 9.2f, 1.6f)
@@ -580,7 +582,6 @@ namespace OutOfOffice
                 .SpikeBall(0.4f, -1f, 0.4f).Moving(2.2f, 0f, 2.8f)
                 .Star(0f, -9.6f).Star(-0.4f, 2.5f).Star(-1f, 6.4f),
 
-            // ---------- Beach: crates, pads, whirlpools, belts, and timing ----------
             new LevelDef("crate", "Archive Boxes", -2.6f, 6.4f).WithHint("PUSH THE BOXES ASIDE").WithPar(4)
                 .Rail(BlockKind.Wall, 0f, -4.6f, 0f, -1.45f, 0f)
                 .Rail(BlockKind.Wall, 0f, 1.45f, 0f, 4.6f, 0f)
@@ -622,6 +623,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 4.4f, 1.6f, 0.45f)
                 .Star(-4.6f, 2.4f).Star(4.6f, -0.6f).Star(0f, -2.6f),
 
+            // ---------- Chapter 5, HR & Admin (levels 38-45): spill leaps, beanbags, filing boxes, paperwork ----------
             new LevelDef("lagoon", "Spill Leap", 0f, 6.2f).WithHint("BOUNCE OVER THE SPILL").WithPar(2)
                 .Vortex(0f, 2f, 2.4f)
                 .Jump(0f, -2.6f, 0.8f)
@@ -687,6 +689,7 @@ namespace OutOfOffice
                 .Wall(3.3f, 3.4f, 2.4f, 0.6f)
                 .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(0f, 4.8f),
 
+            // ---------- Chapter 6, Executive Floor (levels 46-54): mail belts, sliding doors, air con, elevators ----------
             new LevelDef("conveyor", "Mail Belt", -3f, 6.3f).WithHint("THE BELTS CARRY YOU").WithPar(3)
                 .Taller(6f)
                 .StartAt(-2.6f, -13f)
@@ -703,7 +706,6 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 2.8f, 5.6f, 0.5f)
                 .Star(2.5f, 0f).Star(-3.5f, 1.6f).Star(0f, 5f),
 
-            // ---------- Snow: crystal, doors, and the grand tour ----------
             new LevelDef("icebreak", "Red Tape", 0f, 6f).WithHint("HIT FOLDERS HARD TO BREAK THEM").WithPar(2)
                 .Wall(0f, 0.5f, 5f, 0.6f)
                 .Breakable(0f, 4.2f, 3.4f, 0.6f)
@@ -764,6 +766,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 3f, 3.6f, 0.45f)
                 .Star(0f, 0.6f).Star(-4.4f, -1.2f).Star(4.4f, -1.2f),
 
+            // ---------- Chapter 7, After Hours (levels 55-64): every gadget at once ----------
             new LevelDef("rampbumper", "Quarterly Review", -3f, 6.2f).WithHint("JUMP, THEN BANK OFF THE CHAIR").WithPar(2)
                 .WithShape(ShapeDef.Chamfered(9f, 16f, 1.6f))
                 .StartAt(0f, -6.5f)
