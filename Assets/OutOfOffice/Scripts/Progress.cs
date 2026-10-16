@@ -60,6 +60,11 @@ namespace OutOfOffice
     //   buca.daily.chest           the day the free daily chest was last claimed (yyyymmdd)
     //   buca.clock.seen            latest UTC time seen, in ticks; the clock never reads earlier than this
     //   buca.clock.rollbacks       how many launches found the device clock wound back
+    //   buca.gems                  gem balance (OUT-32)
+    //   buca.iap.<product>         1 once a non-consumable or one-time product was bought
+    //   buca.pass.until, .day      Office Pass expiry (UTC ticks) and the day its reward was last claimed (OUT-33)
+    //   buca.ads.day, .count       rewarded ads watched today (OUT-31)
+    //   buca.install, .install.at  anonymous install id and when it was made; buca.sessions session count (OUT-34)
     //   buca.sfx, buca.music, buca.reduce   settings
     public class Progress
     {
@@ -99,7 +104,10 @@ namespace OutOfOffice
         // rewards again: the clock never reads earlier than the latest time it has shown. UTC is compared, so
         // flying across time zones is not a rollback. Moving the clock forward only borrows future days, since
         // those days are then already claimed when they really come. Server time (OUT-5) replaces this.
-        public DateTime Now
+        public DateTime Now => clock.ToLocal(UtcNow);
+
+        // The same guarded time in UTC: what entitlements with an expiry (the Office Pass) are measured against.
+        public DateTime UtcNow
         {
             get
             {
@@ -131,7 +139,7 @@ namespace OutOfOffice
                     seenTicks = utc.Ticks;
                     if (seenTicks - savedTicks > TimeSpan.TicksPerMinute) SaveSeen();  // the HUD reads the time often
                 }
-                return clock.ToLocal(utc);
+                return utc;
             }
         }
 
@@ -318,6 +326,129 @@ namespace OutOfOffice
         }
 
         public int ChestsOpened => prefs.GetInt("buca.chests.opened", 0);
+
+        // ---------- Wallet and purchases (OUT-32) ----------
+
+        public int Gems => prefs.GetInt("buca.gems", 0);
+
+        public void AddGems(int amount, string source)
+        {
+            if (amount <= 0) return;
+            prefs.SetInt("buca.gems", Gems + amount);
+            prefs.Save();
+            Analytics.Event("gems_earn", ("amount", amount), ("source", source), ("balance", Gems));
+        }
+
+        public bool SpendGems(int amount, string sink)
+        {
+            if (amount <= 0 || Gems < amount) return false;
+            prefs.SetInt("buca.gems", Gems - amount);
+            prefs.Save();
+            Analytics.Event("gems_spend", ("amount", amount), ("sink", sink), ("balance", Gems));
+            return true;
+        }
+
+        // Non-consumables and one-time offers bought so far.
+        public bool Bought(Product product) => prefs.GetInt("buca.iap." + product.Id, 0) == 1;
+
+        public bool CanBuy(Product product) => product.Kind == ProductKind.Consumable || product.Kind == ProductKind.Subscription || !Bought(product);
+
+        // Applies a completed purchase. The one place grants happen, whichever store sold it.
+        public void Grant(Product product)
+        {
+            if (product.Kind != ProductKind.Consumable) prefs.SetInt("buca.iap." + product.Id, 1);
+            if (product.Gems > 0) AddGems(product.Gems, "iap:" + product.Id);
+            if (product.PassDays > 0) ExtendPass(TimeSpan.FromDays(product.PassDays));
+            prefs.Save();
+        }
+
+        // "No ads": rewarded offers pay out without the video, for No Ads buyers and pass holders.
+        public bool AdFree => prefs.GetInt("buca.iap." + Catalog.NoAds.Id, 0) == 1 || PassActive;
+
+        // ---------- Office Pass (OUT-33) ----------
+
+        public const int PassDailyGems = 25;
+
+        public DateTime PassUntil
+        {
+            get
+            {
+                long.TryParse(prefs.GetString("buca.pass.until", "0"), out long ticks);
+                return new DateTime(Math.Max(0L, ticks), DateTimeKind.Utc);
+            }
+        }
+
+        public bool PassActive => PassUntil > UtcNow;
+        public int PassDaysLeft => PassActive ? Mathf.CeilToInt((float)(PassUntil - UtcNow).TotalDays) : 0;
+
+        // Renewals stack on the time left; a lapsed pass starts again from now.
+        public void ExtendPass(TimeSpan by)
+        {
+            var from = PassActive ? PassUntil : UtcNow;
+            prefs.SetString("buca.pass.until", (from + by).Ticks.ToString());
+            var tie = Cosmetics.Find(Catalog.PassTie);
+            if (tie != null) Grant(tie);  // the exclusive look comes with the pass
+            prefs.Save();
+        }
+
+        public bool PassClaimReady => PassActive && prefs.GetInt("buca.pass.day", 0) < Today;
+
+        // Today's pass reward: gems now; the game opens the chest that comes with it.
+        public bool ClaimPass()
+        {
+            if (!PassClaimReady) return false;
+            prefs.SetInt("buca.pass.day", Today);
+            AddGems(PassDailyGems, "pass");
+            Analytics.Event("pass_claim", ("days_left", PassDaysLeft));
+            return true;
+        }
+
+        // ---------- Rewarded ads bookkeeping (OUT-31) ----------
+
+        public int AdsToday => prefs.GetInt("buca.ads.day", 0) == Today ? prefs.GetInt("buca.ads.count", 0) : 0;
+
+        public void CountAd()
+        {
+            int today = Today, count = AdsToday + 1;
+            prefs.SetInt("buca.ads.day", today);
+            prefs.SetInt("buca.ads.count", count);
+            prefs.Save();
+        }
+
+        // ---------- Install identity (OUT-34) ----------
+
+        // An anonymous id for this install, for A/B buckets and analytics. No personal data.
+        public string InstallId
+        {
+            get
+            {
+                string id = prefs.GetString("buca.install", "");
+                if (id.Length > 0) return id;
+                id = Guid.NewGuid().ToString("N");
+                prefs.SetString("buca.install", id);
+                prefs.SetString("buca.install.at", UtcNow.Ticks.ToString());
+                prefs.Save();
+                return id;
+            }
+        }
+
+        public int DaysSinceInstall
+        {
+            get
+            {
+                _ = InstallId;
+                long.TryParse(prefs.GetString("buca.install.at", "0"), out long at);
+                return at <= 0 ? 0 : Mathf.Max(0, (int)(UtcNow - new DateTime(at, DateTimeKind.Utc)).TotalDays);
+            }
+        }
+
+        public int StartSession()
+        {
+            int n = prefs.GetInt("buca.sessions", 0) + 1;
+            prefs.SetInt("buca.sessions", n);
+            prefs.Save();
+            return n;
+        }
 
         // ---------- Coffee punch card (OUT-24) ----------
 

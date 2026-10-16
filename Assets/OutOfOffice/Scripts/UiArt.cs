@@ -141,7 +141,7 @@ namespace OutOfOffice
         // showcase buttons. Null when there's no render for that name, so callers fall back to the flat icon.
         static readonly Dictionary<string, string> Icon3DNames = new Dictionary<string, string>
         {
-            { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" },
+            { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" }, { "gem", "gem" },
         };
 
         public static Sprite Icon3D(string name)

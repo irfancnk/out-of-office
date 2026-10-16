@@ -142,6 +142,7 @@ namespace OutOfOffice
             BuildSpeech();
             BuildComplete();
             BuildFail();
+            BuildShop();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -263,22 +264,224 @@ namespace OutOfOffice
         Card failCard;
         TextMeshProUGUI failLine;
 
+        // Continue options on the out-of-shots card (OUT-31, OUT-32). Retrying stays free and always there.
+        public System.Action ContinueWithAd, ContinueWithGems;
+        RectTransform continueAd, continueGems;
+        TextMeshProUGUI continueAdLabel, continueGemsLabel;
+
         void BuildFail()
         {
-            failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 760f), true);
+            failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 1000f), true);
             var c = failCard.Root;
-            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(760f, 120f)),
+            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 250f), new Vector2(760f, 120f)),
                 "", 44f, Ink, Ink, 0f, false);
             failLine.textWrappingMode = TextWrappingModes.Normal;
-            TextButton(c, "RETRY", Palette.UiGreen, new Vector2(80f, -130f), new Vector2(500f, 170f), 76f, "restart").Clicked = () => Restart?.Invoke();
-            IconButton(c, "Home", new Vector2(0.5f, 0.5f), new Vector2(-275f, -122f), 160f, Palette.UiBlue, "home", Color.white).Clicked = () => Home?.Invoke();
+            var ad = TextButton(c, "+3 · AD", Palette.UiBlue, new Vector2(-190f, 40f), new Vector2(340f, 150f), 52f, "play");
+            ad.Clicked = () => ContinueWithAd?.Invoke();
+            continueAd = ad.transform as RectTransform;
+            continueAdLabel = ad.GetComponentInChildren<TextMeshProUGUI>();
+            var gems = TextButton(c, "+3 · 30", Themes.Hex(0x8A5CF0), new Vector2(190f, 40f), new Vector2(340f, 150f), 52f, null);
+            gems.Clicked = () => ContinueWithGems?.Invoke();
+            continueGems = gems.transform as RectTransform;
+            continueGemsLabel = gems.GetComponentInChildren<TextMeshProUGUI>();
+            continueGemsLabel.rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem on the right
+            var gemIcon = UiArt.Icon3D("gem");
+            if (gemIcon != null)
+                Img(Rect("Gem", continueGems, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-62f, 8f), new Vector2(84f, 84f)), gemIcon, Color.white);
+            TextButton(c, "RETRY", Palette.UiGreen, new Vector2(80f, -230f), new Vector2(500f, 170f), 76f, "restart").Clicked = () => Restart?.Invoke();
+            IconButton(c, "Home", new Vector2(0.5f, 0.5f), new Vector2(-275f, -222f), 160f, Palette.UiBlue, "home", Color.white).Clicked = () => Home?.Invoke();
         }
 
-        public void ShowOutOfShots(int max, string line)
+        // shots: what a continue gives. adOk / gemsOk: whether each offer may be shown (caps, first-time experience).
+        public void ShowOutOfShots(int max, string line, int shots = 3, bool adOk = false, bool gemsOk = false, int gemCost = 30)
         {
             HideAll();
             failLine.text = $"All {max} shots used.\n{line}";
+            continueAd.gameObject.SetActive(adOk);
+            continueGems.gameObject.SetActive(gemsOk);
+            continueAdLabel.text = $"+{shots} · AD";
+            continueGemsLabel.text = $"+{shots} · {gemCost}";
             ShowCard(failCard);
+        }
+
+        // ---------- Shop (OUT-31, OUT-32, OUT-33) ----------
+
+        public System.Func<int> GemBalance;
+        public System.Func<bool> StoreAvailable, StoreIsTest, PassActive, PassClaimReady, AdOfferReady, AdFree;
+        public System.Func<int> PassDaysLeft;
+        public System.Func<Product, string> PriceOf;
+        public System.Func<Product, bool> CanBuyProduct;
+        public System.Func<bool> PassFirst;
+        public System.Action<Product> BuyProduct;
+        public System.Action ClaimPass, WatchAdForGems, BuyChestWithGems, ShopOpened;
+
+        Card shopCard;
+        RectTransform shopContent, shopBadge;
+        TextMeshProUGUI shopBalance, shopNote, shopPlate;
+        Image shopPlateImage;
+
+        void BuildShop()
+        {
+            shopCard = MakeCard("Shop", "SHOP", new Vector2(960f, 1600f), true);
+            var c = shopCard.Root;
+            var pill = Rect("Balance", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(320f, 84f));
+            Sliced(Img(pill, UiArt.Pill, Themes.Hex(0x3B2A6E)), 84f, 0.5f);
+            var gemIcon = UiArt.Icon3D("gem");
+            if (gemIcon != null) Img(Rect("Gem", pill, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(40f, 4f), new Vector2(96f, 96f)), gemIcon, Color.white);
+            shopBalance = Txt(Rect("Count", pill, Vector2.zero, Vector2.one, new Vector2(30f, 2f), Vector2.zero), "0", 52f, Color.white, Ink, 0.3f, false);
+            shopNote = Body(Rect("Note", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -222f), new Vector2(860f, 44f)), "", 26f, Themes.Hex(0x8A7AA8), Ink);
+            var view = Rect("Viewport", c, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 680f), new Vector2(900f, 1300f));
+            view.gameObject.AddComponent<RectMask2D>();
+            Img(view, UiArt.Pill, new Color(1f, 1f, 1f, 0.001f)).raycastTarget = true;
+            shopContent = Rect("Content", view, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, 1300f));
+            shopContent.pivot = new Vector2(0.5f, 1f);
+            var scroll = view.gameObject.AddComponent<ScrollRect>();
+            scroll.content = shopContent;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Elastic;
+            scroll.scrollSensitivity = 30f;
+            CloseButton(shopCard, () => Back());
+        }
+
+        public void ShowShop()
+        {
+            Remember();
+            HideAll();
+            RefreshShop();
+            ShowCard(shopCard);
+            ShopOpened?.Invoke();
+        }
+
+        public void RefreshShop()
+        {
+            RefreshShopButton();
+            if (shopContent == null) return;
+            foreach (Transform t in shopContent) Destroy(t.gameObject);
+            shopBalance.text = (GemBalance?.Invoke() ?? 0).ToString();
+            bool store = StoreAvailable?.Invoke() ?? false, test = StoreIsTest?.Invoke() ?? false;
+            shopNote.text = !store ? "Coming soon: purchases open with the store release." : test ? "TEST MODE: no real money is charged." : "";
+
+            var rows = new List<System.Action<RectTransform>>();
+            void PassRow(RectTransform r)
+            {
+                bool active = PassActive?.Invoke() ?? false, claim = PassClaimReady?.Invoke() ?? false;
+                ShopRow(r, "shirt", Catalog.Pass.Title, active ? $"Active: {PassDaysLeft?.Invoke() ?? 0} days left. {Catalog.Pass.Blurb}" : Catalog.Pass.Blurb,
+                    claim ? "CLAIM" : active ? "ACTIVE" : PriceOf?.Invoke(Catalog.Pass) ?? "", claim || (!active && store), Palette.Gold,
+                    () => { if (claim) ClaimPass?.Invoke(); else BuyProduct?.Invoke(Catalog.Pass); });
+            }
+            void GemRows()
+            {
+                foreach (var p in Catalog.GemPacks)
+                {
+                    var pack = p;
+                    rows.Add(r => ShopRow(r, "gem", pack.Title, pack.Blurb, PriceOf?.Invoke(pack) ?? "", store, Palette.UiGreen, () => BuyProduct?.Invoke(pack)));
+                }
+            }
+            bool passFirst = PassFirst?.Invoke() ?? true;
+            if (passFirst) rows.Add(PassRow);
+            rows.Add(r =>
+            {
+                bool can = CanBuyProduct?.Invoke(Catalog.Starter) ?? false;
+                ShopRow(r, "chest", Catalog.Starter.Title, Catalog.Starter.Blurb, can ? PriceOf?.Invoke(Catalog.Starter) ?? "" : "OWNED", can && store, Palette.UiGreen,
+                    () => BuyProduct?.Invoke(Catalog.Starter));
+            });
+            if (!passFirst) GemRows();
+            rows.Add(r =>
+            {
+                bool ready = AdOfferReady?.Invoke() ?? false, free = AdFree?.Invoke() ?? false;
+                ShopRow(r, "gift", $"FREE {Catalog.AdGems} GEMS", free ? "Ad-free: yours without the video." : "Watch a short video.", ready ? (free ? "TAKE" : "WATCH") : "LATER",
+                    ready, Palette.UiBlue, () => WatchAdForGems?.Invoke());
+            });
+            rows.Add(r =>
+            {
+                bool afford = (GemBalance?.Invoke() ?? 0) >= Catalog.ChestCost;
+                ShopRow(r, "chest", "ONE CHEST", "A random item for your wardrobe.", $"{Catalog.ChestCost} GEMS", afford, Themes.Hex(0x8A5CF0), () => BuyChestWithGems?.Invoke());
+            });
+            rows.Add(r =>
+            {
+                bool can = CanBuyProduct?.Invoke(Catalog.NoAds) ?? false;
+                ShopRow(r, "gift", Catalog.NoAds.Title, Catalog.NoAds.Blurb, can ? PriceOf?.Invoke(Catalog.NoAds) ?? "" : "OWNED", can && store, Palette.UiGreen,
+                    () => BuyProduct?.Invoke(Catalog.NoAds));
+            });
+            if (passFirst) GemRows();
+            else rows.Add(PassRow);
+
+            const float rowH = 190f, gap = 16f;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var r = Rect("Row", shopContent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -rowH / 2f - i * (rowH + gap)), new Vector2(880f, rowH));
+                rows[i](r);
+            }
+            shopContent.sizeDelta = new Vector2(0f, rows.Count * (rowH + gap));
+        }
+
+        void ShopRow(RectTransform r, string icon, string title, string blurb, string button, bool active, Color color, System.Action click)
+        {
+            Sliced(Img(r, UiArt.Button, Inset), 190f, 0.2f);
+            var art = UiArt.Icon3D(icon);
+            Img(Rect("Icon", r, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(95f, 4f), new Vector2(140f, 140f)), art ?? UiArt.Icon(icon), art != null ? Color.white : Ink);
+            var t = Txt(Rect("Title", r, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(380f, 38f), new Vector2(420f, 56f)), title, 42f, Ink, Ink, 0f, false);
+            t.alignment = TextAlignmentOptions.MidlineLeft;
+            t.enableAutoSizing = true;
+            t.fontSizeMin = 26f;
+            t.fontSizeMax = 42f;
+            var b = Body(Rect("Blurb", r, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(380f, -28f), new Vector2(420f, 80f)), blurb, 26f, Ink, Ink);
+            b.alignment = TextAlignmentOptions.TopLeft;
+            b.textWrappingMode = TextWrappingModes.Normal;
+            var btn = Rect("Button", r, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-125f, 0f), new Vector2(210f, 110f));
+            var img = Img(btn, UiArt.Button, active ? color : Themes.Hex(0xCFC6DA));
+            Sliced(img, 110f, 0.36f);
+            img.raycastTarget = active;
+            var label = Txt(Rect("Label", btn, Vector2.zero, Vector2.one, new Vector2(0f, 6f), new Vector2(-16f, 0f)), button, 40f, Color.white, Color.Lerp(img.color, Ink, 0.6f), 0.35f, false);
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 22f;
+            label.fontSizeMax = 40f;
+            if (active) btn.gameObject.AddComponent<UiPress>().Clicked = click;
+        }
+
+        // The home button's gem count, and a badge when the pass reward is waiting.
+        public void RefreshShopButton()
+        {
+            if (shopPlate == null) return;
+            shopPlate.text = (GemBalance?.Invoke() ?? 0).ToString();
+            bool claim = PassClaimReady?.Invoke() ?? false;
+            shopBadge.gameObject.SetActive(claim);
+            shopPlateImage.color = claim ? Palette.UiGreen : FrameDark;
+        }
+
+        // ---------- Test ad (development builds without a real ad network) ----------
+
+        RectTransform testAd;
+        TextMeshProUGUI testAdCount;
+
+        // A full-screen stand-in for a rewarded video: a 3 s countdown, then the reward. SKIP gives nothing.
+        public void ShowTestAd(System.Action<bool> done)
+        {
+            if (testAd == null)
+            {
+                testAd = Rect("Test Ad", transform as RectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+                Img(testAd, Shapes.Square, new Color(0.05f, 0.04f, 0.1f, 0.96f)).raycastTarget = true;
+                Txt(Rect("Title", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 260f), new Vector2(900f, 140f)), "TEST AD", 120f, Color.white, Ink, 0.4f, true);
+                Body(Rect("Sub", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(900f, 120f)),
+                    "A rewarded video plays here once an ad network (AdMob or LevelPlay) is connected.", 34f, new Color(0.8f, 0.78f, 0.9f), Ink).textWrappingMode = TextWrappingModes.Normal;
+                testAdCount = Txt(Rect("Count", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(400f, 260f)), "3", 220f, Palette.Gold, Ink, 0.4f, true);
+            }
+            foreach (Transform child in testAd) if (child.name == "Skip") Destroy(child.gameObject);
+            var skip = TextButton(testAd, "SKIP", Themes.Hex(0x6E6488), new Vector2(0f, -420f), new Vector2(300f, 120f), 48f, null);
+            skip.name = "Skip";
+            bool finished = false;
+            void End(bool watched)
+            {
+                if (finished) return;
+                finished = true;
+                Tweens.Kill(testAd);
+                testAd.gameObject.SetActive(false);
+                done?.Invoke(watched);
+            }
+            skip.Clicked = () => End(false);
+            testAd.gameObject.SetActive(true);
+            testAd.SetAsLastSibling();
+            Tweens.Run(3f, k => testAdCount.text = Mathf.CeilToInt(3f * (1f - k) + 0.001f).ToString(), Tweens.Linear, 0f, () => End(true), testAd);
         }
 
         public void SetStars(int collected, int total, bool animate)
@@ -471,6 +674,10 @@ namespace OutOfOffice
                 else ShowLevels();  // go and find more coffees
             };
             coffeeCardBadge = Badge(card.transform as RectTransform, "!");
+            // The shop (OUT-32), under the next outfit: the gem balance, and a badge when the Office Pass reward waits.
+            var shop = SideButton(area, "Shop", new Vector2(1f, 1f), new Vector2(-125f, -960f), Themes.Hex(0x8A5CF0), "gem", out shopPlate, out shopPlateImage);
+            shop.Clicked = () => ShowShop();
+            shopBadge = Badge(shop.transform as RectTransform, "!");
             var outfit = SideButton(area, "Next Outfit", new Vector2(1f, 1f), new Vector2(-125f, -720f), Themes.Hex(0xFF5FA2), "shirt", out nextOutfitText, out _);
             outfit.Clicked = () => ShowSkins();
             var plateStar = Rect("Star", nextOutfitText.transform.parent as RectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(26f, 2f), new Vector2(54f, 54f));
@@ -796,6 +1003,7 @@ namespace OutOfOffice
             chapterChestFull = got >= max;
             RefreshChapterChest();
             RefreshCoffeeCard();
+            RefreshShopButton();
 
             bool ready = DailyChestReady?.Invoke() ?? false;
             var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;
@@ -1552,7 +1760,7 @@ namespace OutOfOffice
         void Remember()
         {
             titleReturn = title.gameObject.activeSelf;
-            returnTo = pauseCard.Root.gameObject.activeSelf ? pauseCard : null;
+            returnTo = pauseCard.Root.gameObject.activeSelf ? pauseCard : failCard.Root.gameObject.activeSelf ? failCard : null;  // the shop can open from the out-of-shots card
         }
 
         void Back()
@@ -1567,7 +1775,7 @@ namespace OutOfOffice
         public void HideAll()
         {
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);

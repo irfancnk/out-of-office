@@ -76,7 +76,7 @@ namespace OutOfOffice
             Time.fixedDeltaTime = Rules.Dt;
             Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
 
-            progress = new Progress(new UnityPrefs());
+            SetUpServices();  // progress on the server-corrected clock, analytics, A/B buckets, backup (OUT-31..35)
             SetUpCamera();
             SetUpLighting();
 
@@ -193,6 +193,7 @@ namespace OutOfOffice
                 sound.Play(spin ? Sfx.Whee : Sfx.Giggle, 0.7f, Random.Range(0.95f, 1.1f), 0.8f);
                 Haptics.Play(spin ? Haptics.Style.Success : Haptics.Style.Light, 0.7f);
             };
+            WireShop();
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
             hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
@@ -338,6 +339,7 @@ namespace OutOfOffice
             mascot.Sound = (clip, volume) => sound.Play(clip, volume, Random.Range(0.96f, 1.04f), 0.7f);
             shots = 0;
             undos = 0;
+            extraShots = 0;
             history.Clear();
             restPos = Def.Start;
             level.Puck.PlaceAt(restPos, true);
@@ -491,7 +493,8 @@ namespace OutOfOffice
         // A backgrounded app can be killed by the OS with no further callback, so this is the last safe moment to save.
         void OnApplicationPause(bool paused)
         {
-            if (paused) progress?.Flush();
+            if (paused) { progress?.Flush(); BackUpSave(); }
+            else if (serverClock != null) StartCoroutine(ServerTime.Sync(serverClock));  // the clock may have changed while away
         }
 
         void OnApplicationQuit() => progress?.Flush();
@@ -983,7 +986,7 @@ namespace OutOfOffice
 
         // ---------- Shot limit (OUT-27) ----------
 
-        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots;  // the lab has no limit
+        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots + extraShots;  // the lab has no limit; continues add shots
 
         // After every shot that didn't end in bed: a warning before the last shot, and a failed level after it.
         void CheckShotLimit()
@@ -1005,7 +1008,7 @@ namespace OutOfOffice
         IEnumerator ShowOutOfShotsSoon()
         {
             yield return new WaitForSeconds(0.7f);
-            if (state == State.Failed) hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots());
+            if (state == State.Failed) ShowOutOfShotsOffers();
         }
 
         void UndoShot()

@@ -214,9 +214,23 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete-final.png"), Canvas.ForceUpdateCanvases);
 
-                hud.ShowOutOfShots(5, "Overtime was not approved.");
+                hud.ShowOutOfShots(5, "Overtime was not approved.", 3, true, true, 30);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-out-of-shots.png"), Canvas.ForceUpdateCanvases);
+
+                hud.GemBalance = () => 140;
+                hud.StoreAvailable = () => true;
+                hud.StoreIsTest = () => true;
+                hud.PriceOf = p => p.FallbackPrice;
+                hud.CanBuyProduct = p => p != Catalog.NoAds;
+                hud.PassActive = () => false;
+                hud.PassClaimReady = () => false;
+                hud.AdOfferReady = () => true;
+                hud.AdFree = () => false;
+                hud.PassFirst = () => true;
+                hud.ShowShop();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-shop.png"), Canvas.ForceUpdateCanvases);
 
                 // Home with the first chapter's chest earned and waiting.
                 hud.BestStars = id => 3;

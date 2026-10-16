@@ -150,14 +150,16 @@ def torus(major, minor, loc, mat, rot=(0, 0, 0), scale=(1, 1, 1)):
     return finish(o, mat)
 
 
-def frame(cam, objects, margin=1.12):
+def frame(cam, objects, margin=1.22):
     # Fit the orthographic camera to everything built, with a little room for the outline.
     pts = []
     for o in objects:
         if o.type != "MESH":
             continue
-        for c in o.bound_box:
-            pts.append(o.matrix_world @ Vector(c))
+        if o.hide_render:
+            continue
+        for v in o.data.vertices:  # real geometry, not the (stale) bounding box
+            pts.append(o.matrix_world @ v.co)
     inv = cam.matrix_world.inverted()
     local = [inv @ p for p in pts]
     xs = [p.x for p in local]
@@ -285,12 +287,26 @@ def coffee():
     box((0.2, 0.08, 0.04), (0.28, -0.1, 1.74), brown, 0.02)             # sip hole
 
 
-PROPS = {"chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee}
+def gem():
+    # A brilliant-cut gem: a faceted crown over a deep pavilion, glossy violet with a bright table.
+    stone = material("Gem", hexc("#9B5CFF"), 0.08, coat=0.9)
+    table = material("Table", hexc("#B990FF"), 0.05, coat=1.0)
+    cyl(0.9, 0.42, (0, 0, 0.21), stone, verts=10, bevel=0.0, r2=0.55)          # crown
+    cyl(0.9, 1.1, (0, 0, -0.55), stone, verts=10, bevel=0.0, r2=0.0).rotation_euler = (math.pi, 0, 0)
+    cyl(0.55, 0.04, (0, 0, 0.43), table, verts=10, bevel=0.0)                  # the flat top catches the light
+    for o in bpy.context.scene.objects:
+        if o.type == "MESH":
+            for p in o.data.polygons:
+                p.use_smooth = False                                           # facets, not a blob
+
+
+PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee}
 
 
 def render(name):
     scene, cam = reset()
     PROPS[name]()
+    bpy.context.view_layer.update()  # world matrices of anything rotated after creation
     frame(cam, list(scene.objects))
     os.makedirs(OUT, exist_ok=True)
     scene.render.filepath = os.path.join(OUT, name + ".png")

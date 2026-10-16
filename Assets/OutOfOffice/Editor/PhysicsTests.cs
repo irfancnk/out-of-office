@@ -70,6 +70,8 @@ namespace OutOfOffice.EditorTools
                 Openers();
                 CoffeeCard();
                 ShotLimits();
+                Money();
+                Data();
             }
             finally
             {
@@ -1020,6 +1022,156 @@ namespace OutOfOffice.EditorTools
             var names = new HashSet<string>();
             foreach (var l in Levels.All) ok &= l.Name.Length <= 26 && names.Add(l.Name);
             Report("shot-limits", ok, $"{Levels.All.Length} levels, tightest limit par + {tightest}; override works");
+        }
+
+        class StubAds : IAdProvider
+        {
+            public bool IsTest => true;
+            public bool RewardedReady => true;
+            public int Shown;
+            public void ShowRewarded(string placement, System.Action<bool> done) { Shown++; done(true); }
+        }
+
+        // 20. Money (OUT-31..33): gems, one-time products, the Office Pass, and rewarded-ad caps.
+        static void Money()
+        {
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var prefs = new MemoryPrefs();
+            var p = new Progress(prefs, clock);
+
+            // Gems: earn, spend, never below zero.
+            p.AddGems(50, "test");
+            bool wallet = p.SpendGems(30, "test") && !p.SpendGems(30, "test") && p.Gems == 20 && !p.SpendGems(-5, "test");
+
+            // Purchases through the test store: one-time products only once, consumables any time.
+            var oldStore = Store.Provider;
+            Store.Provider = new TestStore();
+            bool bought = true;
+            Store.Buy(p, Catalog.Starter, ok => bought &= ok);
+            Store.Buy(p, Catalog.Starter, ok => bought &= !ok);     // already owned
+            Store.Buy(p, Catalog.GemPacks[0], ok => bought &= ok);
+            Store.Buy(p, Catalog.GemPacks[0], ok => bought &= ok);
+            bought &= p.Gems == 20 + 150 + 80 + 80 && p.Bought(Catalog.Starter) && !p.CanBuy(Catalog.Starter) && p.CanBuy(Catalog.GemPacks[0]);
+            Store.Provider = new NoStore();
+            bool closed = true;
+            Store.Buy(p, Catalog.GemPacks[1], ok => closed &= !ok);
+            Store.Provider = oldStore;
+
+            // The pass: 30 days, a daily claim once per day, renewals stack, expiry.
+            var q = new Progress(new MemoryPrefs(), clock);
+            q.Grant(Catalog.Pass);
+            bool tie = q.Owns(Cosmetics.Find(Catalog.PassTie));
+            bool pass = q.PassActive && q.PassDaysLeft == 30 && q.AdFree && q.ClaimPass() && !q.ClaimPass() && q.Gems == Progress.PassDailyGems;
+            clock.Advance(System.TimeSpan.FromDays(1));
+            pass &= q.PassClaimReady && q.ClaimPass();
+            q.Grant(Catalog.Pass);                                    // renew with 29 days left
+            pass &= q.PassDaysLeft == 59;
+            clock.Advance(System.TimeSpan.FromDays(60));
+            pass &= !q.PassActive && !q.PassClaimReady && !q.ClaimPass() && !q.AdFree;
+
+            // Rewarded ads: not in the first rooms, a cooldown, and a daily cap.
+            var oldAds = Ads.Provider;
+            var stub = new StubAds();
+            Ads.Provider = stub;
+            Ads.ResetCooldown();
+            var a = new Progress(new MemoryPrefs(), clock);
+            bool gate = !Ads.CanOffer(a, 1000f);
+            for (int i = 0; i < Levels.All.Length; i++) a.Record(i, 1, 9);  // open every room
+            int rewarded = 0;
+            for (int i = 0; i < 20; i++) Ads.ShowRewarded(a, "test", ok => { if (ok) rewarded++; }, 1000f + i * Ads.Cooldown);
+            bool cap = rewarded == Ads.DailyCap && a.AdsToday == Ads.DailyCap;
+            Ads.ResetCooldown();
+            var b = new Progress(new MemoryPrefs(), clock);
+            for (int i = 0; i < Levels.All.Length; i++) b.Record(i, 1, 9);
+            int quick = 0;
+            Ads.ShowRewarded(b, "test", ok => { if (ok) quick++; }, 5000f);
+            Ads.ShowRewarded(b, "test", ok => { if (ok) quick++; }, 5005f);   // inside the cooldown
+            bool cooldown = quick == 1;
+            clock.Advance(System.TimeSpan.FromDays(1));
+            bool newDay = a.AdsToday == 0;
+            // Ad-free players get the reward without a video.
+            Ads.ResetCooldown();
+            int before = stub.Shown;
+            var f = new Progress(new MemoryPrefs(), clock);
+            for (int i = 0; i < Levels.All.Length; i++) f.Record(i, 1, 9);
+            f.Grant(Catalog.NoAds);
+            bool freeOk = false;
+            Ads.ShowRewarded(f, "test", ok => freeOk = ok, 9000f);
+            bool adFree = freeOk && stub.Shown == before;
+            Ads.Provider = oldAds;
+            Ads.ResetCooldown();
+
+            bool ok = wallet && bought && closed && tie && pass && gate && cap && cooldown && newDay && adFree;
+            Report("money", ok, $"wallet {wallet}; purchases once {bought}, closed store sells nothing {closed}; pass {pass} (gold tie {tie}); " +
+                $"ads gated in first rooms {gate}, daily cap {cap} ({rewarded}), cooldown {cooldown}, resets daily {newDay}, ad-free skips video {adFree}");
+        }
+
+        // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.
+        static void Data()
+        {
+            // Buckets: stable for an install, spread across installs.
+            int[] counts = new int[2];
+            for (int i = 0; i < 2000; i++) counts[Experiments.Bucket("install-" + i, "continue_shots", 2)]++;
+            bool stable = Experiments.Bucket("abc", "x", 3) == Experiments.Bucket("abc", "x", 3);
+            bool spread = counts[0] > 800 && counts[1] > 800;
+            Experiments.Overrides["continue_shots"] = 1;
+            bool pinned = Experiments.ContinueShots == 5;
+            Experiments.Overrides.Remove("continue_shots");
+
+            // The local event log: JSON lines, rolled over when full.
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ooo-analytics-test.jsonl");
+            foreach (var old in new[] { path, path + ".1" }) if (System.IO.File.Exists(old)) System.IO.File.Delete(old);
+            var sink = new LocalLogSink(path, 2000);
+            for (int i = 0; i < 100; i++) sink.Send("test", new Dictionary<string, object> { { "i", i }, { "text", "a \"quoted\" line" } });
+            bool rolled = System.IO.File.Exists(path + ".1") && new System.IO.FileInfo(path).Length < 4000;
+            string first = System.IO.File.ReadAllLines(path)[0];
+            bool json = first.StartsWith("{\"e\":\"test\"") && first.Contains("\\\"quoted\\\"");
+
+            // Snapshots round-trip, and a merge keeps the best progress without duplicating gems.
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var pa = new MemoryPrefs();
+            var a = new Progress(pa, clock);
+            a.Record(0, 3, 2);
+            a.Record(1, 1, 6);
+            a.AddGems(100, "test");
+            var snapA = SaveSnapshot.Capture(pa, clock.UtcNow, a.InstallId);
+            var round = SaveSnapshot.FromJson(snapA.ToJson());
+            var restored = new MemoryPrefs();
+            round.ApplyTo(restored);
+            var r = new Progress(restored, clock);
+            bool roundTrip = r.Best("first") == 3 && r.Gems == 100 && r.Unlocked == a.Unlocked;
+
+            clock.Advance(System.TimeSpan.FromHours(1));
+            var pb = new MemoryPrefs();
+            var bProg = new Progress(pb, clock);
+            bProg.Record(1, 3, 3);           // better on level 2 on the other device
+            bProg.AddGems(40, "test");
+            bProg.Grant(Catalog.NoAds);
+            var snapB = SaveSnapshot.Capture(pb, clock.UtcNow, bProg.InstallId);
+            var merged = SaveSnapshot.Merge(snapA, snapB);
+            var mp = new MemoryPrefs();
+            merged.ApplyTo(mp);
+            var m = new Progress(mp, clock);
+            bool merge = m.Best("first") == 3 && m.Best(Levels.All[1].Id) == 3 && m.BestShots(Levels.All[1].Id) == 3
+                         && m.Gems == 40 && m.Bought(Catalog.NoAds) && SaveSnapshot.Merge(null, snapA) == snapA;
+
+            // The backup file round-trips too.
+            string backupPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ooo-backup-test.json");
+            var backup = new LocalBackup(backupPath);
+            backup.Upload(snapA);
+            bool backupOk = backup.Download()?.Int("buca.gems") == 100;
+
+            // Server time: the HTTP Date header and the clock offset.
+            bool parsed = ServerTime.TryParseDate("Fri, 16 Oct 2026 12:00:00 GMT", out var serverUtc) && serverUtc == new System.DateTime(2026, 10, 16, 12, 0, 0, System.DateTimeKind.Utc)
+                          && !ServerTime.TryParseDate("not a date", out _);
+            var sc = new ServerClock();
+            var device = System.DateTime.UtcNow;
+            sc.Apply(device.AddMinutes(90), device);
+            bool offset = sc.Synced && System.Math.Abs((sc.UtcNow - System.DateTime.UtcNow).TotalMinutes - 90) < 1;
+
+            bool ok = stable && spread && pinned && rolled && json && roundTrip && merge && backupOk && parsed && offset;
+            Report("data", ok, $"A/B stable {stable}, spread {counts[0]}/{counts[1]}, override {pinned}; log rolls {rolled}, json {json}; " +
+                $"snapshot round-trip {roundTrip}, merge best-of without duplicate gems {merge}, backup {backupOk}; server date {parsed}, offset {offset}");
         }
 
         // 17. Every room's opener is short enough to read in the second it is shown (OUT-22).
