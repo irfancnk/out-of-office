@@ -24,6 +24,7 @@ namespace OutOfOffice
         static readonly Color ShoeColor = Themes.Hex(0x3A2A25);
         static readonly Color BeltColor = Themes.Hex(0x4A3428);
         static readonly Color BrassColor = Themes.Hex(0xD8B25C);
+        static readonly Color TattooInk = Themes.Hex(0x2E5E7A);
 
         // The head, in its tipped frame: half sizes. The front (-Y) sits at Mascot.HeadRadius, where the face is printed.
         static readonly Vector3 Skull = new Vector3(0.272f, Mascot.HeadRadius, 0.25f);
@@ -44,6 +45,9 @@ namespace OutOfOffice
                 Round("Sleeve", new Vector3(0.135f, 0.13f, 0.13f), shirt, arm, new Vector3(0f, 0f, 0.045f));
                 Round("Forearm", new Vector3(0.088f, 0.088f, 0.1f), skinMat, arm, new Vector3(0f, 0f, 0.11f));
                 Round("Hand", new Vector3(0.112f, 0.106f, 0.1f), skinMat, arm, new Vector3(0f, -0.004f, 0.168f));
+                if ((skin.Extras & PersonLook.Tattoos) != 0)
+                    foreach (float z in new[] { 0.09f, 0.128f })  // two ink bands round the forearm (OUT-30)
+                        Round("Tattoo", new Vector3(0.096f, 0.096f, 0.024f), Look.Person(TattooInk, 0.3f), arm, new Vector3(0f, 0f, z), false, 3f);
 
                 // Legs: a round trouser leg and a bean of a shoe that pokes out in front.
                 var leg = Pivot(roll, side < 0f ? "Leg L" : "Leg R", new Vector3(side * 0.078f, 0f, 0.215f));
@@ -88,6 +92,11 @@ namespace OutOfOffice
 
             var hair = Look.Person(skin.HairColor, 0.18f);
             BuildHair(frame, skin, hair);
+            if ((skin.Extras & PersonLook.Earrings) != 0)
+                foreach (float side in new[] { -1f, 1f })
+                    Round("Earring", Vector3.one * 0.042f, Look.Person(BrassColor, 0.7f), frame, new Vector3(side * 0.3f, 0.03f, 0.1f));
+            if ((skin.Extras & PersonLook.Beard) != 0)  // a round beard under the mouth, in the hair color
+                Round("Beard", new Vector3(0.3f, 0.12f, 0.12f), hair, frame, new Vector3(0f, -0.15f, 0.215f), false, 2.4f);
 
             // Above the hair, a little toward the back of the crown, square to the top of the head.
             var acc = Pivot(head, "Accessory", Tilt * new Vector3(0f, 0.03f, -0.285f));
@@ -127,6 +136,52 @@ namespace OutOfOffice
                     foreach (float side in new[] { -1f, 1f })
                         Round("Sideburn", new Vector3(0.06f, 0.12f, 0.15f), hair, f, new Vector3(side * 0.282f, 0.0f, -0.1f));
                     Round("Quiff", new Vector3(0.22f, 0.14f, 0.11f), hair, f, new Vector3(0.06f, -0.17f, -0.25f)).transform.localRotation = Quaternion.Euler(-10f, 0f, -8f);
+                    break;
+                case HairStyle.Mohawk:
+                    // Shaved close at the sides, with a tall crest from forehead to crown (OUT-30).
+                    Shell(f, hair, 1.015f, 0.05f, 0.015f);
+                    for (int i = 0; i < 6; i++)
+                    {
+                        float k = i / 5f;
+                        var crest = Round("Crest", new Vector3(0.12f, 0.15f, 0.22f + 0.07f * Mathf.Sin(k * Mathf.PI)), hair, f,
+                            new Vector3(0f, Mathf.Lerp(-0.16f, 0.22f, k), -0.29f - 0.07f * Mathf.Sin(k * Mathf.PI)));
+                        crest.transform.localRotation = Quaternion.Euler(Mathf.Lerp(-28f, 30f, k), 0f, 0f);
+                    }
+                    break;
+                case HairStyle.Long:
+                    // Long and loose: past the shoulders at the sides and back, with soft bangs.
+                    Shell(f, hair, 1.06f, 0.05f, 0.025f);
+                    Bangs(f, hair, 0.95f, -1f);
+                    foreach (float side in new[] { -1f, 1f })
+                        Round("Side", new Vector3(0.13f, 0.3f, 0.62f), hair, f, new Vector3(side * 0.255f, 0.07f, 0.14f));
+                    Round("Back", new Vector3(0.52f, 0.2f, 0.64f), hair, f, new Vector3(0f, 0.18f, 0.12f));
+                    break;
+                case HairStyle.Afro:
+                    // A big round afro: the shell set well back so the face still shows in front.
+                    Shell(f, hair, 1.32f, 0.13f, 0.08f);
+                    break;
+                case HairStyle.Spiky:
+                    // Gelled spikes all over the crown.
+                    Shell(f, hair, 1.035f, 0.055f, 0.03f);
+                    Bangs(f, hair, 0.8f, 1f);
+                    for (int i = 0; i < 7; i++)
+                    {
+                        float a = i / 7f * Mathf.PI * 2f;
+                        var dir = new Vector3(Mathf.Sin(a) * 0.55f, Mathf.Cos(a) * 0.55f + 0.15f, -1f).normalized;
+                        var spike = Round("Spike", new Vector3(0.085f, 0.085f, 0.2f), hair, f, dir * 0.27f + new Vector3(0f, 0.04f, 0f), false, 2.1f);
+                        spike.transform.localRotation = Quaternion.FromToRotation(Vector3.back, dir);
+                    }
+                    break;
+                case HairStyle.Ponytail:
+                    // Pulled back into a high ponytail, with a tie.
+                    Shell(f, hair, 1.04f, 0.055f, 0.03f);
+                    Bangs(f, hair, 0.85f, 0f);
+                    Round("Hair Tie", new Vector3(0.1f, 0.06f, 0.1f), Look.Person(skin.Body, 0.3f), f, new Vector3(0f, 0.28f, -0.14f), false, 2.8f);
+                    Round("Tail", new Vector3(0.15f, 0.17f, 0.36f), hair, f, new Vector3(0f, 0.33f, 0.04f)).transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
+                    break;
+                case HairStyle.Buzz:
+                    // A neat buzz cut, close to the head.
+                    Shell(f, hair, 1.03f, 0.05f, 0.022f);
                     break;
                 default:
                     // Big curls: a thick shell under a crown of round lumps.

@@ -137,6 +137,26 @@ namespace OutOfOffice
 
         public static Sprite Icon(string name) => Get("icon_" + name, () => IconSprite(name));
 
+        // Full-color 3D icons rendered in Blender (Tools/blender/icons3d.py -> Resources/Icons3D, OUT-30), for the
+        // showcase buttons. Null when there's no render for that name, so callers fall back to the flat icon.
+        static readonly Dictionary<string, string> Icon3DNames = new Dictionary<string, string>
+        {
+            { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" },
+        };
+
+        public static Sprite Icon3D(string name)
+        {
+            if (!Icon3DNames.TryGetValue(name, out var file)) return null;
+            string key = "icon3d_" + file;
+            if (icons3D.TryGetValue(key, out var cached)) return cached;
+            var tex = Resources.Load<Texture2D>("Icons3D/" + file);
+            var sprite = tex != null ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width) : null;
+            icons3D[key] = sprite;
+            return sprite;
+        }
+
+        static readonly Dictionary<string, Sprite> icons3D = new Dictionary<string, Sprite>();
+
         static Sprite IconSprite(string name)
         {
             const int S = 192;

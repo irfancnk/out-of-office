@@ -34,25 +34,35 @@ namespace OutOfOffice.EditorTools
         // Every employee as the big title portrait, side by side: the size players judge the art at.
         static void Heroes(string dir)
         {
-            string[] staff = { "e.ava", "e.leo", "e.mia", "e.sam" };
-            var sheet = new Texture2D(768 * staff.Length, 768, TextureFormat.RGBA32, false);
-            var fill = new Color32[768 * 768];
-            for (int i = 0; i < fill.Length; i++) fill[i] = new Color32(233, 226, 214, 255);
-            for (int i = 0; i < staff.Length; i++)
+            string[] staff = { "e.ava", "e.leo", "e.mia", "e.sam", "e.jax", "e.nova", "e.kai", "e.otto", "e.luna", "e.ivy", "e.zara", "e.rex" };
+            const int cell = 768, perRow = 6;
+            int rows = (staff.Length + perRow - 1) / perRow;
+            var sheet = new Texture2D(cell * perRow, cell * rows, TextureFormat.RGBA32, false);
+            var back = new Color32(233, 226, 214, 255);
+            var fill = new Color32[sheet.width * sheet.height];
+            for (int i = 0; i < fill.Length; i++) fill[i] = back;
+            sheet.SetPixels32(fill);
+            var (root, _) = Stage(Themes.All[0]);  // the shot stage's sun and ambient light the portraits
+            Object.DestroyImmediate(IconStudio.RenderHeroNow(Cosmetics.Compose(Cosmetics.Default)));  // warm-up: the first render of a run comes out washed
+            try
             {
-                var o = Cosmetics.Default;
-                o.Employee = staff[i];
-                if (i > 0) o.Face = "f.none";
-                var hero = IconStudio.RenderHeroNow(Cosmetics.Compose(o));
-                var px = hero.GetPixels32();
-                for (int p = 0; p < px.Length; p++)
+                for (int i = 0; i < staff.Length; i++)
                 {
-                    float a = px[p].a / 255f;
-                    px[p] = Color32.Lerp(fill[p], new Color32(px[p].r, px[p].g, px[p].b, 255), a);
+                    var o = Cosmetics.Default;
+                    o.Employee = staff[i];
+                    o.Face = "f.none";
+                    var hero = IconStudio.RenderHeroNow(Cosmetics.Compose(o));
+                    var px = hero.GetPixels32();
+                    for (int p = 0; p < px.Length; p++)
+                    {
+                        float a = px[p].a / 255f;
+                        px[p] = Color32.Lerp(back, new Color32(px[p].r, px[p].g, px[p].b, 255), a);
+                    }
+                    sheet.SetPixels32(i % perRow * cell, (rows - 1 - i / perRow) * cell, cell, cell, px);
+                    Object.DestroyImmediate(hero);
                 }
-                sheet.SetPixels32(i * 768, 0, 768, 768, px);
-                Object.DestroyImmediate(hero);
             }
+            finally { Object.DestroyImmediate(root); }
             sheet.Apply();
             File.WriteAllBytes(Path.Combine(dir, "heroes.png"), sheet.EncodeToPNG());
             Object.DestroyImmediate(sheet);

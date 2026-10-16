@@ -5,7 +5,10 @@ namespace OutOfOffice
     // Headwear on top of the employee's head. Purely cosmetic. (Tuft is "no hat": the hair shows.)
     public enum Accessory { Tuft, Bow, Sprout, Antenna, CatEars, Beanie, PartyHat, Crown, Horns, Flower, Halo, Propeller, Cap, BunnyEars, Headphones, ChefHat, TopHat, WizardHat }
 
-    public enum HairStyle { Bob, Short, Bun, Curly }
+    public enum HairStyle { Bob, Short, Bun, Curly, Mohawk, Long, Afro, Spiky, Ponytail, Buzz }
+
+    // Extra details on a person (OUT-30). Cosmetic only.
+    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4 }
 
     // A look for the employee. Every look uses the same round collider and physics.
     // Body is the tie color; the shirt stays office white.
@@ -16,6 +19,7 @@ namespace OutOfOffice
         public Color SkinTone = new Color(0.97f, 0.82f, 0.71f);
         public Color HairColor = new Color(0.36f, 0.23f, 0.16f);
         public HairStyle Hair = HairStyle.Bob;
+        public PersonLook Extras;
         public Accessory Accessory;
         public FaceItem Face;
         public int StarsNeeded;

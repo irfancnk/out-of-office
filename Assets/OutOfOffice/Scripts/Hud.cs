@@ -463,8 +463,8 @@ namespace OutOfOffice
             // The coffee punch card, under the gift: every new coffee is a stamp, a full card opens a chest.
             var card = SideButton(area, "Coffee Card", new Vector2(0f, 1f), new Vector2(125f, -960f), Themes.Hex(0xC9784A), "chest", out coffeeCardPlate, out coffeeCardPlateImage);
             var cardIcon = card.transform.Find("Icon").GetComponent<Image>();
-            cardIcon.sprite = UiArt.Cup;
-            cardIcon.rectTransform.sizeDelta *= 1.25f;
+            cardIcon.sprite = UiArt.Icon3D("coffee") ?? UiArt.Cup;
+            if (UiArt.Icon3D("coffee") == null) cardIcon.rectTransform.sizeDelta *= 1.25f;
             card.Clicked = () =>
             {
                 if (CoffeeCardReady?.Invoke() ?? false) ClaimCoffeeCard?.Invoke();
@@ -565,9 +565,12 @@ namespace OutOfOffice
             Sliced(Img(chapterFill, UiArt.Button, Palette.UiGreen), 76f, 0.5f);
             chapterCount = Txt(Rect("Count", bar, Vector2.zero, Vector2.one, new Vector2(-30f, 2f), Vector2.zero), "0/0", 46f, Color.white, FrameDark, 0.35f, true);
             var chest = Rect("Chest", bar, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 8f), new Vector2(124f, 124f));
-            var chestIcon = Img(chest, UiArt.Icon("chest"), ChapterChestGold);
-            chestIcon.gameObject.AddComponent<Outline>().effectColor = FrameDark;
-            chestIcon.GetComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            var chestIcon = Img(chest, UiArt.Icon3D("chest") ?? UiArt.Icon("chest"), ChapterChestGold);
+            if (UiArt.Icon3D("chest") == null)
+            {
+                chestIcon.gameObject.AddComponent<Outline>().effectColor = FrameDark;
+                chestIcon.GetComponent<Outline>().effectDistance = new Vector2(4f, -4f);
+            }
             // The chest at the end of the bar is the reward for every star in the chapter. Until then it opens the
             // level list like the rest of the bar.
             chestIcon.raycastTarget = true;
@@ -633,10 +636,16 @@ namespace OutOfOffice
             Img(r, UiArt.RoundButton, FrameDark).raycastTarget = true;
             var face = Rect("Face", r, Vector2.zero, Vector2.one, new Vector2(0f, 4f), Vector2.one * -size * 0.13f);
             Img(face, UiArt.RoundButton, color);
-            var ic = Img(Rect("Icon", r, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, size * 0.06f), Vector2.one * size * 0.5f), UiArt.Icon(icon), Color.white);
-            var sh = ic.gameObject.AddComponent<Shadow>();
-            sh.effectColor = new Color(0.1f, 0.03f, 0.2f, 0.45f);
-            sh.effectDistance = new Vector2(0f, -4f);
+            // The 3D render (OUT-30) fills more of the button and carries its own shading; the flat icon gets a drop shadow.
+            var icon3D = UiArt.Icon3D(icon);
+            var ic = Img(Rect("Icon", r, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, size * (icon3D != null ? 0.04f : 0.06f)),
+                Vector2.one * size * (icon3D != null ? 0.8f : 0.5f)), icon3D ?? UiArt.Icon(icon), Color.white);
+            if (icon3D == null)
+            {
+                var sh = ic.gameObject.AddComponent<Shadow>();
+                sh.effectColor = new Color(0.1f, 0.03f, 0.2f, 0.45f);
+                sh.effectDistance = new Vector2(0f, -4f);
+            }
             return r.gameObject.AddComponent<UiPress>();
         }
 
@@ -740,7 +749,7 @@ namespace OutOfOffice
 
         public System.Func<int, bool> ChapterChestClaimed;
         public System.Action<int> ClaimChapterChest;
-        static readonly Color ChapterChestGold = Themes.Hex(0xFFC23A);
+        static Color ChapterChestGold => UiArt.Icon3D("chest") != null ? Color.white : Themes.Hex(0xFFC23A);  // the 3D chest has its own colors
         Image chapterChestIcon;
         RectTransform chapterChestBadge;
         Rattle chapterChestShake;
@@ -1309,7 +1318,7 @@ namespace OutOfOffice
             // The free daily chest.
             bool ready = DailyChestReady?.Invoke() ?? false;
             var daily = QuestRow(0f, ready ? Themes.Hex(0xFFF1C9) : Inset);
-            Img(Rect("Chest", daily, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(90f, 0f), new Vector2(110f, 110f)), UiArt.Icon("chest"), Themes.Hex(0xC9783C));
+            Img(Rect("Chest", daily, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(90f, 0f), new Vector2(110f, 110f)), UiArt.Icon3D("chest") ?? UiArt.Icon("chest"), UiArt.Icon3D("chest") != null ? Color.white : Themes.Hex(0xC9783C));
             Txt(Rect("Title", daily, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(330f, 22f), new Vector2(360f, 60f)), "FREE GIFT", 46f, Ink, Ink, 0f, false)
                 .alignment = TextAlignmentOptions.MidlineLeft;
             Body(Rect("Sub", daily, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(330f, -28f), new Vector2(360f, 50f)), ready ? "Employee appreciation, daily." : "Appreciated again tomorrow.", 30f, Ink, Ink)

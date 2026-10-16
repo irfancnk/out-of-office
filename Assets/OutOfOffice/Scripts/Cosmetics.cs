@@ -22,6 +22,7 @@ namespace OutOfOffice
         public FaceItem Face;
         public Color SkinTone, HairColor;    // employees
         public HairStyle Hair;
+        public PersonLook Extras;            // employees: tattoos, earrings, beard
 
         public bool FromChest => StarsNeeded < 0;
     }
@@ -80,6 +81,15 @@ namespace OutOfOffice
             Employee("leo", "LEO", 0, 0xE0B08A, 0x2B2420, HairStyle.Short);
             Employee("mia", "MIA", 8, 0x8D5A3B, 0x1E1714, HairStyle.Bun);
             Employee("sam", "SAM", 16, 0xC98E64, 0xB4552A, HairStyle.Curly);
+            // The extraordinary ones (OUT-30): bold hair, tattoos, earrings. Some unlock with stars, some only from chests.
+            Employee("jax", "JAX", 24, 0xF2CDB4, 0x8A3FE0, HairStyle.Mohawk, PersonLook.Tattoos | PersonLook.Earrings);
+            Employee("nova", "NOVA", 32, 0xD9A27A, 0xFF5FA8, HairStyle.Long, PersonLook.Earrings);
+            Employee("kai", "KAI", 40, 0xB5795A, 0x23C4B4, HairStyle.Spiky, PersonLook.Tattoos);
+            Employee("otto", "OTTO", 48, 0xF0C7A8, 0xD9D9E3, HairStyle.Buzz, PersonLook.Beard);
+            Employee("luna", "LUNA", -1, 0xF7DCCB, 0x4E7BFF, HairStyle.Long, PersonLook.Earrings, Rarity.Rare);
+            Employee("ivy", "IVY", -1, 0xE8B894, 0x5CC46A, HairStyle.Ponytail, PersonLook.Tattoos, Rarity.Rare);
+            Employee("zara", "ZARA", -1, 0x6E4430, 0x7A3FD0, HairStyle.Afro, PersonLook.Earrings, Rarity.Epic);
+            Employee("rex", "REX", -1, 0xD49A72, 0xF4F1E6, HairStyle.Spiky, PersonLook.Tattoos | PersonLook.Earrings | PersonLook.Beard, Rarity.Legendary);
 
             // Chest-only colors.
             Color("cherry", "PERFORMANCE REVIEW", Rarity.Common, 0xE84A5F, 0xFF3D5E, 0x5CC46A);
@@ -108,9 +118,10 @@ namespace OutOfOffice
             Face("starshades", "EMPLOYEE OF THE MONTH", Rarity.Legendary, FaceItem.StarShades);
         }
 
-        static void Employee(string id, string name, int stars, int skin, int hair, HairStyle style) =>
-            All.Add(new CosmeticItem { Id = "e." + id, Name = name, Slot = Slot.Employee, Rarity = stars > 0 ? Rarity.Rare : Rarity.Common, StarsNeeded = stars,
-                SkinTone = Themes.Hex(skin), HairColor = Themes.Hex(hair), Hair = style });
+        // stars < 0: chest only, with the given rarity.
+        static void Employee(string id, string name, int stars, int skin, int hair, HairStyle style, PersonLook extras = PersonLook.None, Rarity? rarity = null) =>
+            All.Add(new CosmeticItem { Id = "e." + id, Name = name, Slot = Slot.Employee, Rarity = rarity ?? (stars > 0 ? Rarity.Rare : Rarity.Common), StarsNeeded = stars,
+                SkinTone = Themes.Hex(skin), HairColor = Themes.Hex(hair), Hair = style, Extras = extras });
 
         static void Color(string id, string name, Rarity r, int body, int cheek, int extra) =>
             All.Add(new CosmeticItem { Id = "c." + id, Name = name, Slot = Slot.Color, Rarity = r, Body = Themes.Hex(body), Cheek = Themes.Hex(cheek), Extra = Themes.Hex(extra) });
@@ -185,6 +196,7 @@ namespace OutOfOffice
                 SkinTone = person.SkinTone,
                 HairColor = person.HairColor,
                 Hair = person.Hair,
+                Extras = person.Extras,
             };
         }
 
