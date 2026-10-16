@@ -19,6 +19,18 @@ namespace OutOfOffice.EditorTools
             EditorApplication.Exit(code);
         }
 
+        // Only the character and prop close-ups: a quick loop for art changes to the people.
+        public static void RunCloseupsBatch()
+        {
+            int code = 0;
+            string dir = System.Environment.GetEnvironmentVariable("OOO_SHOTS");
+            if (string.IsNullOrEmpty(dir)) dir = Path.Combine(Path.GetTempPath(), "out-of-office-shots");
+            Directory.CreateDirectory(dir);
+            try { Closeups(dir); }
+            catch (System.Exception e) { Debug.LogException(e); code = 3; }
+            EditorApplication.Exit(code);
+        }
+
         [MenuItem("Out of Office/Render Review Shots")]
         public static void RenderAll()
         {
@@ -226,7 +238,7 @@ namespace OutOfOffice.EditorTools
                     m.ViewCamera = cam;
                     m.Mode = MascotMode.Idle;
                     m.Pose(o == 1 ? Eyes.Open : o == 2 ? Eyes.Happy : Eyes.Tired, o == 2 ? Mouth.Grin : Mouth.Smile);
-                    for (int i = 0; i < 4; i++) m.TickPresentation(1f / 60f);
+                    for (int i = 0; i < 30; i++) m.TickPresentation(1f / 60f);  // past the face's fade-in
                 }
                 Aim(cam, new Vector3(0f, 0.1f, -0.4f), 6.2f);
                 Render(cam, 1200, 700, Path.Combine(dir, "employees.png"));

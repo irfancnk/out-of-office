@@ -576,6 +576,22 @@ namespace OutOfOffice
             return cache[key] = Keep(b.Build(key));
         }
 
+        // A round solid of the given full size, centered on the origin: a superellipsoid, |x/a|^p + |y/b|^p + |z/c|^p = 1.
+        // p = 2 is an ellipsoid; a little above 2 it is a fuller, softer "jelly bean" that still reads as round, which is
+        // the look of the people (OUT-1). Small parts get fewer segments, so a whole crowd stays light on phones.
+        public static Mesh Blob(Vector3 size, float exponent = 2.4f)
+        {
+            Vector3 h = Vector3.Max(size * 0.5f, Vector3.one * 1e-4f);
+            float p = Mathf.Max(1.5f, exponent);
+            bool big = Mathf.Max(size.x, Mathf.Max(size.y, size.z)) > 0.25f;
+            string key = $"blob {size.x:0.####} {size.y:0.####} {size.z:0.####} {p:0.##}";
+            return Radial(key, d =>
+            {
+                float s = Mathf.Pow(Mathf.Abs(d.x / h.x), p) + Mathf.Pow(Mathf.Abs(d.y / h.y), p) + Mathf.Pow(Mathf.Abs(d.z / h.z), p);
+                return 1f / Mathf.Pow(Mathf.Max(s, 1e-12f), 1f / p);
+            }, Vector3.zero, big ? 40 : 24, big ? 24 : 14);
+        }
+
         // A box of the given full size, centered on the origin, with every edge and corner rounded by `radius`:
         // the soft-block look shared by the people, hats, and props.
         public static Mesh SoftBox(Vector3 size, float radius, int arc = 4)
