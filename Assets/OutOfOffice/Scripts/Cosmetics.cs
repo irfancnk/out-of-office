@@ -31,7 +31,9 @@ namespace OutOfOffice
         public FaceDef Features;             // employees: their own face (OUT-42)
         public Color Jacket;                 // employees: blazer, cardigan, vest or lanyard colour
 
-        public bool FromChest => StarsNeeded < 0;
+        public int GemCost;                  // > 0: hired with gems only (OUT-45), never from chests
+        public bool ForGems => GemCost > 0;
+        public bool FromChest => StarsNeeded < 0 && GemCost <= 0;
     }
 
     // What Puffy is wearing: one item per slot.
@@ -61,7 +63,8 @@ namespace OutOfOffice
     public static class Cosmetics
     {
         public static readonly List<CosmeticItem> All = new List<CosmeticItem>();
-        public static readonly Outfit Default = new Outfit { Employee = "e.ava", Color = "c.bluebell", Hat = "h.tuft", Face = "f.glasses" };
+        // Everyone starts as an intern (OUT-45) and works their way up.
+        public static readonly Outfit Default = new Outfit { Employee = "e.pip", Color = "c.bluebell", Hat = "h.tuft", Face = "f.glasses" };
 
         // Tie names for the original twelve colors, by skin id (ids stay, so saves keep working).
         static readonly Dictionary<string, string> TieNames = new Dictionary<string, string>
@@ -98,11 +101,11 @@ namespace OutOfOffice
             Staff("luna", "LUNA", Department.Engineering, "PRODUCT DESIGNER", -1, 0xF7DCCB, 0x4E7BFF, HairStyle.Long, F(EyeShape.Almond, Iris.Blue, BrowStyle.Arched, NoseStyle.Button, MouthStyle.Smile, FaceMarks.Lashes | FaceMarks.Freckles), PersonLook.Earrings, rarity: Rarity.Rare);
             Staff("ivy", "IVY", Department.HR, "WELLNESS OFFICER", -1, 0xE8B894, 0x5CC46A, HairStyle.Ponytail, F(EyeShape.Round, Iris.Green, BrowStyle.Thin, NoseStyle.Soft, MouthStyle.Grin, FaceMarks.Rosy | FaceMarks.Dimples), PersonLook.Tattoos, jacket: 0x9EDDC4, rarity: Rarity.Rare);
             Staff("zara", "ZARA", Department.Management, "MARKETING DIRECTOR", -1, 0x6E4430, 0x7A3FD0, HairStyle.Afro, F(EyeShape.Cat, Iris.Amber, BrowStyle.Thick, NoseStyle.Soft, MouthStyle.Lipstick, FaceMarks.Lashes | FaceMarks.Mole), PersonLook.Earrings, jacket: 0xC2367A, rarity: Rarity.Epic);
-            Staff("rex", "REX", Department.CLevel, "CTO", -1, 0xD49A72, 0xF4F1E6, HairStyle.Spiky, F(EyeShape.Narrow, Iris.Blue, BrowStyle.Bushy, NoseStyle.Pointy, MouthStyle.Smirk, FaceMarks.Wrinkles), PersonLook.Tattoos | PersonLook.Earrings | PersonLook.Beard, rarity: Rarity.Legendary);
+            Staff("rex", "REX", Department.CLevel, "CTO", -1, 0xD49A72, 0xF4F1E6, HairStyle.Spiky, F(EyeShape.Narrow, Iris.Blue, BrowStyle.Bushy, NoseStyle.Pointy, MouthStyle.Smirk, FaceMarks.Wrinkles), PersonLook.Tattoos | PersonLook.Earrings | PersonLook.Beard, rarity: Rarity.Legendary, gems: 600);
 
             // Interns: the fresh faces, from chests.
             var I = Department.Interns;
-            Staff("pip", "PIP", I, "SUMMER INTERN", -1, 0xF6D7C3, 0xF2C94C, HairStyle.Pigtails, F(EyeShape.Big, Iris.Blue, BrowStyle.Thin, NoseStyle.Button, MouthStyle.Grin, FaceMarks.Freckles | FaceMarks.Rosy), jacket: 0xFF8A3D);
+            Staff("pip", "PIP", I, "SUMMER INTERN", 0, 0xF6D7C3, 0xF2C94C, HairStyle.Pigtails, F(EyeShape.Big, Iris.Blue, BrowStyle.Thin, NoseStyle.Button, MouthStyle.Grin, FaceMarks.Freckles | FaceMarks.Rosy), jacket: 0xFF8A3D);
             Staff("theo", "THEO", I, "COFFEE INTERN", -1, 0xE6B897, 0x6B4226, HairStyle.Short, F(EyeShape.Round, Iris.Brown, BrowStyle.Arched, NoseStyle.Soft, MouthStyle.Polite, FaceMarks.EyeBags | FaceMarks.Dimples));
             Staff("bea", "BEA", I, "UNPAID INTERN", -1, 0xF3CDB0, 0xA0522D, HairStyle.Ponytail, F(EyeShape.Narrow, Iris.Hazel, BrowStyle.Straight, NoseStyle.Button, MouthStyle.Smile, FaceMarks.Freckles));
             Staff("milo", "MILO", I, "INTERN, AGAIN", -1, 0x7A4B33, 0x1A1412, HairStyle.Curly, F(EyeShape.Big, Iris.Dark, BrowStyle.Thick, NoseStyle.Round, MouthStyle.Grin));
@@ -132,15 +135,31 @@ namespace OutOfOffice
             Staff("gary", "GARY", Mgmt, "MIDDLE MANAGER", -1, 0xE9BE9C, 0x7A6252, HairStyle.Combover, F(EyeShape.Droopy, Iris.Grey, BrowStyle.Bushy, NoseStyle.Round, MouthStyle.Polite, FaceMarks.EyeBags | FaceMarks.Stubble), jacket: 0x6E7480, rarity: Rarity.Epic);
             Staff("dana", "DANA", Mgmt, "PROJECT MANAGER", 108, 0xF1CBB0, 0x5A3825, HairStyle.Ponytail, F(EyeShape.Round, Iris.Blue, BrowStyle.Straight, NoseStyle.Soft, MouthStyle.Smile, FaceMarks.EyeBags), rarity: Rarity.Epic);
             Staff("omar", "OMAR", Mgmt, "TEAM LEAD", 120, 0x6B4330, 0x15100E, HairStyle.Short, F(EyeShape.Almond, Iris.Dark, BrowStyle.Thick, NoseStyle.Long, MouthStyle.Grin), PersonLook.Beard, jacket: 0x1F7A80, rarity: Rarity.Epic);
-            // The C-suite: dark blazers and very calm faces.
+            // The C-suite: dark blazers, pocket squares and very calm faces. Hired with gems.
             var C = Department.CLevel;
-            Staff("vera", "VERA", C, "CFO", 135, 0xF3D1BE, 0xDADAE6, HairStyle.Bob, F(EyeShape.Cat, Iris.Grey, BrowStyle.Thin, NoseStyle.Pointy, MouthStyle.Lipstick, FaceMarks.Lashes | FaceMarks.Mole), PersonLook.Earrings, rarity: Rarity.Legendary);
-            Staff("max", "MAX", C, "COO", 165, 0xE0AE8A, 0x4A3A30, HairStyle.Bald, F(EyeShape.Narrow, Iris.Blue, BrowStyle.Thick, NoseStyle.Round, MouthStyle.Smirk, FaceMarks.Stubble | FaceMarks.Wrinkles), jacket: 0x2E3442, rarity: Rarity.Legendary);
-            Staff("elle", "ELLE", C, "CMO", -1, 0xF7DCCB, 0xF4E2A8, HairStyle.Long, F(EyeShape.Big, Iris.Green, BrowStyle.Arched, NoseStyle.Button, MouthStyle.Lipstick, FaceMarks.Lashes | FaceMarks.Rosy), PersonLook.Earrings, jacket: 0xD7263D, rarity: Rarity.Legendary);
-            // The bosses: the last two star goals.
+            Staff("vera", "VERA", C, "CFO", -1, 0xF3D1BE, 0xDADAE6, HairStyle.Bob, F(EyeShape.Cat, Iris.Grey, BrowStyle.Thin, NoseStyle.Pointy, MouthStyle.Lipstick, FaceMarks.Lashes | FaceMarks.Mole), PersonLook.Earrings, rarity: Rarity.Legendary, gems: 700);
+            Staff("max", "MAX", C, "COO", -1, 0xE0AE8A, 0x4A3A30, HairStyle.Bald, F(EyeShape.Narrow, Iris.Blue, BrowStyle.Thick, NoseStyle.Round, MouthStyle.Smirk, FaceMarks.Stubble | FaceMarks.Wrinkles), jacket: 0x2E3442, rarity: Rarity.Legendary, gems: 800);
+            Staff("elle", "ELLE", C, "CMO", -1, 0xF7DCCB, 0xF4E2A8, HairStyle.Long, F(EyeShape.Big, Iris.Green, BrowStyle.Arched, NoseStyle.Button, MouthStyle.Lipstick, FaceMarks.Lashes | FaceMarks.Rosy), PersonLook.Earrings, jacket: 0xD7263D, rarity: Rarity.Legendary, gems: 650);
+            // The bosses: hired with gems only, each with a special of their own (StaffPerks).
             var Boss = Department.Boss;
-            Staff("chair", "MADAM CHAIR", Boss, "CHAIRWOMAN", 150, 0x8A5A3C, 0xCDCDD8, HairStyle.Curly, F(EyeShape.Almond, Iris.Amber, BrowStyle.Arched, NoseStyle.Soft, MouthStyle.Lipstick, FaceMarks.Wrinkles | FaceMarks.Lashes), PersonLook.Hoops, jacket: 0x3B1E5A, rarity: Rarity.Legendary);
-            Staff("boss", "THE BOSS", Boss, "CEO & FOUNDER", 180, 0xEAB894, 0xF2F2F2, HairStyle.Slick, F(EyeShape.Narrow, Iris.Amber, BrowStyle.Bushy, NoseStyle.Long, MouthStyle.Smirk, FaceMarks.Wrinkles | FaceMarks.Stubble), rarity: Rarity.Legendary);
+            Staff("chair", "MADAM CHAIR", Boss, "CHAIRWOMAN", -1, 0x8A5A3C, 0xCDCDD8, HairStyle.Curly, F(EyeShape.Almond, Iris.Amber, BrowStyle.Arched, NoseStyle.Soft, MouthStyle.Lipstick, FaceMarks.Wrinkles | FaceMarks.Lashes), PersonLook.Hoops, jacket: 0x3B1E5A, rarity: Rarity.Legendary, gems: 1500);
+            Staff("boss", "THE BOSS", Boss, "CEO & FOUNDER", -1, 0xEAB894, 0xF2F2F2, HairStyle.Slick, F(EyeShape.Narrow, Iris.Amber, BrowStyle.Bushy, NoseStyle.Long, MouthStyle.Smirk, FaceMarks.Wrinkles | FaceMarks.Stubble), rarity: Rarity.Legendary, gems: 2500);
+
+            // More hires (OUT-45): new faces in every department, more star goals, and two more bosses to hire.
+            Staff("zoe", "ZOE", I, "TIKTOK INTERN", -1, 0xF2C2A0, 0x7B3FE0, HairStyle.Ponytail, F(EyeShape.Cat, Iris.Violet, BrowStyle.Thin, NoseStyle.Button, MouthStyle.Grin, FaceMarks.Freckles | FaceMarks.Lashes), PersonLook.Earrings);
+            Staff("finn", "FINN", I, "IT INTERN", -1, 0xEFD0B8, 0xD98A3C, HairStyle.Spiky, F(EyeShape.Round, Iris.Hazel, BrowStyle.Straight, NoseStyle.Soft, MouthStyle.Smirk, FaceMarks.Freckles | FaceMarks.EyeBags));
+            Staff("hank", "HANK", E, "NIGHT GUARD", 135, 0x8E5B3E, 0x2A2420, HairStyle.Buzz, F(EyeShape.Narrow, Iris.Brown, BrowStyle.Bushy, NoseStyle.Round, MouthStyle.Polite, FaceMarks.Stubble | FaceMarks.EyeBags), PersonLook.Beard, rarity: Rarity.Epic);
+            Staff("olga", "OLGA", E, "CLEANING CREW", 150, 0xF3D3BD, 0xB7B7C2, HairStyle.Bun, F(EyeShape.Droopy, Iris.Green, BrowStyle.Thick, NoseStyle.Pointy, MouthStyle.Smile, FaceMarks.Wrinkles | FaceMarks.Rosy), rarity: Rarity.Epic);
+            Staff("ozzy", "OZZY", Eng, "SYSADMIN", -1, 0xE9C2A2, 0x3A2A22, HairStyle.Long, F(EyeShape.Droopy, Iris.Grey, BrowStyle.Thick, NoseStyle.Long, MouthStyle.Smirk, FaceMarks.Stubble | FaceMarks.EyeBags), PersonLook.Beard | PersonLook.Tattoos, rarity: Rarity.Epic);
+            Staff("mei", "MEI", Eng, "AI ENGINEER", 165, 0xF4D6BF, 0x1A1A24, HairStyle.Pigtails, F(EyeShape.Big, Iris.Violet, BrowStyle.Straight, NoseStyle.Button, MouthStyle.Smile, FaceMarks.Lashes | FaceMarks.Rosy), rarity: Rarity.Epic);
+            Staff("pam", "PAM", Department.HR, "PARTY PLANNER", -1, 0xD8A07C, 0xFF6FA0, HairStyle.Curly, F(EyeShape.Big, Iris.Amber, BrowStyle.Arched, NoseStyle.Round, MouthStyle.Grin, FaceMarks.Dimples | FaceMarks.Rosy), jacket: 0xFFD166, rarity: Rarity.Rare);
+            Staff("ian", "IAN", Department.Finance, "TAX WIZARD", -1, 0xEBC4A4, 0xE6E6EE, HairStyle.Combover, F(EyeShape.Narrow, Iris.Green, BrowStyle.Bushy, NoseStyle.Pointy, MouthStyle.Smirk, FaceMarks.Wrinkles | FaceMarks.Mole), jacket: 0x5A4A8A, rarity: Rarity.Epic);
+            Staff("duke", "DUKE", Mgmt, "VP OF SALES", 180, 0xC98B66, 0x1E1612, HairStyle.Slick, F(EyeShape.Almond, Iris.Hazel, BrowStyle.Thick, NoseStyle.Pointy, MouthStyle.Grin, FaceMarks.Dimples | FaceMarks.Stubble), jacket: 0x8C1F2E, rarity: Rarity.Legendary);
+            Staff("fran", "FRAN", Mgmt, "HEAD OF OPS", -1, 0xF1CFB6, 0x8C5A2B, HairStyle.Bob, F(EyeShape.Cat, Iris.Brown, BrowStyle.Straight, NoseStyle.Soft, MouthStyle.Polite, FaceMarks.Lashes | FaceMarks.EyeBags), jacket: 0x2F5E4E, rarity: Rarity.Epic);
+            Staff("sol", "SOL", C, "CHIEF VIBES OFFICER", -1, 0xB97A55, 0x2EC4B6, HairStyle.Afro, F(EyeShape.Big, Iris.Amber, BrowStyle.Thin, NoseStyle.Soft, MouthStyle.Grin, FaceMarks.Rosy | FaceMarks.Freckles), PersonLook.Earrings, jacket: 0xFF8C42, rarity: Rarity.Legendary, gems: 600);
+            Staff("aria", "ARIA", C, "CHIEF OF STAFF", -1, 0xF6D9C8, 0x2B1D16, HairStyle.Ponytail, F(EyeShape.Almond, Iris.Grey, BrowStyle.Arched, NoseStyle.Pointy, MouthStyle.Lipstick, FaceMarks.Mole | FaceMarks.Lashes), jacket: 0x1F2F5A, rarity: Rarity.Legendary, gems: 650);
+            Staff("investor", "THE INVESTOR", Boss, "ANGEL INVESTOR", -1, 0xE7B48E, 0xC0C0C8, HairStyle.Slick, F(EyeShape.Round, Iris.Blue, BrowStyle.Thick, NoseStyle.Round, MouthStyle.Smirk, FaceMarks.Wrinkles | FaceMarks.Dimples), jacket: 0x0F3D2E, rarity: Rarity.Legendary, gems: 1800);
+            Staff("heir", "THE HEIR", Boss, "THE BOSS'S KID", -1, 0xF5D6C2, 0xF2D37A, HairStyle.Curly, F(EyeShape.Big, Iris.Blue, BrowStyle.Arched, NoseStyle.Button, MouthStyle.Smirk, FaceMarks.Freckles | FaceMarks.Rosy | FaceMarks.Lashes), jacket: 0x5B2C83, rarity: Rarity.Legendary, gems: 1200);
 
             // Chest-only colors.
             Color("cherry", "PERFORMANCE REVIEW", Rarity.Common, 0xE84A5F, 0xFF3D5E, 0x5CC46A);
@@ -189,8 +208,8 @@ namespace OutOfOffice
         // An employee. stars < 0: chest only, with the given rarity. Each department dresses its people the same way
         // (OUT-43); jacket picks their own colour of it, or the department's.
         static void Staff(string id, string name, Department dept, string title, int stars, int skin, int hair, HairStyle style, FaceDef face,
-            PersonLook extras = PersonLook.None, int jacket = -1, Rarity? rarity = null) =>
-            All.Add(new CosmeticItem { Id = "e." + id, Name = name, Slot = Slot.Employee, Rarity = rarity ?? (stars > 0 ? Rarity.Rare : Rarity.Common), StarsNeeded = stars,
+            PersonLook extras = PersonLook.None, int jacket = -1, Rarity? rarity = null, int gems = 0) =>
+            All.Add(new CosmeticItem { Id = "e." + id, Name = name, Slot = Slot.Employee, Rarity = rarity ?? (stars > 0 ? Rarity.Rare : Rarity.Common), StarsNeeded = gems > 0 ? -1 : stars, GemCost = gems,
                 SkinTone = Themes.Hex(skin), HairColor = Themes.Hex(hair), Hair = style, Extras = extras | Clothes(dept), Dept = dept, Title = title, Features = face,
                 Jacket = Themes.Hex(jacket >= 0 ? jacket : DepartmentColour(dept)) });
 
@@ -201,7 +220,9 @@ namespace OutOfOffice
             d == Department.Engineering || d == Department.Interns ? PersonLook.Lanyard
             : d == Department.HR ? PersonLook.Cardigan
             : d == Department.Finance ? PersonLook.Vest
-            : d == Department.Management || d == Department.CLevel || d == Department.Boss ? PersonLook.Blazer
+            : d == Department.Management ? PersonLook.Blazer
+            : d == Department.CLevel ? PersonLook.Blazer | PersonLook.PocketSquare
+            : d == Department.Boss ? PersonLook.Blazer | PersonLook.PocketSquare | PersonLook.GoldWatch | PersonLook.Mug
             : PersonLook.None;
 
         static int DepartmentColour(Department d) =>

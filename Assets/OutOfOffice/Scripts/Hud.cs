@@ -57,7 +57,6 @@ namespace OutOfOffice
         Rect lastSafe;
         Vector2Int lastScreen;
         int logoTaps;
-        Card returnTo;
         bool titleReturn;
 
         class Card
@@ -146,6 +145,7 @@ namespace OutOfOffice
             BuildComplete();
             BuildFail();
             BuildUndoOffer();
+            BuildHire();
             BuildShop();
         }
 
@@ -322,6 +322,7 @@ namespace OutOfOffice
         public System.Action UndoWithAd, UndoWithGems, UndoDeclined;
         Card undoCard;
         RectTransform undoAd, undoGems, undoBadge;
+        TextMeshProUGUI undoGemsLabel;
         TextMeshProUGUI undoBadgeText;
         GameObject undoBadgeGem;
         int undoBadgeShown = -1;
@@ -339,7 +340,8 @@ namespace OutOfOffice
             var gems = TextButton(c, $"UNDO · {UndoAllowance.GemCost}", Themes.Hex(0x8A5CF0), new Vector2(190f, -30f), new Vector2(340f, 150f), 48f, null);
             gems.Clicked = () => UndoWithGems?.Invoke();
             undoGems = gems.transform as RectTransform;
-            gems.GetComponentInChildren<TextMeshProUGUI>().rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem
+            undoGemsLabel = gems.GetComponentInChildren<TextMeshProUGUI>();
+            undoGemsLabel.rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem
             var gemIcon = UiArt.Icon3D("gem");
             if (gemIcon != null)
                 Img(Rect("Gem", undoGems, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-62f, 8f), new Vector2(84f, 84f)), gemIcon, Color.white);
@@ -348,9 +350,10 @@ namespace OutOfOffice
             CloseButton(undoCard, () => UndoDeclined?.Invoke());
         }
 
-        public void ShowUndoOffer(bool adOk)
+        public void ShowUndoOffer(bool adOk, int gemCost = UndoAllowance.GemCost)
         {
             HideAll();
+            undoGemsLabel.text = $"UNDO · {gemCost}";  // perks can make it cheaper (OUT-45)
             undoAd.gameObject.SetActive(adOk);
             undoGems.anchoredPosition = new Vector2(adOk ? 190f : 0f, -30f);
             ShowCard(undoCard);
@@ -367,6 +370,85 @@ namespace OutOfOffice
             undoBadge.GetComponent<Image>().color = freeLeft > 0 ? Palette.UiRed : Themes.Hex(0x8A5CF0);
             if (undoBadgeShown >= 0 && freeLeft != undoBadgeShown) Pop(undoBadge, 0f, 1.3f);
             undoBadgeShown = freeLeft;
+        }
+
+        // ---------- Hiring (OUT-45) ----------
+
+        // A locked employee up close: who they are, their perk, and how they join. Gem hires have a price button;
+        // the game spends the gems (false when short: it opens the shop, which comes back here).
+        public System.Func<CosmeticItem, bool> Hire;
+        Card hireCard;
+        RawImage hirePortrait;
+        TextMeshProUGUI hireName, hireTitle, hirePerkName, hirePerkText, hireNote, hirePrice;
+        RectTransform hireBuy;
+        CosmeticItem hiring;
+
+        void BuildHire()
+        {
+            hireCard = MakeCard("Hire", "NEW HIRE", new Vector2(860f, 1200f), true);
+            var c = hireCard.Root;
+            var mid = new Vector2(0.5f, 0.5f);
+            var frame = Rect("Portrait", c, mid, mid, new Vector2(0f, 300f), new Vector2(300f, 300f));
+            Sliced(Img(frame, UiArt.Button, Color.white), 300f, 0.22f);
+            hirePortrait = Rect("Icon", frame, mid, mid, new Vector2(0f, 6f), new Vector2(272f, 272f)).gameObject.AddComponent<RawImage>();
+            hirePortrait.raycastTarget = false;
+            hireName = Txt(Rect("Name", c, mid, mid, new Vector2(0f, 104f), new Vector2(760f, 80f)), "", 64f, Ink, Ink, 0f, false);
+            hireTitle = Body(Rect("Title", c, mid, mid, new Vector2(0f, 44f), new Vector2(760f, 50f)), "", 32f, Ink, Ink);
+            var perk = Rect("Perk", c, mid, mid, new Vector2(0f, -70f), new Vector2(760f, 130f));
+            Sliced(Img(perk, UiArt.Button, Themes.Hex(0xFFF1C9)), 130f, 0.25f);
+            hirePerkName = Txt(Rect("Perk Name", perk, mid, mid, new Vector2(0f, 26f), new Vector2(720f, 50f)), "", 40f, Themes.Hex(0x9C5A00), Ink, 0f, false);
+            hirePerkText = Body(Rect("Perk Text", perk, mid, mid, new Vector2(0f, -22f), new Vector2(720f, 44f)), "", 30f, Ink, Ink);
+            var buy = TextButton(c, "HIRE · 600", Themes.Hex(0x8A5CF0), new Vector2(0f, -270f), new Vector2(520f, 150f), 54f, null);
+            buy.Clicked = HireClicked;
+            hireBuy = buy.transform as RectTransform;
+            hirePrice = buy.GetComponentInChildren<TextMeshProUGUI>();
+            hirePrice.rectTransform.offsetMax = new Vector2(-90f, 0f);  // room for the gem
+            var gemIcon = UiArt.Icon3D("gem");
+            if (gemIcon != null) Img(Rect("Gem", hireBuy, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-70f, 8f), new Vector2(90f, 90f)), gemIcon, Color.white);
+            hireNote = Body(Rect("Note", c, mid, mid, new Vector2(0f, -270f), new Vector2(760f, 80f)), "", 40f, Ink, Ink);
+            CloseButton(hireCard, () => Back());
+        }
+
+        public void ShowHire(CosmeticItem item)
+        {
+            Remember();
+            HideAll();
+            hiring = item;
+            hirePortrait.texture = IconStudio.ItemIcons.TryGetValue(item.Id, out var tex) ? tex : null;
+            hirePortrait.color = tex != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            hireName.text = item.Name;
+            hireTitle.text = $"{item.Title} · {Cosmetics.DepartmentName(item.Dept)}";
+            var perk = StaffPerks.For(item);
+            hirePerkName.text = perk.Name;
+            hirePerkText.text = perk.Description;
+            bool owned = OwnsItem?.Invoke(item) ?? false;
+            bool buyable = item.ForGems && !owned;
+            hireBuy.gameObject.SetActive(buyable);
+            hirePrice.text = $"HIRE · {item.GemCost}";
+            hireNote.gameObject.SetActive(!buyable);
+            hireNote.text = owned ? "ON THE TEAM" : item.FromChest ? "FOUND IN CHESTS" : $"JOINS AT {item.StarsNeeded} STARS";
+            if (hireCard.Title != null) hireCard.Title.text = item.ForGems ? "HIRE" : "NEW HIRE";
+            ShowCard(hireCard);
+        }
+
+        void HireClicked()
+        {
+            var item = hiring;
+            if (item == null || !(Hire?.Invoke(item) ?? false)) return;
+            EquipItem?.Invoke(item);
+            Back();  // to the wardrobe, where they now wear the new hire
+        }
+
+        // ---------- Back (OUT-45) ----------
+
+        // Cards opened from cards come back in order: wardrobe, hire card, shop, and back again.
+        readonly Stack<Card> backStack = new Stack<Card>();
+
+        Card OpenCard()
+        {
+            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, skinsCard, shopCard, levelsCard, questsCard, settingsCard })
+                if (c != null && c.Root.gameObject.activeSelf) return c;
+            return null;
         }
 
         // ---------- Shop (OUT-31, OUT-32, OUT-33) ----------
@@ -1177,6 +1259,7 @@ namespace OutOfOffice
 
         public void ShowTitle(int stars, int levelNumber, Theme levelTheme)
         {
+            backStack.Clear();
             HideAll();
             SetTheme(levelTheme);
             title.gameObject.SetActive(true);
@@ -1203,6 +1286,7 @@ namespace OutOfOffice
 
         public void HideTitle()
         {
+            backStack.Clear();  // a room starts: nothing to go back to
             title.gameObject.SetActive(false);
             hudRoot.gameObject.SetActive(true);
         }
@@ -1418,6 +1502,7 @@ namespace OutOfOffice
         public System.Action<CosmeticItem> EquipItem;
         Slot wardrobeTab = Slot.Employee;
         RawImage wardrobePreview;
+        TextMeshProUGUI wardrobePerk;
         readonly List<(Slot slot, Image bg, TextMeshProUGUI label)> wardrobeTabs = new List<(Slot, Image, TextMeshProUGUI)>();
         RectTransform wardrobeContent;
 
@@ -1433,6 +1518,10 @@ namespace OutOfOffice
             wardrobePreview = prev.gameObject.AddComponent<RawImage>();
             wardrobePreview.raycastTarget = false;
             prev.gameObject.AddComponent<Bobber>().Hud = this;
+            // What the worn employee brings (OUT-45), on a plate over the foot of the stage.
+            var plate = Rect("Perk", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -556f), new Vector2(760f, 54f));
+            Sliced(Img(plate, UiArt.Pill, new Color(0.23f, 0.16f, 0.43f, 0.92f)), 54f, 0.5f);
+            wardrobePerk = Body(Rect("Text", plate, Vector2.zero, Vector2.one, new Vector2(0f, 1f), new Vector2(-30f, 0f)), "", 27f, Color.white, Ink);
 
             // Tabs.
             var tabs = new[] { (Slot.Employee, "STAFF"), (Slot.Color, "TIES"), (Slot.Hat, "HATS"), (Slot.Face, "FACE") };
@@ -1516,6 +1605,11 @@ namespace OutOfOffice
                 label.color = on ? Color.white : Ink;
             }
             IconStudio.ShowingTab = wardrobeTab;
+            if (wardrobePerk != null)
+            {
+                var perk = StaffPerks.For((CurrentOutfit?.Invoke() ?? Cosmetics.Default).Employee);
+                wardrobePerk.text = perk.Name.Length > 0 ? $"<b>{perk.Name}</b> · {perk.Description}" : "";
+            }
             if (!skinTabs.TryGetValue(wardrobeTab, out var tab) || tab.root == null || OwnershipChanged(tab.tiles)) tab = BuildSkinTab(wardrobeTab);
             foreach (var kv in skinTabs) kv.Value.root.gameObject.SetActive(kv.Key == wardrobeTab);
             string worn = (CurrentOutfit?.Invoke() ?? Cosmetics.Default).Get(wardrobeTab);
@@ -1683,7 +1777,7 @@ namespace OutOfOffice
                 t.Sub.fontSize = Mathf.Clamp((tileW - 26f) / (0.68f * item.Title.Length), 12f, 19f);
             }
             float captionY = staff ? 62f : 46f;
-            string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
+            string caption = owned ? item.Name : item.ForGems ? item.GemCost.ToString() : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
             t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, captionY), new Vector2(tileW - 10f, 50f)),
                 caption, 30f, Ink, Ink);
             // Long names shrink to fit the tile (OUT-29), by their length: TMP's auto-size runs several layouts per label,
@@ -1696,10 +1790,15 @@ namespace OutOfOffice
             t.Check = check.gameObject;
             if (!owned)
             {
-                Img(Rect("Lock", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(60f, 60f)), UiArt.Icon(item.FromChest ? "chest" : "lock"), Color.white)
+                var gem = UiArt.Icon3D("gem");
+                var lockIcon = item.ForGems && gem != null ? gem : UiArt.Icon(item.FromChest ? "chest" : "lock");
+                Img(Rect("Lock", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(item.ForGems ? 84f : 60f, item.ForGems ? 84f : 60f)), lockIcon, Color.white)
                     .gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.35f);
                 if (!item.FromChest)
-                    Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-30f, captionY + 2f), new Vector2(40f, 40f)), UiArt.Star, Color.white);
+                    Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-34f, captionY + 2f), new Vector2(item.ForGems ? 50f : 40f, item.ForGems ? 50f : 40f)),
+                        item.ForGems && gem != null ? gem : UiArt.Star, Color.white);
+                // Staff can be looked at before they join: who they are, their perk, and how to hire them (OUT-45).
+                if (staff) tile.gameObject.AddComponent<UiPress>().Clicked = () => ShowHire(item);
                 return t;
             }
             tile.gameObject.AddComponent<UiPress>().Clicked = () =>
@@ -1988,25 +2087,36 @@ namespace OutOfOffice
 
         void Remember()
         {
-            titleReturn = title.gameObject.activeSelf;
-            returnTo = pauseCard.Root.gameObject.activeSelf ? pauseCard : failCard.Root.gameObject.activeSelf ? failCard
-                : undoCard.Root.gameObject.activeSelf ? undoCard : null;  // the shop can open from the out-of-shots and undo cards
+            var open = OpenCard();
+            if (open != null) backStack.Push(open);  // opened from a card: back goes there
+            else
+            {
+                backStack.Clear();
+                titleReturn = title.gameObject.activeSelf;
+            }
         }
 
         void Back()
         {
             HideAll();
+            if (backStack.Count > 0)
+            {
+                var card = backStack.Pop();
+                if (card == skinsCard) RefreshSkins(false);
+                else if (card == shopCard) RefreshShop();
+                ShowCard(card);
+                if (card == skinsCard) IconStudio.WardrobeOpen = true;
+                return;
+            }
             if (titleReturn) title.gameObject.SetActive(true);
-            else if (returnTo != null) ShowCard(returnTo);
             titleReturn = false;
-            returnTo = null;
         }
 
         public void HideAll()
         {
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);

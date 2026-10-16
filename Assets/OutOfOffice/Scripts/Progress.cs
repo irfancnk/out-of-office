@@ -266,7 +266,8 @@ namespace OutOfOffice
         public bool Owns(CosmeticItem item)
         {
             if (item == null) return false;
-            return item.FromChest ? prefs.GetInt("buca.own." + item.Id, 0) == 1 : TotalStars >= Mathf.Max(0, item.StarsNeeded);
+            // Chest finds and gem hires (OUT-45) are granted; the rest unlock with stars.
+            return item.FromChest || item.ForGems ? prefs.GetInt("buca.own." + item.Id, 0) == 1 : TotalStars >= Mathf.Max(0, item.StarsNeeded);
         }
 
         public void Grant(CosmeticItem item)

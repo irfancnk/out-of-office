@@ -52,6 +52,11 @@ namespace OutOfOffice
                 Round("Sleeve", new Vector3(0.135f, 0.13f, 0.13f), sleeves, arm, new Vector3(0f, 0f, 0.045f));
                 Round("Forearm", new Vector3(0.088f, 0.088f, 0.1f), skinMat, arm, new Vector3(0f, 0f, 0.11f));
                 Round("Hand", new Vector3(0.112f, 0.106f, 0.1f), skinMat, arm, new Vector3(0f, -0.004f, 0.168f));
+                // The bosses (OUT-45): a gold watch on the left wrist and a gold #1 mug in the right hand.
+                if (side < 0f && (skin.Extras & PersonLook.GoldWatch) != 0)
+                    Round("Watch", new Vector3(0.1f, 0.1f, 0.032f), Look.Person(GoldColor, 0.8f), arm, new Vector3(0f, 0f, 0.13f), false, 3f);
+                if (side > 0f && (skin.Extras & PersonLook.Mug) != 0)
+                    Look.AddMesh("Mug", Meshes.Lathe(Scenery.Cylinder(0.045f, 0.078f), 20), Look.Person(GoldColor, 0.85f), arm, new Vector3(0f, -0.06f, 0.2f), false);
                 if ((skin.Extras & PersonLook.Tattoos) != 0)
                     foreach (float z in new[] { 0.09f, 0.128f })  // two ink bands round the forearm (OUT-30)
                         Round("Tattoo", new Vector3(0.096f, 0.096f, 0.024f), Look.Person(TattooInk, 0.3f), arm, new Vector3(0f, 0f, z), false, 3f);
@@ -133,6 +138,12 @@ namespace OutOfOffice
                 if (!blazer)
                     for (int i = 0; i < 3; i++)
                         Round("Button", Vector3.one * 0.024f, Look.Person(Color.Lerp(skin.Jacket, Color.white, 0.6f), 0.5f), torso, new Vector3(-0.034f, -0.168f, -0.2f + i * 0.075f));
+            }
+            // The C-suite and the bosses: a folded pocket square on the blazer.
+            if ((look & PersonLook.PocketSquare) != 0)
+            {
+                var square = Round("Pocket Square", new Vector3(0.056f, 0.014f, 0.042f), Look.Person(Color.Lerp(GoldColor, Color.white, 0.25f), 0.5f), torso, new Vector3(-0.118f, -0.174f, -0.17f));
+                square.transform.localRotation = Quaternion.Euler(0f, 18f, 0f);
             }
             if ((look & PersonLook.Vest) != 0)
                 Round("Vest", new Vector3(0.402f, 0.34f, 0.24f), cloth, torso, new Vector3(0f, 0f, -0.085f), true, 2.5f);

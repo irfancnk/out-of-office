@@ -35,18 +35,14 @@ namespace OutOfOffice
             float tremble = 0f;
 
             bool buzzing = Time.time < buzzUntil;
-            if (buzzing)
-            {
-                tremble = 0.7f;
-                mascot.Express(Eyes.Wide, Mouth.Grin, 0.2f, 1.2f);
-            }
+            if (buzzing) mascot.Express(Eyes.Wide, Mouth.Grin, 0.2f, 1.2f);  // wired, but no shiver: it read as shaking
 
             bool waiting = state == State.Ready || state == State.Aiming;
             if (waiting && !buzzing)
             {
                 if (Near(pos, BlockKind.Kicker, BossFear))
                 {
-                    tremble = 1f;
+                    if (state == State.Ready) tremble = 1f;  // never while charging a shot
                     mascot.Express(Eyes.Wide, Mouth.Flat, 0.2f, 0.9f);
                 }
                 else if (NearZone(pos, ZoneKind.Magnet, CoffeeLove)) mascot.Express(Eyes.Star, Mouth.Grin, 0.2f, 0.8f);

@@ -18,6 +18,9 @@ namespace OutOfOffice
 
         static readonly RaycastHit2D[] hits = new RaycastHit2D[8];
 
+        // How far the guide reaches, from the worn employee's perk (OUT-45). Gameplay checks use 1.
+        public static float Reach = 1f;
+
         // Distance the puck travels on wood from a given speed, stepping exactly like the game's fixed step.
         public static float GlideDistance(float speed, float limit)
         {
@@ -54,7 +57,8 @@ namespace OutOfOffice
             float speed = velocity.magnitude;
             if (speed < 0.01f) return result;
             Vector2 dir = velocity / speed;
-            float budget = Mathf.Min(Rules.PreviewLength, GlideDistance(speed, Rules.PreviewLength));
+            float reach = Rules.PreviewLength * Reach;
+            float budget = Mathf.Min(reach, GlideDistance(speed, reach));
 
             path.Add(origin);
             float first = Cast(level, origin, dir, budget, out var hit, out bool blocked);
@@ -109,7 +113,7 @@ namespace OutOfOffice
             result.Bounced = true;
             result.BouncePoint = p1;
             Vector2 dir2 = after / afterSpeed;
-            float budget2 = Mathf.Min(Rules.PreviewLength - first, GlideDistance(afterSpeed, Rules.PreviewLength)) * 0.7f;
+            float budget2 = Mathf.Min(reach - first, GlideDistance(afterSpeed, reach)) * 0.7f;
             if (budget2 < 0.05f) return result;
             float second = Cast(level, p1 + n * 0.01f, dir2, budget2, out _, out _);
             second = ClipAtZone(level, p1, dir2, second, ref result);

@@ -122,11 +122,48 @@ namespace OutOfOffice
                 Accent = Hex(0x8C7CF0), AccentDark = Hex(0x5446B8),
                 Floor = () => Textures.OfficeFloor(Setting.AfterHours), FloorGloss = 0.04f, FrameTexture = () => Textures.PaintedFrame, RodTexture = null, DarkFloor = true,
             },
+            // Rooms 65-100 (OUT-46): three more floors, built from the office's own materials.
+            new Theme
+            {
+                Name = "SERVER ROOM", Sign = "It works on my machine. The machine is on fire.",
+                Setting = Setting.AfterHours, Walls = WallStyle.Cabinet,
+                Sky = Hex(0x15303A), Ground = Hex(0x15303A),
+                WallColors = new[] { Hex(0x3E5B66), Hex(0x466572) },
+                Rod = Hex(0x7FD6E6), Frame = Hex(0x2A4652),
+                Shadow = new Color(0.03f, 0.08f, 0.1f),
+                Sun = new Color(0.78f, 0.95f, 1f), Ambient = new Color(0.36f, 0.5f, 0.56f), SunIntensity = 0.85f,
+                Accent = Hex(0x2EC4D6), AccentDark = Hex(0x17808E),
+                Floor = () => Textures.OfficeFloor(Setting.AfterHours), FloorGloss = 0.2f, FrameTexture = () => Textures.PaintedFrame, RodTexture = null, DarkFloor = true,
+            },
+            new Theme
+            {
+                Name = "ROOFTOP TERRACE", Sign = "Team building, outdoors. Attendance is voluntary and mandatory.",
+                Setting = Setting.Kitchen, Walls = WallStyle.Counter,
+                Sky = Hex(0xBFE3F5), Ground = Hex(0xBFE3F5),
+                WallColors = new[] { Hex(0xE07A3F), Hex(0xE88A50) },
+                Rod = Hex(0xF7EFE3), Frame = Hex(0xF4ECE0),
+                Shadow = new Color(0.26f, 0.3f, 0.4f),
+                Sun = new Color(1f, 0.97f, 0.88f), Ambient = new Color(0.76f, 0.8f, 0.86f), SunIntensity = 1f,
+                Accent = Hex(0xF08A3C), AccentDark = Hex(0xB0561C),
+                Floor = () => Textures.OfficeFloor(Setting.Kitchen), FloorGloss = 0.15f, FrameTexture = () => Textures.PaintedFrame, RodTexture = null,
+            },
+            new Theme
+            {
+                Name = "THE CORNER OFFICE", Sign = "The view is incredible. Nobody below this floor has seen it.",
+                Setting = Setting.Executive, Walls = WallStyle.Painted,
+                Sky = Hex(0x2B1A2E), Ground = Hex(0x2B1A2E),
+                WallColors = new[] { Hex(0x5A1E2E), Hex(0x682538) },
+                Rod = Hex(0xE2B857), Frame = Hex(0x5A1E2E),
+                Shadow = new Color(0.12f, 0.05f, 0.1f),
+                Sun = new Color(1f, 0.93f, 0.82f), Ambient = new Color(0.62f, 0.52f, 0.56f), SunIntensity = 0.95f,
+                Accent = Hex(0xE2B857), AccentDark = Hex(0x9A7424),
+                Floor = () => Textures.OfficeFloor(Setting.Executive), FloorGloss = 0.5f, FrameTexture = () => Textures.PaintedFrame, RodTexture = null,
+            },
         };
 
         // First level index of each chapter, plus the level count at the end. Levels.cs marks each chapter with a
         // matching comment; LevelCheck fails if this table and the level list disagree.
-        public static readonly int[] ChapterStart = { 0, 11, 20, 29, 37, 45, 54, 64 };
+        public static readonly int[] ChapterStart = { 0, 11, 20, 29, 37, 45, 54, 64, 76, 88, 100 };
 
         // The theme LevelBuilder uses. The game sets it before it builds a level.
         public static Theme Current = All[0];

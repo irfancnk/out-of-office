@@ -126,6 +126,8 @@ namespace OutOfOffice
             }
             IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);  // tiles show items on the outfit you wear now (OUT-29); unchanged ones are kept
+            UsePerk();
+            hud.SetShots(shots, Def.Par, ShotLimit);
         }
 
         // Rolls a chest, saves the prize, and plays the opening scene. The prize may be worn right away.
@@ -356,7 +358,8 @@ namespace OutOfOffice
             hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
             hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
-            undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom);  // a new attempt: three free again
+            UsePerk();
+            undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom, perk.FreeUndos);  // a new attempt: three free again, plus the perk's
             hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
             hud.SetUndoAvailable(false);
             hud.SetHint(true);
@@ -894,7 +897,15 @@ namespace OutOfOffice
 
             if (levelIndex >= 0)
             {
+                int before = progress.Best(Def.Id);
                 progress.Record(levelIndex, earned, shots);
+                // A perk that pays for new stars (OUT-45): only new ones, so replays can't farm it.
+                int gained = Mathf.Max(0, earned - before);
+                if (gained > 0 && perk.StarGems > 0)
+                {
+                    progress.AddGems(gained * perk.StarGems, "perk");
+                    hud.Banner($"+{gained * perk.StarGems} GEMS · {perk.Name}", Themes.Hex(0xB990FF), 0.9f);
+                }
                 newStamps = progress.StampCoffees(levelIndex, level.StarsCollected);
                 Analytics.Event("level_complete", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("par", Def.Par),
                     ("stars", earned), ("undos", undos), ("par_with_undo", undos > 0 && shots <= Def.Par), ("seconds", Mathf.RoundToInt(levelTime)), ("coffees", level.StarsCollected), ("stamps", newStamps));
@@ -1002,7 +1013,18 @@ namespace OutOfOffice
 
         // ---------- Shot limit (OUT-27) ----------
 
-        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots + extraShots;  // the lab has no limit; continues add shots
+        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots + extraShots + perk.ExtraShots;  // the lab has no limit; continues and perks add shots
+
+        // The worn employee's perk (OUT-45), and what gems buy with it.
+        Perk perk = Perk.None;
+        int UndoGemCost => Mathf.Max(1, Mathf.CeilToInt(UndoAllowance.GemCost * (1f - perk.GemDiscount)));
+        int ContinueGemCost => Mathf.Max(1, Mathf.CeilToInt(Catalog.ContinueCost * (1f - perk.GemDiscount)));
+
+        void UsePerk()
+        {
+            perk = StaffPerks.For(progress.Outfit.Employee);
+            AimPreview.Reach = perk.AimReach;
+        }
 
         // After every shot that didn't end in bed: a warning before the last shot, and a failed level after it.
         void CheckShotLimit()
@@ -1039,7 +1061,7 @@ namespace OutOfOffice
                 sound.Play(Sfx.Cancel, 0.4f);
                 return;
             }
-            if (undoAllowance.Check(progress.Gems, false) == UndoAllowance.Next.Free)
+            if (undoAllowance.Check(progress.Gems, false, UndoGemCost) == UndoAllowance.Next.Free)
             {
                 undoAllowance.UseFree();
                 if (undoAllowance.Limited) Analytics.Event("undo_free", ("level", Def.Id), ("left", undoAllowance.FreeLeft));
@@ -1060,8 +1082,8 @@ namespace OutOfOffice
             sound.StopContinuous();
             bool ad = Ads.CanOffer(progress, Ads.Now);
             Analytics.Event("undo_offer", ("level", Def.Id), ("ad", ad), ("balance", progress.Gems));
-            hud.ShowUndoOffer(ad);
-            if (undoAllowance.Check(progress.Gems, ad) == UndoAllowance.Next.Shop)
+            hud.ShowUndoOffer(ad, UndoGemCost);
+            if (undoAllowance.Check(progress.Gems, ad, UndoGemCost) == UndoAllowance.Next.Shop)
             {
                 Analytics.Event("undo_blocked", ("level", Def.Id), ("balance", progress.Gems));
                 hud.ShowShop();
@@ -1192,7 +1214,7 @@ namespace OutOfOffice
             {
                 float total = 0f;
                 for (int i = 0; i + 1 < preview.Count; i++) total += (preview[i + 1] - preview[i]).magnitude;
-                float shown = Mathf.Min(total, Mathf.Lerp(2.6f, Rules.PreviewLength, power));
+                float shown = Mathf.Min(total, Mathf.Lerp(2.6f, Rules.PreviewLength * AimPreview.Reach, power));
                 float walked = 0f;
                 for (int seg = 0; seg + 1 < preview.Count && used < aimDots.Count; seg++)
                 {
@@ -1218,7 +1240,7 @@ namespace OutOfOffice
             // A gold dot where the shot bounces, when the line reaches that far.
             pathEnd.enabled = false;
             bounceMark.enabled = aiming && previewResult.Bounced && preview.Count >= 3
-                && previewResult.FirstLength <= Mathf.Lerp(2.6f, Rules.PreviewLength, power);
+                && previewResult.FirstLength <= Mathf.Lerp(2.6f, Rules.PreviewLength * AimPreview.Reach, power);
             if (bounceMark.enabled)
                 bounceMark.transform.position = new Vector3(previewResult.BouncePoint.x, previewResult.BouncePoint.y, -0.035f);
 
@@ -1230,11 +1252,10 @@ namespace OutOfOffice
             {
                 mascot.AimDir = aimDir;
                 mascot.AimPower = power;
-                // Squashed back into the pull like a jelly, trembling a little at full power. Cosmetic only: the shot
-                // starts from the rest position.
-                float tremble = power > 0.75f && !progress.ReducedMotion ? Mathf.Sin(Time.time * 55f) * 0.02f * (power - 0.75f) * 4f : 0f;
+                // Squashed back into the pull like a jelly, and held steady. Cosmetic only: the shot starts from the rest
+                // position.
                 Vector2 pulled = -aimDir * (Mathf.Sqrt(power) * PullBack);
-                puck.VisualOffset = pulled + new Vector2(-aimDir.y, aimDir.x) * tremble;
+                puck.VisualOffset = pulled;
                 puck.AimSquash = power * 0.08f;
                 puck.AimAxis = aimDir;
                 sling.Aim(restPos, aimDir, restPos + pulled - aimDir * (Rules.PuckRadius + 0.05f), power, Time.deltaTime);
@@ -1272,6 +1293,13 @@ namespace OutOfOffice
                 FxDot.Spawn(new Vector3(p.x, p.y, height + Random.Range(-0.1f, 0.12f)), -(Vector3)direction * (1.2f + speed * 0.12f) + (Vector3)side * (0.25f * i),
                     0.05f + strength * 0.02f, 0.02f, new Color(1f, 1f, 1f, 0.35f + strength * 0.35f),
                     0.24f, FxMode.Flat, Textures.Glow, 7, 7f + 5f * strength, angle);
+            }
+            // The bosses roll on a trail of gold (OUT-45).
+            if (perk.GoldTrail)
+            {
+                Vector2 g = center + side * Random.Range(-0.2f, 0.2f);
+                FxDot.Spawn(new Vector3(g.x, g.y, height + Random.Range(-0.15f, 0.15f)), -(Vector3)direction * 0.6f + new Vector3(0f, 0f, -0.4f),
+                    0.09f, 0.02f, new Color(1f, 0.82f, 0.3f, 0.9f), 0.45f, FxMode.Float, UiArt.Star, 8);
             }
             // A soft puff of air left behind on the board.
             if (Random.value < 0.35f + 0.4f * strength)

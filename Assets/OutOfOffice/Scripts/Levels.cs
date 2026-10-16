@@ -113,6 +113,14 @@ namespace OutOfOffice
             return new ShapeDef(Geometry.Fillet(Geometry.CounterClockwise(pts), 0.8f, 20f));
         }
 
+        // The same outline flipped left to right (OUT-46).
+        public ShapeDef Mirrored()
+        {
+            var pts = new List<Vector2>();
+            foreach (var p in Outline) pts.Add(new Vector2(-p.x, p.y));
+            return new ShapeDef(pts);
+        }
+
         // The same outline moved by an offset (taller boards keep their top at y = 8 and grow downward).
         public ShapeDef Shift(float dx, float dy)
         {
@@ -150,6 +158,38 @@ namespace OutOfOffice
             Id = id;
             Name = name;
             Hole = new Vector2(holeX, holeY);
+        }
+
+        // A room flipped left to right (OUT-46): the same physics mirrored, so it plays exactly as well as the original,
+        // in a new place with a new name. Zone directions, spins and swirls flip with it; the receptionist stays behind.
+        public static LevelDef Mirror(LevelDef src, string id, string name, string hint)
+        {
+            var m = new LevelDef(id, name, -src.Hole.x, src.Hole.y) { Par = src.Par, Hint = hint, Start = new Vector2(-src.Start.x, src.Start.y), Shape = src.Shape.Mirrored() };
+            m.maxShots = src.maxShots;
+            foreach (var b in src.Blocks)
+            {
+                if (b.Reception != 0) continue;
+                m.Blocks.Add(new BlockDef(b.Kind, new Vector2(-b.Center.x, b.Center.y), b.Size)
+                {
+                    Shape = b.Shape, Corner = b.Corner, Angle = -b.Angle, MoveOffset = new Vector2(-b.MoveOffset.x, b.MoveOffset.y), Period = b.Period,
+                    Phase = b.Phase, Spin = -b.Spin, Group = b.Group, BlinkPeriod = b.BlinkPeriod, BlinkPhase = b.BlinkPhase,
+                });
+            }
+            foreach (var z in src.Zones)
+                m.Zones.Add(new ZoneDef
+                {
+                    Kind = z.Kind, Center = new Vector2(-z.Center.x, z.Center.y), Size = z.Size, Angle = -z.Angle, Link = z.Link, Group = z.Group,
+                    Turn = -z.Turn, Period = z.Period, Phase = z.Phase,
+                });
+            foreach (var r in src.Rails)
+            {
+                var path = new List<Vector2>(r.Path.Count);
+                foreach (var p in r.Path) path.Add(new Vector2(-p.x, p.y));
+                m.Rails.Add(new RailDef { Kind = r.Kind, Path = path, Width = r.Width });
+            }
+            foreach (var s in src.Stars) m.Stars.Add(new Vector2(-s.x, s.y));
+            foreach (var br in src.Bridges) m.Bridges.Add(new Rect(-br.xMax, br.yMin, br.width, br.height));
+            return m;
         }
 
         public LevelDef WithShape(ShapeDef shape) { Shape = shape; return this; }
@@ -340,7 +380,7 @@ namespace OutOfOffice
     // Run Out of Office > Check Levels after an edit: it proves every level can be finished and suggests par.
     public static class Levels
     {
-        public static readonly LevelDef[] All =
+        static readonly LevelDef[] Classic =
         {
             // ---------- Chapter 1, Open-Plan Office (levels 1-11): aim, bank off walls, ride the desks ----------
             new LevelDef("first", "Day One, Already Tired", 0f, 4.5f).WithHint("DRAG BACK, AIM, RELEASE")
@@ -926,6 +966,120 @@ namespace OutOfOffice
                 .Rail(BlockKind.Wall, 0f, 3.7f, 1.2f, 3.7f, 4.4f)              // narrow channel, right side
                 .Rail(BlockKind.Wall, 0f, -4.6f, 7.6f, -2.6f, 7.6f)            // smooth join: two collinear rods meeting
                 .Rail(BlockKind.Wall, 0f, -2.6f, 7.6f, -0.6f, 7.6f);
+
+        // The game's rooms: the first 64, then the three new floors (OUT-46), rooms 65 to 100.
+        public static readonly LevelDef[] All = WithNewFloors(Classic);
+
+        // Each new floor mixes brand-new rooms with remixes of earlier ones, flipped left to right and moved upstairs
+        // (a mirror plays exactly like its original, so it is as fair). One room of each floor has the receptionist.
+        static LevelDef[] WithNewFloors(LevelDef[] classic)
+        {
+            var all = new List<LevelDef>(classic);
+            LevelDef From(string id) => System.Array.Find(classic, l => l.Id == id);
+            void Remix(string source, string id, string name, string hint) => all.Add(LevelDef.Mirror(From(source), id, name, hint));
+
+            // ---------- Chapter 8, Server Room (levels 65-76): racks, firewalls, coolant and cables ----------
+            all.Add(new LevelDef("reboot", "Have You Tried Rebooting?", 0f, 6.2f).WithHint("BOUNCE PAST THE RACKS").WithPar(2)
+                .Wall(-2.6f, -1.2f, 3.8f, 0.6f)
+                .Wall(2.6f, 2.4f, 3.8f, 0.6f)
+                .Post(BlockKind.Bouncer, 0f, 0.6f, 0.55f)
+                .Post(BlockKind.Bouncer, -2.8f, -3.8f, 0.45f)
+                .Star(3.2f, -1.2f).Star(-3.2f, 2.4f).Star(1.8f, 5f).Reception(true));
+            Remix("rubber", "pingtimeout", "Ping Timeout", "CHAIRS BOUNCE YOU AROUND");
+            Remix("switch", "twofactor", "Two-Factor Authentication", "SCAN YOUR BADGE FIRST");
+            all.Add(new LevelDef("firewall", "The Firewall Says No", 0f, 6.2f).WithHint("WAIT FOR THE WALL TO DROP").WithPar(2)
+                .SpikeBall(0f, -2.5f, 0.4f).Moving(2.4f, 0f, 2.6f)
+                .PopWall(0f, 1.6f, 9f, 0.5f, 2.4f, 0f)
+                .Post(BlockKind.Bouncer, -3f, 4.2f, 0.45f)
+                .Post(BlockKind.Bouncer, 3f, 4.2f, 0.45f)
+                .Star(-3.4f, -0.4f).Star(3.4f, 3f).Star(-1.6f, 4.8f));
+            Remix("popwalls", "hotfix", "Hotfix on a Friday", "THE RACKS POP UP AND DOWN");
+            Remix("microwave", "coolant", "Coolant Leak, Again", "MIND THE WET FLOOR");
+            all.Add(new LevelDef("coldaisle", "Cold Aisle, Hot Takes", 0f, 6.2f).WithHint("SLIDE BETWEEN THE CHAIRS").WithPar(2)
+                .Ice(0f, -0.4f, 9f, 5.2f)
+                .Post(BlockKind.Bouncer, -2.4f, 0.8f, 0.5f)
+                .Post(BlockKind.Bouncer, 2.4f, 0.8f, 0.5f)
+                .Wall(0f, 3.8f, 3.2f, 0.6f)
+                .Star(-3.4f, -2.4f).Star(3.4f, 2.6f).Star(-2.6f, 5.2f));
+            Remix("fridge", "legacycode", "Legacy Code Lives Here", "DOWN THE AISLE, ROUND THE LEAK");
+            Remix("portal", "vpn", "The VPN Tunnel", "IN ONE PORT, OUT THE OTHER");
+            all.Add(new LevelDef("cabling", "Cable Management (Lol)", 2.6f, 6f).WithHint("THE BELT KNOWS THE WAY").WithPar(2)
+                .Conveyor(0f, 0.4f, 2.4f, 9f, -90f)
+                .Wall(-1.8f, 3.6f, 5.4f, 0.6f)
+                .Post(BlockKind.Bouncer, 2.8f, -3.6f, 0.45f)
+                .Star(-3.4f, -1.8f).Star(3.4f, 2.4f).Star(-3.2f, 5.4f));
+            Remix("magnet", "uptime", "Five Nines of Coffee", "THE COFFEE MACHINE PULLS YOU");
+            Remix("fan", "overheat", "Servers Running Hot", "RIDE THE COOLING FANS");
+
+            // ---------- Chapter 9, Rooftop Terrace (levels 77-88): wind, deck chairs, skylights and the hot tub ----------
+            all.Add(new LevelDef("sunscreen", "Mandatory Sunscreen", -2.4f, 6f).WithHint("THE WIND PUSHES LEFT").WithPar(2)
+                .Wind(0f, 1f, 3f, 9f, 90f)
+                .Wall(1.8f, 3.8f, 5.4f, 0.6f)
+                .Post(BlockKind.Bouncer, 3f, -2.8f, 0.45f)
+                .Star(3.4f, 0.4f).Star(-3.4f, -1.8f).Star(2.8f, 5.4f));
+            Remix("ice", "poolparty", "Pool Party, No Pool", "WET DECK: GO GENTLE");
+            Remix("standup", "yoga", "Rooftop Yoga at Noon", "WAIT FOR THE PLANTERS");
+            all.Add(new LevelDef("deckchairs", "Deck Chair Diplomacy", 0f, 6.2f).WithHint("CHAIRS EVERYWHERE, AGAIN").WithPar(2)
+                .Post(BlockKind.Bouncer, -2.4f, -2.2f, 0.5f)
+                .Post(BlockKind.Bouncer, 2.4f, -2.2f, 0.5f)
+                .Post(BlockKind.Bouncer, 0f, 0.6f, 0.55f)
+                .Post(BlockKind.Bouncer, -2.6f, 3f, 0.5f)
+                .Post(BlockKind.Bouncer, 2.6f, 3f, 0.5f)
+                .Star(-3.6f, 0.6f).Star(3.6f, 0.6f).Star(0f, 3.4f).Reception(false));
+            Remix("thorns", "planters", "Succulents of Doom", "CACTI SEND YOU BACK");
+            Remix("maze", "fireescape", "The Fire Escape Plan", "FIND THE BADGE READER");
+            all.Add(new LevelDef("skylight", "Avoid the Skylight", 0f, 6.2f).WithHint("THE GLASS IS A DROP").WithPar(2)
+                .Gap(0f, 1f, 4f, 2.2f)
+                .Post(BlockKind.Bouncer, -3f, -3f, 0.45f)
+                .Post(BlockKind.Bouncer, 3f, 3.6f, 0.45f)
+                .Star(-3.4f, 1f).Star(3.4f, 1f).Star(-1.2f, 4.6f));
+            Remix("crate", "deliveries", "Deliveries, Not for You", "PUSH THE BOXES ASIDE");
+            Remix("speedpad", "sunset", "Racing the Sunset", "SPEED STRIPS BEAT THE TURF");
+            all.Add(new LevelDef("barbecue", "The Office Barbecue", 0f, 6.2f).WithHint("DON'T TOUCH THE GRILL").WithPar(2)
+                .Mud(0f, -2.4f, 4f, 1.4f)
+                .Hazard(0f, 1.8f, 3f, 0.9f)
+                .Post(BlockKind.Bouncer, -3.2f, 3.8f, 0.5f)
+                .Post(BlockKind.Bouncer, 3.2f, 3.8f, 0.5f)
+                .Star(-2.6f, 0f).Star(2.6f, 0f).Star(1.4f, 4.6f));
+            Remix("whirlpool", "hottub", "The CEO's Hot Tub", "THE TUB SPINS YOU ROUND");
+            Remix("lagoon", "puddle", "Rain Delay", "BOUNCE OVER THE PUDDLE");
+
+            // ---------- Chapter 10, The Corner Office (levels 89-100): the boss's chair, glass awards, the last nap ----------
+            all.Add(new LevelDef("goldenchair", "The Chair of Destiny", 0f, 6.2f).WithHint("THE BOSS CHAIR LAUNCHES").WithPar(2)
+                .Kicker(0f, -1.6f, 0.5f)
+                .Wall(0f, 2.4f, 6f, 0.6f)
+                .Post(BlockKind.Bouncer, 3f, -3.6f, 0.45f)
+                .Post(BlockKind.Bouncer, -3.4f, 4.6f, 0.45f)
+                .Star(-3.6f, -1.6f).Star(3.6f, 1f).Star(-1.8f, 4.8f));
+            Remix("turnstile", "privatelift", "The Private Elevator", "SPIN, THEN SLIP THROUGH");
+            Remix("tidepool", "fountain", "The Indoor Fountain", "TWO POOLS, TWO SPINS");
+            all.Add(new LevelDef("bonuspool", "The Bonus Pool", 0f, 6.4f).WithHint("THE VORTEX KEEPS IT").WithPar(2)
+                .Vortex(0f, 0.6f, 1.8f)
+                .Wall(0f, 4f, 2.6f, 0.6f)
+                .Post(BlockKind.Bouncer, -3f, 3.4f, 0.5f)
+                .Post(BlockKind.Bouncer, 3f, 3.4f, 0.5f)
+                .Star(-3.4f, -2.6f).Star(3.4f, 0.6f).Star(-2.2f, 5.6f));
+            Remix("conveyor", "redcarpet", "The Red Carpet Treatment", "THE BELTS CARRY YOU");
+            Remix("avalanche", "marble", "Marble Floors, Cold Hearts", "SLIDE PAST THE DESKS");
+            all.Add(new LevelDef("awards", "Glass Awards, Fragile Egos", 0f, 6.2f).WithHint("SMASH THE TROPHY WALL").WithPar(2)
+                .Breakable(-2.25f, 2.4f, 4.5f, 0.6f)
+                .Breakable(2.25f, 2.4f, 4.5f, 0.6f)
+                .Post(BlockKind.Bouncer, -3f, -2.8f, 0.45f)
+                .Post(BlockKind.Bouncer, 3f, -0.4f, 0.45f)
+                .Star(-3.4f, 0.2f).Star(3.4f, 1.4f).Star(1.6f, 4.8f).Reception(false));
+            Remix("curveswitch", "keycard", "Executive Key Card", "CURVE INTO THE READER");
+            Remix("spikeway", "stockoptions", "Stock Options, Vested", "UP, OVER, AND DOWN");
+            Remix("pinball", "boardvote", "The Board Votes No", "CHAIRS EVERYWHERE");
+            Remix("deadline", "quarterly", "Quarterly Earnings Call", "THREE CALLS. GO!");
+            all.Add(new LevelDef("retirement", "The Retirement Party", 0f, 6.6f).WithHint("ONE LAST NAP").WithPar(3)
+                .SpikeBall(0f, -1.2f, 0.4f).Moving(2.6f, 0f, 2.2f)
+                .Kicker(-3.2f, 1.4f, 0.45f)
+                .Kicker(3.2f, 1.4f, 0.45f)
+                .PopWall(0f, 3.4f, 9f, 0.5f, 2.4f, 0.5f)
+                .Post(BlockKind.Bouncer, 2.8f, -3.6f, 0.45f)
+                .Star(-3.4f, -2.6f).Star(3.4f, -0.4f).Star(-2.2f, 5f));
+            return all.ToArray();
+        }
 
         public static int IndexOf(string id)
         {

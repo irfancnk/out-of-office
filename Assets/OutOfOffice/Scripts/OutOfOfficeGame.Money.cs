@@ -106,11 +106,27 @@ namespace OutOfOffice
                 OpenChest("BOUGHT WITH GEMS");
             };
 
+            // Hiring the C-suite and the bosses with gems (OUT-45). Short of gems: the shop, then back to the hire card.
+            hud.Hire = item =>
+            {
+                if (progress.Owns(item)) return true;
+                if (!item.ForGems || !progress.SpendGems(item.GemCost, "hire"))
+                {
+                    if (item.ForGems) hud.ShowShop();
+                    return false;
+                }
+                progress.Grant(item);
+                Analytics.Event("hire", ("item", item.Id), ("gems", item.GemCost), ("balance", progress.Gems));
+                sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                Haptics.Play(Haptics.Style.Success);
+                return true;
+            };
+
             // Undo past the free ones (OUT-41).
             hud.UndoWithAd = () => Ads.ShowRewarded(progress, "undo", ok => { if (ok) CloseUndoOffer("ad"); });
             hud.UndoWithGems = () =>
             {
-                if (UndoAllowance.PayWithGems(progress)) CloseUndoOffer("gems");
+                if (UndoAllowance.PayWithGems(progress, UndoGemCost)) CloseUndoOffer("gems");
                 else hud.ShowShop();  // not enough gems: the shop, then back to the offer
             };
             hud.UndoDeclined = () => CloseUndoOffer(null);
@@ -118,7 +134,7 @@ namespace OutOfOffice
             hud.ContinueWithAd = () => Ads.ShowRewarded(progress, "continue", ok => { if (ok) Continue("ad"); });
             hud.ContinueWithGems = () =>
             {
-                if (progress.SpendGems(Catalog.ContinueCost, "continue")) Continue("gems");
+                if (progress.SpendGems(ContinueGemCost, "continue")) Continue("gems");
                 else hud.ShowShop();  // not enough gems: the shop, then back to this card
             };
         }
@@ -130,7 +146,7 @@ namespace OutOfOffice
             bool ad = afterFirstRooms && Ads.CanOffer(progress, Ads.Now);
             int shots = Experiments.ContinueShots;
             Analytics.Event("continue_offer", ("level", Def.Id), ("ad", ad), ("gems", afterFirstRooms), ("balance", progress.Gems), ("shots", shots));
-            hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots(), shots, ad, afterFirstRooms, Catalog.ContinueCost);
+            hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots(), shots, ad, afterFirstRooms, ContinueGemCost);
         }
 
         // Back into the same attempt with more shots.

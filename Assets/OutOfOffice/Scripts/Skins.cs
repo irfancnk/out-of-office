@@ -12,7 +12,8 @@ namespace OutOfOffice
     // skirt over bare shins and heels, and chunky gold hoops.
     // Blazer, Cardigan, Vest and Lanyard dress the departments (OUT-43): management and the C-suite in blazers, HR in
     // cardigans, finance in sweater vests, engineering with a lanyard and badge. Their colour is SkinDef.Jacket.
-    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4, Blouse = 8, Skirt = 16, Hoops = 32, Blazer = 64, Cardigan = 128, Vest = 256, Lanyard = 512 }
+    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4, Blouse = 8, Skirt = 16, Hoops = 32, Blazer = 64, Cardigan = 128, Vest = 256, Lanyard = 512,
+        PocketSquare = 1024, GoldWatch = 2048, Mug = 4096 }  // the C-suite's pocket square; the bosses' gold watch and #1 mug
 
     // A look for the employee. Every look uses the same round collider and physics.
     // Body is the tie color; the shirt stays office white.

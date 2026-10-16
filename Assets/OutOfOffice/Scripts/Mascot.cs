@@ -57,6 +57,7 @@ namespace OutOfOffice
             ResetTravel();
             rollRotation = Quaternion.identity;
             lean = leanVel = leanTarget = sway = swayVel = prevVel = Vector2.zero;
+            tucked = false;
             tuck = 0f;
             asleep = false;
             twirl = 0f;
@@ -93,6 +94,7 @@ namespace OutOfOffice
         float tempTime, tempPriority, dizzyTime;
 
         Vector2 look, lookTarget, lean, leanVel, leanTarget;
+        bool tucked;
         Vector2 prevVel, sway, swayVel;
         float blinkTimer = 2f, blink, idleTime, momentTimer = 3f, hopTime = -1f, twirl, twirlFrom, twirlTime = -1f, sleepZ;
         float rideTime, lastRideAt = -1f;
@@ -196,7 +198,7 @@ namespace OutOfOffice
             float target, wobble;
             if (asleep) { target = 0f; wobble = 0f; }
             else if (e == Eyes.Happy || e == Eyes.Star) { target = 75f; wobble = 18f * Mathf.Sin(t * 14f); }
-            else if (Mode == MascotMode.Aiming) { target = -8f - 14f * AimPower; wobble = 3f * Mathf.Sin(t * 30f) * AimPower; }
+            else if (Mode == MascotMode.Aiming) { target = -8f - 14f * AimPower; wobble = 0f; }  // wound back and steady: no shiver while charging
             else if (Tumble) { target = 70f; wobble = 35f * Mathf.Sin(t * 22f); }
             else { target = 6f; wobble = 5f * Mathf.Sin(t * 2.2f); }
             armFlap = Mathf.Lerp(armFlap, target, 1f - Mathf.Exp(-12f * dt));
@@ -436,7 +438,8 @@ namespace OutOfOffice
                     else if (riding) { baseEyes = Eyes.Happy; baseMouth = Mouth.Open; }
                     else if (speed > 3f) { baseEyes = Eyes.Open; baseMouth = Mouth.Flat; }
                     else { baseEyes = Eyes.Open; baseMouth = Mouth.Smile; }
-                    if (!riding) leanTarget = speed > 1f ? vel / speed * Mathf.Min(10f, speed * 0.8f) : Vector2.zero;
+                    // Leans with the roll, fading out smoothly as it slows (no snap at a threshold).
+                    if (!riding) leanTarget = speed > 0.05f ? vel / speed * (Mathf.Min(10f, speed * 0.8f) * Mathf.SmoothStep(0f, 1f, (speed - 0.6f) / 1.2f)) : Vector2.zero;
                     break;
                 case MascotMode.Idle:
                     IdleMoments(dt);
@@ -596,11 +599,15 @@ namespace OutOfOffice
             Vector2 position = transform.position; // interpolated pose, matching what the player sees
             Vector2 delta = position - previousPosition;
             bool rolling = !asleep && (Tumble || Mode == MascotMode.Moving && puck.Body.simulated && !puck.Airborne);
-            float speed = dt > 0f ? delta.magnitude / dt : 0f;
-            // Tuck into a ball to roll; stand back up once the roll has nearly stopped.
-            float tuckTarget = asleep ? 0f : rolling && (speed > 1.2f || Tumble) || puck.Airborne ? 1f : 0f;
+            // Tuck into a ball to roll; stand back up once the roll has nearly stopped. Decided on the physics speed with a
+            // gap between the two thresholds: the frame-to-frame speed is noisy, and a single threshold flipped the pose
+            // back and forth as a shot slowed down, which read as shaking.
+            float bodySpeed = puck.Body != null && puck.Body.simulated ? puck.Body.linearVelocity.magnitude : 0f;
+            if (puck.Airborne || rolling && (Tumble || bodySpeed > 1.4f)) tucked = true;
+            else if (!rolling || bodySpeed < 0.8f) tucked = false;
+            float tuckTarget = asleep ? 0f : tucked ? 1f : 0f;
             tuck = Mathf.MoveTowards(tuck, tuckTarget, dt * (tuckTarget > tuck ? 9f : 4f));
-            if (hasPreviousPosition && dt > 0f && !posed && rolling && delta.sqrMagnitude < 4f)
+            if (hasPreviousPosition && dt > 0f && !posed && rolling && tucked && delta.sqrMagnitude < 4f)  // standing up, it stops rolling
                 rollRotation = RollDelta(delta) * rollRotation;
             else
             {
