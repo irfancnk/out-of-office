@@ -44,10 +44,11 @@ namespace OutOfOffice
         public const string PassTie = "c.gold";  // the exclusive look that comes with the pass
 
         // What gems buy in the game (OUT-48). Each price sits below the thing it saves: an undo (10) and a continue
-        // (15) keep a play going, so they cost less than a new play (20); a full bar of six plays comes at a discount.
+        // (15) keep a play going, so they cost less than a new play (20). A full bar of six plays costs three singles
+        // and fits in the smallest gem pack, so the first purchase at the energy wall is the cheap one.
         public const int ContinueCost = 15;   // +shots when out of shots: the same play goes on
         public const int PlayGems = 20;       // +5 energy: one play
-        public const int RefillGems = 90;     // a full bar: six plays
+        public const int RefillGems = 60;     // a full bar: six plays
         public const int ChestCost = 60;      // one chest
         public const int AdGems = 10;         // a rewarded ad in the shop
         public const int AdEnergy = Energy.PlayCost;  // a rewarded ad on the energy card: one play

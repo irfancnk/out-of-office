@@ -1197,8 +1197,8 @@ namespace OutOfOffice.EditorTools
                 $"gems charged {paid}, refused when short {refused}; ad path through the caps {adCounted}; restart resets {restart}; first rooms unlimited {unlimited}");
         }
 
-        // 23. Energy (OUT-48): a full bar of six plays to start, a point back every 48 minutes, a play lasts while you
-        // win, ends on a fail or a restart after a shot, a continue revives it, and the pass makes it free.
+        // 23. Energy (OUT-48): a full bar of six plays to start, a play back every half hour (the genre's pace), a play
+        // lasts while you win, ends on a fail or a restart after a shot, a continue revives it, and the pass makes it free.
         static void EnergyPlays()
         {
             var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
@@ -1211,11 +1211,13 @@ namespace OutOfOffice.EditorTools
             while (e.Start(true, "test")) { plays++; e.MarkAttempt(); e.EndPlay("fail", "test"); }
             bool six = plays == OutOfOffice.Energy.Max / OutOfOffice.Energy.PlayCost && e.Points == 0 && !e.CanStart(true);
 
-            // The refill: a point every 48 minutes, a whole bar in a day, and a play's wait reported right.
-            bool waits = System.Math.Abs((e.UntilPlay - System.TimeSpan.FromMinutes(48 * OutOfOffice.Energy.PlayCost)).TotalSeconds) < 1;
-            clock.UtcNow += System.TimeSpan.FromMinutes(47);
+            // The refill: a point every Regen, a play every half hour, a whole bar in hours, and a play's wait reported right.
+            var regen = OutOfOffice.Energy.Regen;
+            bool pace = regen.Ticks * OutOfOffice.Energy.PlayCost == System.TimeSpan.FromMinutes(30).Ticks;
+            bool waits = System.Math.Abs((e.UntilPlay - System.TimeSpan.FromTicks(regen.Ticks * OutOfOffice.Energy.PlayCost)).TotalSeconds) < 1;
+            clock.UtcNow += regen - System.TimeSpan.FromSeconds(30);
             bool notYet = e.Points == 0;
-            clock.UtcNow += System.TimeSpan.FromMinutes(1);
+            clock.UtcNow += System.TimeSpan.FromSeconds(30);
             bool one = e.Points == 1;
             clock.UtcNow += System.TimeSpan.FromHours(30);
             bool refilled = e.Points == OutOfOffice.Energy.Max;
@@ -1265,9 +1267,9 @@ namespace OutOfOffice.EditorTools
             bool prices = UndoAllowance.GemCost < Catalog.ContinueCost && Catalog.ContinueCost < Catalog.PlayGems
                 && Catalog.RefillGems < Catalog.PlayGems * OutOfOffice.Energy.Max / OutOfOffice.Energy.PlayCost;
 
-            bool ok = full && six && waits && notYet && one && refilled && winFree && noShot && atStake && restartPays && failed && revived && over
+            bool ok = full && six && pace && waits && notYet && one && refilled && winFree && noShot && atStake && restartPays && failed && revived && over
                 && firstRooms && laterRooms && pass && noRewind && prices;
-            Report("energy", ok, $"starts full {full}; six plays {six} ({plays}); refill one per 48 min {notYet}/{one}, a play's wait {waits}, full again {refilled}; " +
+            Report("energy", ok, $"starts full {full}; six plays {six} ({plays}); a play per half hour {pace}, a point per {regen.TotalMinutes} min {notYet}/{one}, a play's wait {waits}, full again {refilled}; " +
                 $"wins carry the play {winFree}; no shot no cost {noShot}; at stake after a shot {atStake}, restart pays {restartPays}; fail ends {failed}, " +
                 $"continue revives {revived}; rewards stack {over}; first rooms free {firstRooms}, later rooms cost {laterRooms}; pass unlimited {pass}; " +
                 $"no rewind refill {noRewind}; price ladder {prices}");

@@ -2,17 +2,18 @@ using System;
 
 namespace OutOfOffice
 {
-    // Energy (OUT-48): what a play costs. The bar holds 30 and refills a point every 48 minutes, so a full bar comes
-    // back once a day: six plays. A play starts when a room starts with none running, and lasts until it fails: every
-    // win carries it on into the next room for free. Running out of shots, retrying, restarting, or leaving a room after
-    // a shot ends it, which is what makes an undo or a continue worth paying for: they keep the play going. The first
-    // rooms are free while the game is learned, and the Office Pass makes energy unlimited.
+    // Energy (OUT-48): what a play costs. The bar holds 30, six plays, and refills a point every 6 minutes: a play
+    // every half hour and a full bar in three hours, the pace of the big puzzle games (a life every 30 minutes in
+    // Candy Crush and Royal Match). A play starts when a room starts with none running, and lasts until it fails:
+    // every win carries it on into the next room for free. Running out of shots, retrying, restarting, or leaving a
+    // room after a shot ends it, which is what makes an undo or a continue worth paying for: they keep the play going.
+    // The first rooms are free while the game is learned, and the Office Pass makes energy unlimited.
     public class Energy
     {
         public const int Max = 30, PlayCost = 5;
         public const int FirstRoom = Ads.FirstRoom;  // plays cost energy once this many rooms are open
         public const int Ceiling = 99;               // rewards may fill past the bar, up to this
-        public static readonly TimeSpan Regen = TimeSpan.FromMinutes(48);
+        public static readonly TimeSpan Regen = TimeSpan.FromMinutes(6);
 
         const string PointsKey = "buca.energy", AnchorKey = "buca.energy.at", RunKey = "buca.run", AttemptKey = "buca.run.attempt";
 
