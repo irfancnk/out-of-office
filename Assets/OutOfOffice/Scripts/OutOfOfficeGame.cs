@@ -10,7 +10,7 @@ namespace OutOfOffice
     // physics events (Puck.Step) to sound, effects, and haptics. Boots itself in any scene.
     public partial class OutOfOfficeGame : MonoBehaviour
     {
-        enum State { Title, Ready, Aiming, Moving, Capturing, Penalty, Complete, Paused }
+        enum State { Title, Ready, Aiming, Moving, Capturing, Penalty, Complete, Paused, Failed }
 
         const int AimDotCount = 24, RingDotCount = 28;
         const float CameraTilt = 34f, CameraFov = 36f;
@@ -347,7 +347,7 @@ namespace OutOfOffice
             debugView.ClearShapes();
 
             hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
-            hud.SetShots(0, Def.Par);
+            hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
             hud.SetUndoAvailable(false);
             hud.SetHint(true);
@@ -503,7 +503,7 @@ namespace OutOfOffice
             TrackQuest(QuestKind.Shots);
             hud.HideSpeech();
             starCombo = 0;
-            hud.SetShots(shots, Def.Par);
+            hud.SetShots(shots, Def.Par, ShotLimit);
             hud.SetHint(false);
             hud.SetUndoAvailable(true);
 
@@ -570,6 +570,7 @@ namespace OutOfOffice
                     sound.StopContinuous();
                     state = State.Ready;
                     if (shotBounces >= PinballBounces) OnPinballFinish();
+                    CheckShotLimit();
                     break;
                 case ShotResult.Sunk:
                     StartCoroutine(CaptureRoutine());
@@ -976,6 +977,34 @@ namespace OutOfOffice
             hud.Banner(fell ? "OOPS!" : "OUCH!", new Color(1f, 0.85f, 0.8f), 0.3f);
             hud.Say(Quips.Fail(), 1.4f);
             state = State.Ready;
+            CheckShotLimit();
+        }
+
+        // ---------- Shot limit (OUT-27) ----------
+
+        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots;  // the lab has no limit
+
+        // After every shot that didn't end in bed: a warning before the last shot, and a failed level after it.
+        void CheckShotLimit()
+        {
+            if (ShotLimit <= 0) return;
+            int left = ShotLimit - shots;
+            if (left == 1) hud.Banner("LAST SHOT!", Themes.Hex(0xFFB15C), 0.4f);
+            if (left > 0) return;
+            state = State.Failed;
+            CancelAim(false);
+            sound.Play(Sfx.Oops, 0.7f, 1f, 0.8f);
+            Haptics.Play(Haptics.Style.Error);
+            mascot.Express(Eyes.Dizzy, Mouth.Wavy, 2f, 3f);
+            Analytics.Event("level_fail", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("limit", ShotLimit), ("par", Def.Par),
+                ("coffees", level.StarsCollected), ("seconds", Mathf.RoundToInt(levelTime)));
+            StartCoroutine(ShowOutOfShotsSoon());
+        }
+
+        IEnumerator ShowOutOfShotsSoon()
+        {
+            yield return new WaitForSeconds(0.7f);
+            if (state == State.Failed) hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots());
         }
 
         void UndoShot()
@@ -992,14 +1021,14 @@ namespace OutOfOffice
             var snap = history.Pop();
             level.Restore(snap);
             levelTime = snap.Time;
-            shots = snap.Shots;
+            // The board rewinds, but the shot still counts (OUT-27): otherwise the shot limit and par mean nothing.
             undos++;
             restPos = snap.Puck;
             level.Puck.PlaceAt(restPos, true);
             sound.StopContinuous();
             sound.Play(Sfx.Undo, 0.6f);
             preview.Clear();
-            hud.SetShots(shots, Def.Par);
+            hud.SetShots(shots, Def.Par, ShotLimit);
             hud.SetStars(level.StarsCollected, level.Stars.Count, false);
             hud.SetUndoAvailable(history.Count > 0);
             state = State.Ready;
@@ -1007,7 +1036,7 @@ namespace OutOfOffice
 
         void PauseGame()
         {
-            if (state == State.Paused || state == State.Title || state == State.Complete) return;
+            if (state == State.Paused || state == State.Title || state == State.Complete || state == State.Failed) return;
             CancelAim(false);
             stateBeforePause = state;
             state = State.Paused;

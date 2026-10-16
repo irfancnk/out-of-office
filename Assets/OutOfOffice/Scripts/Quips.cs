@@ -153,6 +153,17 @@ namespace OutOfOffice
         }
 
         public static string Fail() => Pick(Failures);
+
+        // The out-of-shots card (OUT-27).
+        static readonly string[] OutOfShotsLines =
+        {
+            "Your shot budget has been reallocated.",
+            "Overtime was not approved.",
+            "HR has been notified. Try again.",
+            "Performance review: needs improvement.",
+        };
+
+        public static string OutOfShots() => Pick(OutOfShotsLines);
         public static string Rested() => Pick(Completion);
         public static string HoleInOne() => Pick(Ace);
         public static string Reward() => Pick(RewardLines);

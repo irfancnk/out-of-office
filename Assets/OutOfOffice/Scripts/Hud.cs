@@ -141,6 +141,7 @@ namespace OutOfOffice
             BuildQuests();
             BuildSpeech();
             BuildComplete();
+            BuildFail();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -225,6 +226,11 @@ namespace OutOfOffice
 
             banner = Rect("Banner", hudRoot, new Vector2(0.5f, 0.6f), new Vector2(0.5f, 0.6f), Vector2.zero, new Vector2(1000f, 200f));
             bannerText = Txt(banner, "", 104f, Color.white, Ink, 0.45f, true);
+            // Joke room names run long (OUT-28): wrap to two lines and shrink to fit the banner instead of overflowing.
+            bannerText.textWrappingMode = TextWrappingModes.Normal;
+            bannerText.enableAutoSizing = true;
+            bannerText.fontSizeMin = 54f;
+            bannerText.fontSizeMax = 104f;
             banner.gameObject.SetActive(false);
         }
 
@@ -239,15 +245,40 @@ namespace OutOfOffice
             hintText.text = hint.Length > 0 ? hint : "DRAG BACK, AIM, RELEASE";
         }
 
-        public void SetShots(int shots, int par)
+        // max: the level's shot limit (OUT-27); 0 for no limit (the lab). The count turns orange on the last shot.
+        public void SetShots(int shots, int par, int max = 0)
         {
-            string next = $"SHOTS {shots}  ·  PAR {par}";
+            string next = max > 0 ? $"SHOTS {shots}/{max}  ·  PAR {par}" : $"SHOTS {shots}  ·  PAR {par}";
             if (shotsText.text != next)
             {
                 shotsText.text = next;
                 Pop(shotsPill, 0f, 1.1f);
             }
-            shotsText.color = shots > par ? Themes.Hex(0xFFD2C2) : Color.white;
+            bool last = max > 0 && shots >= max - 1;
+            shotsText.color = last ? Themes.Hex(0xFFB15C) : shots > par ? Themes.Hex(0xFFD2C2) : Color.white;
+        }
+
+        // ---------- Out of shots (OUT-27) ----------
+
+        Card failCard;
+        TextMeshProUGUI failLine;
+
+        void BuildFail()
+        {
+            failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 760f), true);
+            var c = failCard.Root;
+            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(760f, 120f)),
+                "", 44f, Ink, Ink, 0f, false);
+            failLine.textWrappingMode = TextWrappingModes.Normal;
+            TextButton(c, "RETRY", Palette.UiGreen, new Vector2(80f, -130f), new Vector2(500f, 170f), 76f, "restart").Clicked = () => Restart?.Invoke();
+            IconButton(c, "Home", new Vector2(0.5f, 0.5f), new Vector2(-275f, -122f), 160f, Palette.UiBlue, "home", Color.white).Clicked = () => Home?.Invoke();
+        }
+
+        public void ShowOutOfShots(int max, string line)
+        {
+            HideAll();
+            failLine.text = $"All {max} shots used.\n{line}";
+            ShowCard(failCard);
         }
 
         public void SetStars(int collected, int total, bool animate)
@@ -1518,7 +1549,7 @@ namespace OutOfOffice
         public void HideAll()
         {
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);

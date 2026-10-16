@@ -142,6 +142,10 @@ namespace OutOfOffice.EditorTools
             string starNote = def.Stars.Count == 0 ? "no stars" : $"stars reached {maxStars}/{def.Stars.Count}";
             bool solved = ok;
             starNote += CoffeeRules(def, maxStars, touched, out bool coffeeOk);
+            // The shot limit (OUT-27) must leave two spare shots over the fewest this level can be finished in.
+            bool limitOk = !solved || def.MaxShots >= minShots + 2;
+            starNote += $"  limit {def.MaxShots}" + (limitOk ? "" : $"  LIMIT TOO TIGHT (min {minShots})");
+            coffeeOk &= limitOk;
             ok = solved && coffeeOk;
             string stats = $"min shots {minShots}  par {def.Par}  one-shot win {100f * wins / shots,5:0.0}%  hazard {100f * hazards / shots,4:0.0}%  {starNote}  e.g. {example}{parNote}";
             return !solved ? $"UNSOLVED in {MaxShots} shots  ({starNote})" : coffeeOk ? "OK  " + stats : "BAD " + stats;

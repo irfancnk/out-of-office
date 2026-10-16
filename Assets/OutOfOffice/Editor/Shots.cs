@@ -162,8 +162,8 @@ namespace OutOfOffice.EditorTools
                 Render(cam, 1080, 2340, Path.Combine(dir, "title.png"), Canvas.ForceUpdateCanvases);
 
                 hud.HideTitle();
-                hud.SetLevel(9, "Infinite Loop", "CROSS THE BRIDGE IN THE MIDDLE", theme);
-                hud.SetShots(1, 3);
+                hud.SetLevel(13, "Can You Turn Off the AC?", "THE VENT PUSHES YOU SIDEWAYS", theme);
+                hud.SetShots(1, 3, 6);
                 hud.SetStars(2, 3, false);
                 hud.SetUndoAvailable(true);
                 Tweens.FinishAll();
@@ -176,6 +176,10 @@ namespace OutOfOffice.EditorTools
                 hud.ShowComplete(Levels.All.Length, 2, 3, 3, false, true);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete-final.png"), Canvas.ForceUpdateCanvases);
+
+                hud.ShowOutOfShots(5, "Overtime was not approved.");
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-out-of-shots.png"), Canvas.ForceUpdateCanvases);
 
                 // Home with the first chapter's chest earned and waiting.
                 hud.BestStars = id => 3;

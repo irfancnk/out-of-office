@@ -69,6 +69,7 @@ namespace OutOfOffice.EditorTools
                 ChapterChest();
                 Openers();
                 CoffeeCard();
+                ShotLimits();
             }
             finally
             {
@@ -1001,6 +1002,24 @@ namespace OutOfOffice.EditorTools
             bool ok = stamping && ready && claimOnce && carry && migrate;
             Report("coffee-card", ok, $"stamps once {stamping}; full card {ready}, opens once {claimOnce}, carry-over {carry} ({p.CardStamps}/{Progress.StampsPerCard}); " +
                 $"old save credited {migrate} ({migrated.Stamps} stamps)");
+        }
+
+        // 19. Every level has a shot limit above its par, and a level can set its own (OUT-27).
+        static void ShotLimits()
+        {
+            bool ok = true;
+            int tightest = int.MaxValue;
+            foreach (var l in Levels.All)
+            {
+                ok &= l.MaxShots >= l.Par + 1;
+                tightest = Mathf.Min(tightest, l.MaxShots - l.Par);
+            }
+            var custom = new LevelDef("limit-test", "Limit", 0f, 0f).WithPar(2).WithMaxShots(9);
+            ok &= custom.MaxShots == 9 && new LevelDef("limit-default", "Limit", 0f, 0f).WithPar(2).MaxShots == 2 + LevelDef.ShotSlack;
+            // Room names (OUT-28): short enough for the banner, and no two rooms share a joke.
+            var names = new HashSet<string>();
+            foreach (var l in Levels.All) ok &= l.Name.Length <= 26 && names.Add(l.Name);
+            Report("shot-limits", ok, $"{Levels.All.Length} levels, tightest limit par + {tightest}; override works");
         }
 
         // 17. Every room's opener is short enough to read in the second it is shown (OUT-22).

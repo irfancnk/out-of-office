@@ -161,6 +161,13 @@ namespace OutOfOffice
             return this;
         }
         public LevelDef WithPar(int par) { Par = par; return this; }
+
+        // Shots before the level fails (OUT-27): par plus some slack, unless a level sets its own. LevelCheck proves
+        // every limit leaves at least two spare shots over the fewest the level can be finished in.
+        public const int ShotSlack = 3;
+        int maxShots;
+        public int MaxShots => maxShots > 0 ? maxShots : Par + ShotSlack;
+        public LevelDef WithMaxShots(int shots) { maxShots = shots; return this; }
         public LevelDef WithHint(string hint) { Hint = hint; return this; }
         public LevelDef Star(float x, float y) { Stars.Add(new Vector2(x, y)); return this; }
 
@@ -314,26 +321,26 @@ namespace OutOfOffice
         public static readonly LevelDef[] All =
         {
             // ---------- Chapter 1, Open-Plan Office (levels 1-11): aim, bank off walls, ride the desks ----------
-            new LevelDef("first", "Onboarding", 0f, 4.5f).WithHint("DRAG BACK, AIM, RELEASE")
+            new LevelDef("first", "Day One, Already Tired", 0f, 4.5f).WithHint("DRAG BACK, AIM, RELEASE")
                 .Wall(-2.95f, 0.8f, 3.1f, 0.6f)
                 .Wall(2.95f, 0.8f, 3.1f, 0.6f)
                 .Post(BlockKind.Bouncer, -2.9f, 4.6f, 0.5f)
                 .Post(BlockKind.Bouncer, 2.9f, 4.6f, 0.5f)
                 .Star(0f, -2.4f).Star(0f, 0.8f).Star(-2.5f, 3.1f),  // two on the way, one for a bank toward the chair
 
-            new LevelDef("easy", "Quick Sync", 0f, 5.3f).WithHint("GO AROUND THE DESK").WithPar(2)
+            new LevelDef("easy", "Avoid Eye Contact", 0f, 5.3f).WithHint("GO AROUND THE DESK").WithPar(2)
                 .Wall(0f, 1.2f, 5.4f, 2.6f).Rounded(0.6f)
                 .SpikeBall(3.6f, 1.2f, 0.4f).Moving(0f, 1.7f, 3f)
                 .Star(-3.5f, -1.4f).Star(-3.5f, 2.8f).Star(-1.4f, 4.4f),
 
-            new LevelDef("bank", "Bounce Back", 2.8f, 5.8f).WithHint("BOUNCE OFF THE WALL").WithPar(2)
+            new LevelDef("bank", "Bounce Off the Walls", 2.8f, 5.8f).WithHint("BOUNCE OFF THE WALL").WithPar(2)
                 .StartAt(-2.6f, -6.2f)
                 .Wall(2.1f, -1.6f, 4.8f, 0.6f)
                 .Wall(-1.1f, 2.4f, 6.8f, 0.6f)
                 .Post(BlockKind.Bouncer, 0.4f, 6.4f, 0.5f)
                 .Star(-2.6f, -3.4f).Star(0.9f, 0.4f).Star(3.5f, 3.6f),
 
-            new LevelDef("ring", "Hot Desking", 0f, 5.4f).WithHint("GO ROUND THE BIG DESK").WithPar(2)
+            new LevelDef("ring", "Nobody Owns This Desk", 0f, 5.4f).WithHint("GO ROUND THE BIG DESK").WithPar(2)
                 .WithShape(ShapeDef.Circle(7.2f))
                 .StartAt(0f, -5.4f)
                 .Post(BlockKind.Wall, 0f, 0f, 3.3f)
@@ -341,21 +348,21 @@ namespace OutOfOffice
                 .SpikeBall(5.25f, 0f, 0.4f).Moving(0f, 1.3f, 3f)
                 .Star(-4.6f, -3.9f).Star(-4.4f, 4.2f).Star(4.6f, 3.9f),
 
-            new LevelDef("graze", "Corner Cutting", 2.7f, 6.2f).WithHint("GRAZE THE ROUND CORNERS").WithPar(2)
+            new LevelDef("graze", "Cutting Corners, Legally", 2.7f, 6.2f).WithHint("GRAZE THE ROUND CORNERS").WithPar(2)
                 .StartAt(-2.8f, -6.2f)
                 .Wall(1.7f, -1.6f, 5.6f, 2.4f).Rounded(1.1f)
                 .Wall(-1.7f, 3.4f, 5.6f, 2.4f).Rounded(1.1f)
                 .SpikeBall(3f, 0.9f, 0.4f)
                 .Star(-2.9f, -2f).Star(0f, 0.9f).Star(2.9f, 3.4f),
 
-            new LevelDef("curve", "Circle Back", -3.4f, 2.1f).WithHint("RIDE THE CURVE")
+            new LevelDef("curve", "Circling Back Forever", -3.4f, 2.1f).WithHint("RIDE THE CURVE")
                 .StartAt(2.6f, -6f)
                 .Arc(BlockKind.Wall, 0f, 3.4f, 4.1f, -2f, 182f)
                 .Rail(BlockKind.Wall, 0f, 0f, -8.1f, 0f, 0.6f)
                 .SpikeBall(2.4f, -1.8f, 0.4f).Moving(1.3f, 0f, 2.6f)
                 .Star(3f, 1.4f).Star(0f, 6.85f).Star(-2.5f, 5.9f),
 
-            new LevelDef("kicker", "The Boss's Chair", -2.8f, 6.2f).WithHint("RED CHAIRS KICK YOU AWAY").WithPar(2)
+            new LevelDef("kicker", "The Boss Will See You Now", -2.8f, 6.2f).WithHint("RED CHAIRS KICK YOU AWAY").WithPar(2)
                 .Wall(-0.9f, 3.2f, 7.2f, 0.6f)
                 .Kicker(3.4f, 7f, 0.45f)
                 .Kicker(-3.4f, -1.2f, 0.5f)
@@ -363,7 +370,7 @@ namespace OutOfOffice
                 .SpikeBall(-0.6f, 5.8f, 0.4f)
                 .Star(3.6f, 1.4f).Star(3.6f, 4.6f).Star(0.8f, 6.6f),
 
-            new LevelDef("figure8", "Infinite Loop", 0f, 12.2f).WithHint("CROSS THE BRIDGE IN THE MIDDLE").WithPar(3)
+            new LevelDef("figure8", "This Meeting Has No End", 0f, 12.2f).WithHint("CROSS THE BRIDGE IN THE MIDDLE").WithPar(3)
                 .WithShape(ShapeDef.FigureEight(6f, 7.4f, 3.2f))
                 .StartAt(0f, -12.2f)
                 .Bridge(0f, 0f, 3.2f, 3.4f)
@@ -374,7 +381,7 @@ namespace OutOfOffice
                 .SpikeBall(0f, 0f, 0.36f).Moving(0.95f, 0f, 2.6f)
                 .Star(4.2f, -4.6f).Star(0f, 2.6f).Star(-4.2f, 9.8f),
 
-            new LevelDef("boing", "Bounce Mat", 0f, 5f).WithHint("BOUNCE MATS LAUNCH YOU OVER").WithPar(2)
+            new LevelDef("boing", "Launched Into Management", 0f, 5f).WithHint("BOUNCE MATS LAUNCH YOU OVER").WithPar(2)
                 .Wall(0f, 1f, 9f, 0.6f)
                 .Jump(0f, -2f, 0.8f)
                 .Post(BlockKind.Bouncer, -3.4f, 6.6f, 0.5f)
@@ -382,14 +389,14 @@ namespace OutOfOffice
                 .SpikeBall(-3f, -2f, 0.4f).Moving(0.8f, 0f, 2.4f)
                 .Star(0f, -3.6f).Star(0f, 2.6f).Star(2.6f, 4.2f),
 
-            new LevelDef("rows", "Desk Rows", 0f, 6.4f).WithHint("SLALOM THROUGH THE DESKS").WithPar(3)
+            new LevelDef("rows", "Open Plan, Closed Hearts", 0f, 6.4f).WithHint("SLALOM THROUGH THE DESKS").WithPar(3)
                 .Wall(-1.2f, -2.6f, 6.6f, 0.6f)
                 .Wall(1.2f, 0.6f, 6.6f, 0.6f)
                 .Wall(-1.2f, 3.8f, 6.6f, 0.6f)
                 .SpikeBall(0f, -1f, 0.36f).Moving(2.4f, 0f, 3f)
                 .Star(3.4f, -2.6f).Star(-3.4f, 0.6f).Star(3.4f, 3.8f),
 
-            new LevelDef("cubicles", "Cubicle Farm", 2.8f, 6.2f).WithHint("BANK OFF THE PARTITIONS").WithPar(2)
+            new LevelDef("cubicles", "Cubicle Farm Animal", 2.8f, 6.2f).WithHint("BANK OFF THE PARTITIONS").WithPar(2)
                 .StartAt(-2.8f, -6.4f)
                 .Wall(-2.3f, -2.2f, 4.4f, 0.4f)
                 .Wall(1.2f, -0.4f, 0.4f, 3.6f)
@@ -400,7 +407,7 @@ namespace OutOfOffice
                 .Star(0f, -3.6f).Star(-0.2f, 1.4f).Star(1.2f, 5.6f),
 
             // ---------- Chapter 2, Office Kitchen (levels 12-20): chairs, vents, switches, spills ----------
-            new LevelDef("rubber", "Swivel Chairs", -3f, 6.3f).WithHint("CHAIRS BOUNCE YOU AROUND").WithPar(2)
+            new LevelDef("rubber", "Musical Chairs, No Music", -3f, 6.3f).WithHint("CHAIRS BOUNCE YOU AROUND").WithPar(2)
                 .Rail(BlockKind.Wall, 0.3f, -4.6f, 4f, -0.9f, 4f, -0.9f, 5.6f)
                 .Post(BlockKind.Bouncer, 3.3f, 6.6f, 0.6f)
                 .Post(BlockKind.Bouncer, 1.3f, 2f, 0.55f)
@@ -408,7 +415,7 @@ namespace OutOfOffice
                 .Hazard(2.6f, -2f, 3.8f, 0.5f)
                 .Star(0f, -0.8f).Star(3.6f, 3.8f).Star(1.2f, 6.8f),
 
-            new LevelDef("breeze", "Air Con Wars", -2.8f, 6.2f).WithHint("THE VENT PUSHES YOU SIDEWAYS").WithPar(2)
+            new LevelDef("breeze", "Can You Turn Off the AC?", -2.8f, 6.2f).WithHint("THE VENT PUSHES YOU SIDEWAYS").WithPar(2)
                 .Taller(6f)
                 .StartAt(3f, -12.8f)
                 .Wall(-1.4f, -10.6f, 6.2f, 0.6f)
@@ -419,7 +426,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, -3.3f, -3.4f, 0.5f)
                 .Star(3.4f, -9f).Star(-0.8f, 0.6f).Star(-3.4f, 4.6f),
 
-            new LevelDef("oneway", "One Way Only", 3f, 5.6f).WithHint("GREEN GATES: ONE WAY ONLY").WithPar(2)
+            new LevelDef("oneway", "Career Path: One Way", 3f, 5.6f).WithHint("GREEN GATES: ONE WAY ONLY").WithPar(2)
                 .Wall(0f, 1f, 3f, 0.6f)
                 .OneWay(-3f, 1f, 3f, 0f)
                 .OneWay(3f, 1f, 3f, 180f)
@@ -427,7 +434,7 @@ namespace OutOfOffice
                 .SpikeBall(3f, 3.2f, 0.4f).Moving(1f, 0f, 2.6f)
                 .Star(-3f, -1f).Star(-3f, 4f).Star(1.4f, 6.6f),
 
-            new LevelDef("switch", "Badge Reader", 0f, 6.2f).WithHint("PRESS THE BADGE READER FIRST").WithPar(3)
+            new LevelDef("switch", "Badge In, Lose Your Soul", 0f, 6.2f).WithHint("PRESS THE BADGE READER FIRST").WithPar(3)
                 .Rail(BlockKind.Wall, 0f, -2.2f, 8.1f, -2.2f, 3.6f)
                 .Rail(BlockKind.Wall, 0f, 2.2f, 8.1f, 2.2f, 3.6f)
                 .Gate(0, 0f, 3.6f, 3.9f, 0.5f)
@@ -436,7 +443,7 @@ namespace OutOfOffice
                 .SpikeBall(-3.3f, 1.2f, 0.45f).Moving(0f, 1.8f, 3.2f)
                 .Star(3.4f, 3f).Star(-3.35f, 6.4f).Star(0f, 2.2f),
 
-            new LevelDef("spinner", "Spreadsheet Wizard", 0f, 6.4f).WithHint("TIME IT WITH THE SPINNERS").WithPar(2)
+            new LevelDef("spinner", "Death by Spreadsheet", 0f, 6.4f).WithHint("TIME IT WITH THE SPINNERS").WithPar(2)
                 .WithShape(ShapeDef.Stadium(9f, 16f))
                 .StartAt(0f, -6f)
                 .Wall(-3.45f, 0f, 2.1f, 0.6f)
@@ -445,13 +452,13 @@ namespace OutOfOffice
                 .Hazard(0f, 4f, 3f, 0.45f).Spinning(-50f)
                 .Star(0f, -2.6f).Star(-3.2f, 3.6f).Star(-1.8f, 5.9f),
 
-            new LevelDef("popwalls", "Standing Desks", 0f, 6.3f).WithHint("DESKS POP UP AND DOWN").WithPar(2)
+            new LevelDef("popwalls", "Standing Desks Hate You", 0f, 6.3f).WithHint("DESKS POP UP AND DOWN").WithPar(2)
                 .PopWall(0f, -1.5f, 9f, 0.5f, 2.4f, 0f)
                 .PopWall(0f, 1.5f, 9f, 0.5f, 2.4f, 0.33f)
                 .PopWall(0f, 4.2f, 9f, 0.5f, 2.4f, 0.66f)
                 .Star(-3f, 0f).Star(3f, 2.9f).Star(-3.1f, 5.6f),
 
-            new LevelDef("hairpin", "Corridor Politics", 4.25f, -10.8f).WithHint("UP, AROUND, AND BACK DOWN").WithPar(4)
+            new LevelDef("hairpin", "The Long Walk to HR", 4.25f, -10.8f).WithHint("UP, AROUND, AND BACK DOWN").WithPar(4)
                 .WithShape(ShapeDef.Polygon(1.2f, -7f, -13f, -1.5f, -13f, -1.5f, 6f, 1.5f, 6f, 1.5f, -13f, 7f, -13f, 7f, 13f, -7f, 13f))
                 .StartAt(-4.25f, -11f)
                 .Wall(-5.6f, -5f, 2.8f, 0.6f)
@@ -461,14 +468,14 @@ namespace OutOfOffice
                 .Boost(4.25f, -4.5f, 2f, 3f, 180f)
                 .Star(-4.25f, -2.2f).Star(0f, 11.2f).Star(4.25f, 4.6f),
 
-            new LevelDef("microwave", "Microwave Queue", 0f, 6.2f).WithHint("MIND THE WET FLOOR").WithPar(2)
+            new LevelDef("microwave", "Who Microwaved Fish?", 0f, 6.2f).WithHint("MIND THE WET FLOOR").WithPar(2)
                 .Ice(0f, -1.6f, 9f, 1.8f)
                 .Wall(0f, 1.2f, 4.2f, 1.4f)
                 .Magnet(3.3f, -3.4f, 1.8f)
                 .SpikeBall(0f, 3.9f, 0.4f).Moving(2.4f, 0f, 2.8f)
                 .Star(-3.4f, 1.2f).Star(3.4f, 1.2f).Star(0f, -1.6f),
 
-            new LevelDef("fridge", "Fridge Raid", 0f, 6.6f).WithHint("DOWN THE GALLEY, ROUND THE SPILL").WithPar(2)
+            new LevelDef("fridge", "Not Your Yogurt", 0f, 6.6f).WithHint("DOWN THE GALLEY, ROUND THE SPILL").WithPar(2)
                 .Wall(-3.25f, 0.2f, 2.5f, 9.4f)
                 .Wall(3.25f, 0.2f, 2.5f, 9.4f)
                 .Vortex(0f, 0.4f, 1.4f)
@@ -476,7 +483,7 @@ namespace OutOfOffice
                 .Star(0f, -2.8f).Star(-1.3f, 2.6f).Star(1.3f, 2.6f),
 
             // ---------- Chapter 3, Meeting Room (levels 21-29): mail chutes, jumps, hallways, timing ----------
-            new LevelDef("portal", "Mail Chute", 1.6f, 5.4f).WithHint("IN ONE CHUTE, OUT THE OTHER").WithPar(2)
+            new LevelDef("portal", "Lost in Internal Mail", 1.6f, 5.4f).WithHint("IN ONE CHUTE, OUT THE OTHER").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.4f))
                 .Rail(BlockKind.Wall, 0f, -4.6f, 3f, 4.6f, 3f)
                 .Portal(3.3f, -1.2f, -3.3f, 5.4f, 0f, -90f)
@@ -484,20 +491,20 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 3.6f, 6.9f, 0.45f)
                 .Star(1f, -4.6f).Star(3.3f, -2.4f).Star(-1f, 5.4f),
 
-            new LevelDef("ramp", "Shortcut", -2.4f, 5.6f).WithHint("JUMP IT, OR TAKE THE BRIDGE").WithPar(2)
+            new LevelDef("ramp", "Leap of Faith, No Raise", -2.4f, 5.6f).WithHint("JUMP IT, OR TAKE THE BRIDGE").WithPar(2)
                 .StartAt(-2.4f, -6.5f)
                 .Ramp(-2.4f, -2.4f, 3f, 2.4f)
                 .Gap(-0.95f, 0.9f, 7.3f, 1.8f)
                 .Wall(1.6f, 4.2f, 0.6f, 3.2f)
                 .Star(-2.4f, 0.9f).Star(3.6f, 0.9f).Star(-0.5f, 3.8f),  // one over the jump, one on the bridge, one behind the wall
 
-            new LevelDef("popspikes", "Floor Staples", 0f, 6.4f).WithHint("CROSS WHEN STAPLES ARE DOWN").WithPar(2)
+            new LevelDef("popspikes", "Stapled to the Floor", 0f, 6.4f).WithHint("CROSS WHEN STAPLES ARE DOWN").WithPar(2)
                 .Spikes(0f, -1.8f, 9f, 1.1f, 2.4f, 0f)
                 .Spikes(0f, 1.2f, 9f, 1.1f, 2.4f, 0.33f)
                 .Spikes(0f, 4f, 9f, 1.1f, 2.4f, 0.66f)
                 .Star(-3.2f, -0.3f).Star(3.5f, 2.6f).Star(-2.8f, 5.5f),
 
-            new LevelDef("magnet", "Coffee Gravity", 2.8f, 6f).WithHint("THE COFFEE MACHINE PULLS YOU").WithPar(2)
+            new LevelDef("magnet", "Caffeine Is a Leash", 2.8f, 6f).WithHint("THE COFFEE MACHINE PULLS YOU").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.4f))
                 .StartAt(2.8f, -6.2f)
                 .Wall(-1.3f, -0.8f, 6.4f, 0.6f)
@@ -506,7 +513,7 @@ namespace OutOfOffice
                 .SpikeBall(0.6f, 6.2f, 0.4f)
                 .Star(3.2f, -0.8f).Star(0f, 1.2f).Star(-3.4f, 4.6f),
 
-            new LevelDef("ice", "Wet Floor", 2.8f, 6.3f).WithHint("WET FLOOR: GO GENTLE").WithPar(2)
+            new LevelDef("ice", "Slip, Sue, Get Fired", 2.8f, 6.3f).WithHint("WET FLOOR: GO GENTLE").WithPar(2)
                 .StartAt(-2.8f, -6.5f)
                 .Ice(0f, 0.3f, 9f, 8.6f)
                 .SpikeBall(-1.8f, -1.2f, 0.45f)
@@ -516,7 +523,7 @@ namespace OutOfOffice
                 .Wall(-2.5f, 5.6f, 4f, 0.5f)
                 .Star(0.3f, -0.9f).Star(-3.4f, 2f).Star(2.8f, 3.8f),
 
-            new LevelDef("fan", "Urgent Breeze", 3f, 6.2f).WithHint("RIDE THE AIR CON").WithPar(2)
+            new LevelDef("fan", "The AC Has a Grudge", 3f, 6.2f).WithHint("RIDE THE AIR CON").WithPar(2)
                 .StartAt(-3f, -6.5f)
                 .Rail(BlockKind.Wall, 0f, -1.5f, -8.1f, -1.5f, 4.2f)
                 .Rail(BlockKind.Wall, 0f, 1.5f, -4.4f, 1.5f, 8.1f)
@@ -524,7 +531,7 @@ namespace OutOfOffice
                 .Wind(3f, -1f, 2.5f, 6f, 0f)
                 .Star(-3f, 2f).Star(0f, 6.4f).Star(0f, -6.2f),
 
-            new LevelDef("crossroads", "Four-Way Meeting", 9.3f, 0f).WithHint("PICK THE RIGHT HALLWAY").WithPar(2)
+            new LevelDef("crossroads", "Every Hallway Leads Here", 9.3f, 0f).WithHint("PICK THE RIGHT HALLWAY").WithPar(2)
                 .WithShape(ShapeDef.Polygon(1f, -2.5f, -11f, 2.5f, -11f, 2.5f, -2.5f, 11f, -2.5f, 11f, 2.5f, 2.5f, 2.5f,
                     2.5f, 11f, -2.5f, 11f, -2.5f, 2.5f, -11f, 2.5f, -11f, -2.5f, -2.5f, -2.5f))
                 .StartAt(0f, -9.3f)
@@ -534,7 +541,7 @@ namespace OutOfOffice
                 .SpikeBall(5.6f, 0f, 0.4f).Moving(0f, 1.6f, 2.8f)
                 .Star(-7.6f, 0f).Star(0f, 7.6f).Star(3.6f, -1.4f),
 
-            new LevelDef("boardroom", "Boardroom", 0f, 6.4f).WithHint("BANK OFF THE CHAIRS").WithPar(2)
+            new LevelDef("boardroom", "Bored Room", 0f, 6.4f).WithHint("BANK OFF THE CHAIRS").WithPar(2)
                 .StartAt(0f, -6.2f)
                 .Wall(0f, 0.8f, 3f, 6f).Rounded(1.2f)
                 .Post(BlockKind.Bouncer, -2.6f, -1.4f, 0.45f)
@@ -543,7 +550,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 2.6f, 3f, 0.45f)
                 .Star(-3.7f, 0.8f).Star(3.7f, 0.8f).Star(0f, -2.8f),
 
-            new LevelDef("standup", "Daily Standup", 0f, 6f).WithHint("WAIT FOR THE DESKS TO SIT").WithPar(2)
+            new LevelDef("standup", "Stand Up, Shut Up", 0f, 6f).WithHint("WAIT FOR THE DESKS TO SIT").WithPar(2)
                 .PopWall(-2.25f, -1.5f, 4.5f, 0.5f, 2.2f, 0f)
                 .PopWall(2.25f, -1.5f, 4.5f, 0.5f, 2.2f, 0.5f)
                 .PopWall(-2.25f, 2f, 4.5f, 0.5f, 2.2f, 0.5f)
@@ -551,14 +558,14 @@ namespace OutOfOffice
                 .Star(-3f, 0.25f).Star(3f, 0.25f).Star(0f, 4.2f),
 
             // ---------- Chapter 4, Manager's Office (levels 30-37): gaps, cacti, speed strips, pacing managers ----------
-            new LevelDef("hopscotch", "Budget Gaps", 0f, 6.2f).WithHint("BOUNCE OVER THE GAPS").WithPar(2)
+            new LevelDef("hopscotch", "Mind the Budget Gap", 0f, 6.2f).WithHint("BOUNCE OVER THE GAPS").WithPar(2)
                 .Gap(0f, -1f, 9.2f, 1.6f)
                 .Gap(0f, 3f, 9.2f, 1.6f)
                 .Jump(-2f, -3.2f, 0.75f)
                 .Jump(2f, 1f, 0.75f)
                 .Star(-1.6f, -1f).Star(0f, 1f).Star(2f, 3f),
 
-            new LevelDef("thorns", "Cactus Corner", 2.8f, 5.8f).WithHint("CACTI SEND YOU BACK").WithPar(3)
+            new LevelDef("thorns", "Only the Cacti Survive", 2.8f, 5.8f).WithHint("CACTI SEND YOU BACK").WithPar(3)
                 .Wall(-1.5f, -2.5f, 6f, 0.6f)
                 .Wall(1.5f, 1.5f, 6f, 0.6f)
                 .SpikeBall(3f, -2.5f, 0.35f)
@@ -567,7 +574,7 @@ namespace OutOfOffice
                 .SpikeBall(0.2f, 4.6f, 0.45f).Moving(0f, 1.2f, 2.4f)
                 .Star(2.1f, -2.5f).Star(-2.1f, 1.5f).Star(0.6f, 3.2f),
 
-            new LevelDef("maze", "Form 27B", 2.6f, 6.4f).WithHint("FIND THE BADGE READER FIRST").WithPar(4)
+            new LevelDef("maze", "Lost in Bureaucracy", 2.6f, 6.4f).WithHint("FIND THE BADGE READER FIRST").WithPar(4)
                 .Taller(6f)
                 .StartAt(0f, -13f)
                 .Spikes(0f, -11.2f, 9f, 0.9f, 2.2f, 0f)
@@ -582,7 +589,7 @@ namespace OutOfOffice
                 .SpikeBall(0.4f, -1f, 0.4f).Moving(2.2f, 0f, 2.8f)
                 .Star(0f, -9.6f).Star(-0.4f, 2.5f).Star(-1f, 6.4f),
 
-            new LevelDef("crate", "Archive Boxes", -2.6f, 6.4f).WithHint("PUSH THE BOXES ASIDE").WithPar(4)
+            new LevelDef("crate", "Boxes Full of Regret", -2.6f, 6.4f).WithHint("PUSH THE BOXES ASIDE").WithPar(4)
                 .Rail(BlockKind.Wall, 0f, -4.6f, 0f, -1.45f, 0f)
                 .Rail(BlockKind.Wall, 0f, 1.45f, 0f, 4.6f, 0f)
                 .Crate(0f, 0f, 1.3f)
@@ -590,7 +597,7 @@ namespace OutOfOffice
                 .Crate(3.2f, 4f, 1.4f)
                 .Star(1.4f, -0.2f).Star(2.6f, 2f).Star(-0.4f, 5.6f),  // beside the middle box: hug it on the way up
 
-            new LevelDef("speedpad", "Fast Track", 0f, 6.2f).WithHint("SPEED STRIPS BEAT THE RUG").WithPar(2)
+            new LevelDef("speedpad", "Fast Track to Burnout", 0f, 6.2f).WithHint("SPEED STRIPS BEAT THE RUG").WithPar(2)
                 .StartAt(0f, -6.5f)
                 .Boost(0f, -3f, 2f, 2.6f)
                 .Boost(-3.3f, -1.4f, 1.6f, 2f, 20f)
@@ -599,7 +606,7 @@ namespace OutOfOffice
                 .SpikeBall(1.7f, 5f, 0.4f)
                 .Star(0f, -1.2f).Star(-3f, 2.2f).Star(3.1f, 4.6f),  // the side strip, and one daringly close to a stapler
 
-            new LevelDef("whirlpool", "Spilled Latte", 0f, 6.2f).WithHint("SPILLS SPIN YOU ROUND").WithPar(2)
+            new LevelDef("whirlpool", "Spiralling Since Monday", 0f, 6.2f).WithHint("SPILLS SPIN YOU ROUND").WithPar(2)
                 .Vortex(0f, 1f, 2.6f)
                 .Wall(-3.2f, 4.4f, 2.6f, 0.6f)
                 .Wall(3.2f, 4.4f, 2.6f, 0.6f)
@@ -607,14 +614,14 @@ namespace OutOfOffice
                 .SpikeBall(3.5f, 1f, 0.4f)
                 .Star(-1.6f, -1f).Star(0f, 1f).Star(1.2f, 3.6f),
 
-            new LevelDef("feedback", "360 Feedback", 0f, 6.4f).WithHint("DODGE THE PACING MANAGER").WithPar(2)
+            new LevelDef("feedback", "Dodge the Feedback", 0f, 6.4f).WithHint("DODGE THE PACING MANAGER").WithPar(2)
                 .SpikeBall(0f, 0f, 0.42f).Moving(3.2f, 0f, 2.4f)
                 .Wall(0f, 3.6f, 3.6f, 0.6f)
                 .Kicker(-3.6f, 3.6f, 0.45f)
                 .Kicker(3.6f, 3.6f, 0.45f)
                 .Star(-3.6f, 0f).Star(3.6f, 0f).Star(0f, 5f),
 
-            new LevelDef("window", "Window Seat", 0f, 5.2f).WithHint("ROUND THE DESK, UP THE FAST LANE").WithPar(2)
+            new LevelDef("window", "View of Another Office", 0f, 5.2f).WithHint("ROUND THE DESK, UP THE FAST LANE").WithPar(2)
                 .WithShape(ShapeDef.Circle(6.8f))
                 .StartAt(0f, -5f)
                 .Post(BlockKind.Wall, 0f, 0f, 1.7f)
@@ -624,14 +631,14 @@ namespace OutOfOffice
                 .Star(-4.6f, 2.4f).Star(4.6f, -0.6f).Star(0f, -2.6f),
 
             // ---------- Chapter 5, HR & Admin (levels 38-45): spill leaps, beanbags, filing boxes, paperwork ----------
-            new LevelDef("lagoon", "Spill Leap", 0f, 6.2f).WithHint("BOUNCE OVER THE SPILL").WithPar(2)
+            new LevelDef("lagoon", "Not My Spill", 0f, 6.2f).WithHint("BOUNCE OVER THE SPILL").WithPar(2)
                 .Vortex(0f, 2f, 2.4f)
                 .Jump(0f, -2.6f, 0.8f)
                 .SpikeBall(-3.5f, 2f, 0.4f)
                 .SpikeBall(3.5f, 2f, 0.4f)
                 .Star(-2.6f, -1.4f).Star(0f, 2f).Star(2.6f, 5.2f),
 
-            new LevelDef("corner", "Corner Office", 3.2f, 5.5f).WithHint("BOUNCE ROUND THE CORNER").WithPar(2)
+            new LevelDef("corner", "Corner Office? Not You", 3.2f, 5.5f).WithHint("BOUNCE ROUND THE CORNER").WithPar(2)
                 .WithShape(ShapeDef.Polygon(1f, -4.5f, -8f, 0f, -8f, 0f, 3f, 4.5f, 3f, 4.5f, 8f, -4.5f, 8f))
                 .StartAt(-2.25f, -6.5f)
                 .Boost(-2.25f, -2.4f, 2f, 2.4f)
@@ -639,14 +646,14 @@ namespace OutOfOffice
                 .SpikeBall(1.4f, 5.5f, 0.4f).Moving(0f, 1.3f, 2.4f)
                 .Star(-2.25f, 1.5f).Star(-2.6f, 6.2f).Star(0.6f, 4f),
 
-            new LevelDef("timing", "Printer Queue", 0f, 6.6f).WithHint("WAIT FOR A GAP").WithPar(2)
+            new LevelDef("timing", "The Printer Wants Blood", 0f, 6.6f).WithHint("WAIT FOR A GAP").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.6f))
                 .Hazard(0f, -2f, 2.6f, 0.45f).Moving(3f, 0f, 3f)
                 .Hazard(0f, 1.2f, 2.2f, 0.45f).Moving(3.1f, 0f, 2.4f, 1.2f)
                 .Hazard(0f, 4.2f, 2.6f, 0.45f).Moving(3f, 0f, 3.4f, 0.6f)
                 .Star(0f, -0.4f).Star(2f, 2.7f).Star(-2.6f, 5.8f),
 
-            new LevelDef("turnstile", "Reception Gates", 3f, 6f).WithHint("SPIN, THEN SLIP THROUGH").WithPar(2)
+            new LevelDef("turnstile", "Security Theatre", 3f, 6f).WithHint("SPIN, THEN SLIP THROUGH").WithPar(2)
                 .Bouncer(0f, 0.4f, 3.6f, 0.5f).Spinning(80f)
                 .Wall(0f, 3f, 3.2f, 0.6f)
                 .OneWay(-3.05f, 3f, 2.9f, 0f)
@@ -654,7 +661,7 @@ namespace OutOfOffice
                 .Kicker(-3.4f, 6.5f, 0.45f)
                 .Star(-3f, 1f).Star(-3f, 5f).Star(0f, 6.4f),
 
-            new LevelDef("soft", "Beanbag Zone", 0f, 5.6f).WithHint("BEANBAGS SOAK UP SPEED").WithPar(2)
+            new LevelDef("soft", "Nap Pods for Managers", 0f, 5.6f).WithHint("BEANBAGS SOAK UP SPEED").WithPar(2)
                 .WithShape(ShapeDef.Rect(9f, 16f, 1.6f))
                 .Arc(BlockKind.Sticky, 0f, 5.6f, 1.6f, 15f, 165f)
                 .Hazard(-2.75f, 5.6f, 2.5f, 0.45f)
@@ -664,7 +671,7 @@ namespace OutOfOffice
                 .Sticky(4.2f, 3f, 0.6f, 3f)
                 .Star(0f, -0.5f).Star(-3f, 3f).Star(-1.2f, 4.3f),
 
-            new LevelDef("tidepool", "Double Spill", -3f, 6.8f).WithHint("TWO SPILLS, TWO SPINS").WithPar(2)
+            new LevelDef("tidepool", "Twice the Mess, No Raise", -3f, 6.8f).WithHint("TWO SPILLS, TWO SPINS").WithPar(2)
                 .StartAt(2.6f, -6.5f)
                 .Vortex(-2f, -1f, 2f, true)
                 .Vortex(2f, 2.4f, 2f)
@@ -672,7 +679,7 @@ namespace OutOfOffice
                 .SpikeBall(0f, -3.6f, 0.4f).Moving(2f, 0f, 3f)
                 .Star(3.3f, -3.8f).Star(2f, 2.4f).Star(0f, 5f),
 
-            new LevelDef("filing", "Filing Cabinets", -2.6f, 6.4f).WithHint("BADGE IN, THEN SHIFT THE BOX").WithPar(2)
+            new LevelDef("filing", "File It Under Never", -2.6f, 6.4f).WithHint("BADGE IN, THEN SHIFT THE BOX").WithPar(2)
                 .Wall(-2.4f, -2f, 4.2f, 0.6f)
                 .Wall(2.4f, 1f, 4.2f, 0.6f)
                 .Gate(0, -2.4f, 4f, 4.2f, 0.6f)
@@ -681,7 +688,7 @@ namespace OutOfOffice
                 .Crate(2.4f, 4.6f, 1f)
                 .Star(3.4f, -0.5f).Star(-3.4f, 1f).Star(2f, 6.4f),
 
-            new LevelDef("paperwork", "Paperwork", 0f, 6f).WithHint("SMASH THROUGH THE FOLDERS").WithPar(2)
+            new LevelDef("paperwork", "Shred the Evidence", 0f, 6f).WithHint("SMASH THROUGH THE FOLDERS").WithPar(2)
                 .Breakable(-3f, 0f, 3f, 0.6f)
                 .Breakable(0f, 0f, 3f, 0.6f)
                 .Breakable(3f, 0f, 3f, 0.6f)
@@ -690,7 +697,7 @@ namespace OutOfOffice
                 .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(-3.4f, 5.2f),  // the last one is behind the folders
 
             // ---------- Chapter 6, Executive Floor (levels 46-54): mail belts, sliding doors, air con, elevators ----------
-            new LevelDef("conveyor", "Mail Belt", -3f, 6.3f).WithHint("THE BELTS CARRY YOU").WithPar(3)
+            new LevelDef("conveyor", "Conveyor Belt of Life", -3f, 6.3f).WithHint("THE BELTS CARRY YOU").WithPar(3)
                 .Taller(6f)
                 .StartAt(-2.6f, -13f)
                 .Conveyor(0f, -11f, 2f, 9f, -90f)
@@ -700,13 +707,13 @@ namespace OutOfOffice
                 .Wall(1.2f, 5f, 6.6f, 0.5f)
                 .Star(-3.5f, -9.6f).Star(-1f, 3f).Star(-3.2f, 4.4f),
 
-            new LevelDef("tidegate", "Escalation", -3f, 6.2f).WithHint("RIDE THE BELT, MIND THE DESK").WithPar(2)
+            new LevelDef("tidegate", "Escalated to Nobody", -3f, 6.2f).WithHint("RIDE THE BELT, MIND THE DESK").WithPar(2)
                 .Conveyor(0f, 0f, 2.2f, 9f, 90f)
                 .PopWall(0f, 3f, 9f, 0.5f, 2.6f, 0f)
                 .Post(BlockKind.Bouncer, 2.8f, 5.6f, 0.5f)
                 .Star(2.5f, 0f).Star(-3.5f, 1.6f).Star(0f, 5f),
 
-            new LevelDef("icebreak", "Red Tape", 0f, 6f).WithHint("HIT FOLDERS HARD TO BREAK THEM").WithPar(2)
+            new LevelDef("icebreak", "Cut Through the Red Tape", 0f, 6f).WithHint("HIT FOLDERS HARD TO BREAK THEM").WithPar(2)
                 .Wall(0f, 0.5f, 5f, 0.6f)
                 .Breakable(0f, 4.2f, 3.4f, 0.6f)
                 .Breakable(-2f, 5.8f, 0.6f, 3.6f)
@@ -714,7 +721,7 @@ namespace OutOfOffice
                 .Ice(0f, 2.3f, 9f, 2f)
                 .Star(-3.4f, -0.5f).Star(0f, 3f).Star(-3.4f, 6.8f),
 
-            new LevelDef("avalanche", "Polished Lobby", 0f, 6f).WithHint("SLIDE PAST THE STANDING DESKS").WithPar(2)
+            new LevelDef("avalanche", "Shiny Floor, Dull Soul", 0f, 6f).WithHint("SLIDE PAST THE STANDING DESKS").WithPar(2)
                 .Taller(6f)
                 .StartAt(0f, -13f)
                 .Ice(0f, -8f, 9f, 6f)
@@ -724,7 +731,7 @@ namespace OutOfOffice
                 .Spikes(0f, 3f, 9f, 0.9f, 2f, 0.25f)
                 .Star(3f, -8f).Star(-3.2f, -1.4f).Star(0f, 4.6f),
 
-            new LevelDef("door", "Sliding Doors", 2.5f, 6f).WithHint("SLIP THROUGH THE DOORS").WithPar(3)
+            new LevelDef("door", "Doors Close on Dreams", 2.5f, 6f).WithHint("SLIP THROUGH THE DOORS").WithPar(3)
                 .WithShape(ShapeDef.Chamfered(9f, 16f, 1.6f))
                 .Wall(-3f, 0f, 3.2f, 0.5f)
                 .Wall(3f, 0f, 3.2f, 0.5f)
@@ -734,14 +741,14 @@ namespace OutOfOffice
                 .Wall(-1.3f, 3.13f, 2.1f, 0.42f).Moving(1f, 0f, 2.2f, 1f)    // second door, also on its own track
                 .Star(0f, -2f).Star(-1.3f, 1.8f).Star(-1.3f, 5f),
 
-            new LevelDef("blizzard", "Executive Chill", 2.6f, 6.4f).WithHint("MIND THE AIR CON: AIM UPWIND").WithPar(2)
+            new LevelDef("blizzard", "Executive Wind Chill", 2.6f, 6.4f).WithHint("MIND THE AIR CON: AIM UPWIND").WithPar(2)
                 .Ice(0f, 1f, 9f, 7f)
                 .Wind(0f, 1f, 3f, 9f, 90f)
                 .Breakable(2.2f, 4.8f, 4.6f, 0.6f)
                 .Wall(-2.4f, 4.8f, 4.2f, 0.6f)
                 .Star(3.6f, -1f).Star(2.8f, 1f).Star(2.2f, 3.6f),
 
-            new LevelDef("curveswitch", "Badge & Curve", -3.4f, 1.3f).WithHint("CURVE INTO THE BADGE READER").WithPar(2)
+            new LevelDef("curveswitch", "Badge, Curve, Despair", -3.4f, 1.3f).WithHint("CURVE INTO THE BADGE READER").WithPar(2)
                 .StartAt(2.6f, -6f)
                 .Arc(BlockKind.Wall, 0f, 3.4f, 4.1f, -2f, 182f)
                 .Rail(BlockKind.Wall, 0f, 0f, -8.1f, 0f, 0.6f)
@@ -750,14 +757,14 @@ namespace OutOfOffice
                 .SpikeBall(2.4f, -2.5f, 0.4f).Moving(1.3f, 0f, 2.2f)
                 .Star(2.6f, 1f).Star(-2.6f, 5.9f).Star(-2.4f, -3f),
 
-            new LevelDef("elevator", "Executive Elevator", 0f, 6f).WithHint("TAKE THE ELEVATOR UP").WithPar(2)
+            new LevelDef("elevator", "Elevator Pitch Gone Wrong", 0f, 6f).WithHint("TAKE THE ELEVATOR UP").WithPar(2)
                 .Wall(0f, 0.8f, 9f, 0.6f)
                 .Portal(3.2f, -3f, -3.2f, 3.6f, 0f, 0f)
                 .SpikeBall(0f, 3.4f, 0.4f).Moving(2.4f, 0f, 2.8f)
                 .Ice(0f, -3f, 9f, 2f)
                 .Star(-3.2f, -3f).Star(3.2f, 4.2f).Star(-1.7f, 5.4f),
 
-            new LevelDef("green", "Executive Putting Green", 0f, 4.6f).WithHint("JUMP THE WATER FEATURE").WithPar(2)
+            new LevelDef("green", "The CEO Is Golfing Again", 0f, 4.6f).WithHint("JUMP THE WATER FEATURE").WithPar(2)
                 .WithShape(ShapeDef.Circle(7f))
                 .StartAt(0f, -5.2f)
                 .Ramp(0f, -2.6f, 2.6f, 2.2f)
@@ -767,7 +774,7 @@ namespace OutOfOffice
                 .Star(0f, 0.6f).Star(-4.4f, -1.2f).Star(4.4f, -1.2f),
 
             // ---------- Chapter 7, After Hours (levels 55-64): every gadget at once ----------
-            new LevelDef("rampbumper", "Quarterly Review", -3f, 6.2f).WithHint("JUMP, THEN BANK OFF THE CHAIR").WithPar(2)
+            new LevelDef("rampbumper", "Quarterly Review Panic", -3f, 6.2f).WithHint("JUMP, THEN BANK OFF THE CHAIR").WithPar(2)
                 .WithShape(ShapeDef.Chamfered(9f, 16f, 1.6f))
                 .StartAt(0f, -6.5f)
                 .Ramp(0f, -2.4f, 3.5f, 2.4f)
@@ -777,7 +784,7 @@ namespace OutOfOffice
                 .SpikeBall(0.6f, 6.6f, 0.4f).Moving(0f, 0.8f, 2f)
                 .Star(0f, -4.2f).Star(0f, 1f).Star(3f, 3.2f),
 
-            new LevelDef("skijump", "Synergy", 0f, 6.6f).WithHint("JUMP, THEN BOUNCE AGAIN").WithPar(2)
+            new LevelDef("skijump", "Synergy, Whatever That Is", 0f, 6.6f).WithHint("JUMP, THEN BOUNCE AGAIN").WithPar(2)
                 .StartAt(0f, -6.5f)
                 .Ramp(0f, -2.4f, 3.5f, 2.4f)
                 .Gap(0f, 0.9f, 9.2f, 1.8f)
@@ -785,7 +792,7 @@ namespace OutOfOffice
                 .Spikes(0f, 5f, 9f, 0.8f, 2.4f, 0f)
                 .Star(0f, 0.9f).Star(-2.8f, 3.4f).Star(2.6f, 4.1f),
 
-            new LevelDef("spikeway", "Share Price", 2.25f, -5.6f).WithHint("UP, OVER, AND DOWN").WithPar(3)
+            new LevelDef("spikeway", "The Share Price Drop", 2.25f, -5.6f).WithHint("UP, OVER, AND DOWN").WithPar(3)
                 .StartAt(-2.25f, -6.5f)
                 .Rail(BlockKind.Wall, 0f, 0f, -8.1f, 0f, 4.5f)
                 .Spikes(-2.25f, -2f, 4.3f, 0.9f, 2f, 0f)
@@ -795,7 +802,7 @@ namespace OutOfOffice
                 .Wind(2.25f, -1f, 4f, 5f, 180f)
                 .Star(-2.25f, 0f).Star(-1.4f, 6.8f).Star(2.25f, 4.5f),
 
-            new LevelDef("pinball", "All-Hands", -2.6f, 6.3f).WithHint("CHAIRS EVERYWHERE").WithPar(2)
+            new LevelDef("pinball", "All-Hands, No Brains", -2.6f, 6.3f).WithHint("CHAIRS EVERYWHERE").WithPar(2)
                 .WithShape(ShapeDef.Chamfered(9f, 16f, 1.6f))
                 .Hazard(0f, -1.6f, 2.4f, 0.45f).Moving(2.2f, 0f, 2.8f)
                 .Post(BlockKind.Bouncer, -1.8f, 1.8f, 0.55f)
@@ -805,7 +812,7 @@ namespace OutOfOffice
                 .Rail(BlockKind.Wall, 0.3f, -4.6f, 4.6f, -1.2f, 4.6f, -1.2f, 6f)
                 .Star(3.2f, 0.2f).Star(0f, 5.6f).Star(-0.4f, 7.2f),
 
-            new LevelDef("track", "Company Policy", 2.75f, 5.2f).WithHint("THE LONG WAY ROUND").WithPar(2)
+            new LevelDef("track", "Per Company Policy", 2.75f, 5.2f).WithHint("THE LONG WAY ROUND").WithPar(2)
                 .WithShape(ShapeDef.Polygon(2f, -4.5f, -7f, 4.5f, -7f, 4.5f, 7f, 1f, 7f, 1f, -1.5f, -1f, -1.5f, -1f, 7f, -4.5f, 7f))
                 .StartAt(-2.75f, 5f)
                 .Ice(-2.75f, 1.5f, 3.5f, 4f)
@@ -815,7 +822,7 @@ namespace OutOfOffice
                 .Mud(2.75f, 2.4f, 3.5f, 1.6f)
                 .Star(-2.75f, -1f).Star(0f, -6.4f).Star(2.75f, 0.5f),
 
-            new LevelDef("summit", "Out of Office", 3.2f, 6.3f).WithHint("EVERY GADGET YOU KNOW").WithPar(2)
+            new LevelDef("summit", "Almost Out of Office", 3.2f, 6.3f).WithHint("EVERY GADGET YOU KNOW").WithPar(2)
                 .Taller(6f)
                 .StartAt(0f, -13f)
                 .Jump(0f, -10f, 0.8f)
@@ -826,27 +833,27 @@ namespace OutOfOffice
                 .Wall(-1.5f, 4.6f, 6f, 0.6f)
                 .Star(0f, -8.6f).Star(-3f, -0.8f).Star(2f, 2.8f),
 
-            new LevelDef("nightshift", "Night Shift", 2.8f, 6f).WithHint("THE BELT TAKES YOU LEFT").WithPar(2)
+            new LevelDef("nightshift", "Unpaid Overtime", 2.8f, 6f).WithHint("THE BELT TAKES YOU LEFT").WithPar(2)
                 .Conveyor(0f, -1.5f, 2.4f, 9f, 90f)
                 .OneWay(-3f, 1.8f, 3f, 0f)
                 .Wall(1.5f, 1.8f, 6f, 0.6f)
                 .SpikeBall(2.8f, 3.8f, 0.4f).Moving(1f, 0f, 2.6f)
                 .Star(-2f, -1.5f).Star(-3f, 3.4f).Star(0.6f, 4.6f),
 
-            new LevelDef("cleaner", "The Cleaner", 0f, 6.2f).WithHint("WET FLOOR, THEN STAPLES").WithPar(2)
+            new LevelDef("cleaner", "The Cleaner Saw Nothing", 0f, 6.2f).WithHint("WET FLOOR, THEN STAPLES").WithPar(2)
                 .Ice(0f, 0f, 9f, 6f)
                 .Spikes(0f, 3.6f, 9f, 0.9f, 2.2f, 0f)
                 .Post(BlockKind.Bouncer, -2.6f, 0f, 0.45f)
                 .Post(BlockKind.Bouncer, 2.6f, 0f, 0.45f)
                 .Star(-3.6f, 1.6f).Star(3.6f, 1.6f).Star(-2.8f, 5.4f),
 
-            new LevelDef("deadline", "Deadline", 0f, 6.6f).WithHint("THREE DEADLINES. GO!").WithPar(2)
+            new LevelDef("deadline", "Three Deadlines, One Life", 0f, 6.6f).WithHint("THREE DEADLINES. GO!").WithPar(2)
                 .Hazard(0f, -2f, 2.4f, 0.45f).Moving(3f, 0f, 2.2f)
                 .Hazard(0f, 1f, 2.4f, 0.45f).Moving(3f, 0f, 1.8f, 0.5f)
                 .Hazard(0f, 4f, 2.4f, 0.45f).Moving(3f, 0f, 2f, 0.25f)
                 .Star(-3.6f, -0.5f).Star(3.6f, 2.5f).Star(-2.4f, 5.7f),
 
-            new LevelDef("finale", "Lights Out", 0f, 6.5f).WithHint("EVERYTHING AT ONCE!").WithPar(3)
+            new LevelDef("finale", "Last One, Turn Off Lights", 0f, 6.5f).WithHint("EVERYTHING AT ONCE!").WithPar(3)
                 .Taller(8f, ShapeDef.Chamfered(9f, 24f, 1.6f))
                 .StartAt(0f, -14.6f)
                 .Vortex(0f, -11.6f, 2.2f)
