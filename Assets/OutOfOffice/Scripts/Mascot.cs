@@ -27,6 +27,7 @@ namespace OutOfOffice
         public Vector2 AimDir;
         public float AimPower;
         public bool Tumble;  // rolls with its movement even while the game moves it by hand (falls, hole swirl)
+        public float Tremble;  // 0..1: a nervous jitter (near the boss, caffeine buzz). The game eases it in and out.
 
         Puck puck;
         Transform face, eyeL, eyeR, mouthT, cheekL, cheekR, browL, browR, nose;
@@ -528,7 +529,14 @@ namespace OutOfOffice
                 }
             }
 
-            Vector3 tilted = new Vector3(Mathf.Sin(lean.x * Mathf.Deg2Rad), Mathf.Sin(lean.y * Mathf.Deg2Rad), -1f);
+            // Nervous jitter: a quick, uneven side-to-side shiver on top of the lean (none with reduced motion).
+            Vector2 shiver = Vector2.zero;
+            if (Tremble > 0.01f && Puck.MotionScale >= 1f)
+            {
+                float t = Time.time;
+                shiver = new Vector2(Mathf.Sin(t * 61f) + 0.5f * Mathf.Sin(t * 97f), 0.4f * Mathf.Sin(t * 73f)) * (3.5f * Tremble);
+            }
+            Vector3 tilted = new Vector3(Mathf.Sin((lean.x + shiver.x) * Mathf.Deg2Rad), Mathf.Sin((lean.y + shiver.y) * Mathf.Deg2Rad), -1f);
             puck.Lean = Quaternion.FromToRotation(Vector3.back, tilted.normalized);
             puck.ExtraSpin = twirl;
             puck.HopLift = hop;

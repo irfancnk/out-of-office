@@ -8,7 +8,15 @@ namespace OutOfOffice
     public class CoworkerFace : MonoBehaviour
     {
         const float Lift = 0.012f, Scale = 0.95f;
+        const float NoticeDistance = 1.7f;
         Transform head, face, alert;
+
+        // Every coworker in the scene, and where the employee is (set by the game each frame; null outside a level).
+        public static readonly System.Collections.Generic.List<CoworkerFace> Active = new System.Collections.Generic.List<CoworkerFace>();
+        public static Vector3? Player;
+
+        void OnEnable() => Active.Add(this);
+        void OnDisable() => Active.Remove(this);
 
         void Start() => Build();
 
@@ -65,6 +73,8 @@ namespace OutOfOffice
             // The "!" pops in for a moment every couple of seconds, up and to the side of the head, facing the camera.
             float k = Mathf.Repeat(Time.time * 0.5f + transform.position.x, 1f);
             float pop = k < 0.4f ? Mathf.Sin(k / 0.4f * Mathf.PI) : 0f;
+            // They notice the employee walking past: the "!" stays up while they are close (OUT-26).
+            if (Player.HasValue && ((Vector2)(Player.Value - head.position)).magnitude < NoticeDistance * transform.lossyScale.x) pop = 1f;
             alert.gameObject.SetActive(pop > 0.02f);
             if (!alert.gameObject.activeSelf) return;
             alert.position = head.position + cam.transform.up * 0.36f * transform.lossyScale.x + cam.transform.right * 0.26f * transform.lossyScale.x;

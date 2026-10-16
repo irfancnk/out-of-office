@@ -407,8 +407,14 @@ namespace OutOfOffice
             welcomePortrait = Rect("Employee", area, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(700f, 700f));
             welcomeIcon = welcomePortrait.gameObject.AddComponent<RawImage>();
             welcomeIcon.raycastTarget = false;
-            welcomePortrait.gameObject.AddComponent<Bobber>().Hud = this;
+            heroBobber = welcomePortrait.gameObject.AddComponent<Bobber>();
+            heroBobber.Hud = this;
             IconStudio.Rendered += RefreshWelcomeIcon;
+            // Poke the employee (OUT-26): a squish and a giggle; five quick pokes and they spin round. The hit area is
+            // the body only, so it never covers the side buttons.
+            var poke = Rect("Poke", welcomePortrait, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(380f, 520f));
+            Img(poke, Shapes.Square, new Color(1f, 1f, 1f, 0f)).raycastTarget = true;
+            poke.gameObject.AddComponent<UiPress>().Clicked = PokeHero;
 
             // The logo, above the stage.
             var logo = Rect("Logo", area, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -400f), new Vector2(900f, 400f));
@@ -665,6 +671,26 @@ namespace OutOfOffice
             welcomeIcon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
+        public System.Action<bool> HeroPoked;  // true on the fifth quick poke
+        int pokes;
+        float lastPoke = -10f;
+
+        void PokeHero()
+        {
+            pokes = Time.unscaledTime - lastPoke < 0.8f ? pokes + 1 : 1;
+            lastPoke = Time.unscaledTime;
+            bool spin = pokes >= 5;
+            if (spin) pokes = 0;
+            HeroPoked?.Invoke(spin);
+            if (heroBobber == null || ReducedMotion) return;
+            var b = heroBobber;
+            Tweens.Kill(b);
+            if (spin) Tweens.Run(0.75f, k => b.ExtraSpin = -360f * k, Tweens.OutCubic, 0f, () => b.ExtraSpin = 0f, b);
+            else Tweens.Run(0.45f, k => b.ExtraSquish = 0.13f * Mathf.Sin(k * Mathf.PI * 2f) * (1f - k), Tweens.Linear, 0f, () => b.ExtraSquish = 0f, b);
+        }
+
+        Bobber heroBobber;
+
         public System.Func<int> CoffeeCardStamps;
         public System.Func<bool> CoffeeCardReady;
         public System.Action ClaimCoffeeCard;
@@ -753,6 +779,7 @@ namespace OutOfOffice
         class Bobber : MonoBehaviour
         {
             public Hud Hud;
+            public float ExtraSpin, ExtraSquish;  // from a poke (OUT-26)
             Vector2 rest;
             bool started;
 
@@ -764,9 +791,9 @@ namespace OutOfOffice
                 if (Hud.ReducedMotion) { r.anchoredPosition = rest; r.localRotation = Quaternion.identity; return; }
                 float t = Time.unscaledTime;
                 r.anchoredPosition = rest + new Vector2(0f, 14f * Mathf.Sin(t * 2.4f));
-                r.localRotation = Quaternion.Euler(0f, 0f, 4f * Mathf.Sin(t * 1.7f));
+                r.localRotation = Quaternion.Euler(0f, 0f, 4f * Mathf.Sin(t * 1.7f) + ExtraSpin);
                 float squash = 0.03f * Mathf.Sin(t * 4.8f);
-                r.localScale = new Vector3(1f + squash, 1f - squash, 1f);
+                r.localScale = new Vector3(1f + squash + ExtraSquish, 1f - squash - ExtraSquish * 1.15f, 1f);
             }
         }
 

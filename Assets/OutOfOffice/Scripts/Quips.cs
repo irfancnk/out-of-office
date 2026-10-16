@@ -142,6 +142,16 @@ namespace OutOfOffice
             return Openers[(hash & 0x7FFFFFFF) % Openers.Length];
         }
 
+        // A line for the day and hour, used once for the first room of a session (OUT-26). Null on an ordinary day.
+        public static string Calendar(System.DateTime now)
+        {
+            if (now.Hour >= 22 || now.Hour < 5) return "Working late?";
+            if (now.DayOfWeek == System.DayOfWeek.Saturday || now.DayOfWeek == System.DayOfWeek.Sunday) return "On a weekend? Really?";
+            if (now.DayOfWeek == System.DayOfWeek.Monday && now.Hour < 12) return "Monday. Again.";
+            if (now.DayOfWeek == System.DayOfWeek.Friday && now.Hour >= 15) return "Almost the weekend.";
+            return null;
+        }
+
         public static string Fail() => Pick(Failures);
         public static string Rested() => Pick(Completion);
         public static string HoleInOne() => Pick(Ace);

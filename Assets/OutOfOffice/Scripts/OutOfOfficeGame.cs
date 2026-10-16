@@ -8,7 +8,7 @@ namespace OutOfOffice
 {
     // Out of Office game flow: shots and par, undo and restart, input, camera, lighting, and the mapping from
     // physics events (Puck.Step) to sound, effects, and haptics. Boots itself in any scene.
-    public class OutOfOfficeGame : MonoBehaviour
+    public partial class OutOfOfficeGame : MonoBehaviour
     {
         enum State { Title, Ready, Aiming, Moving, Capturing, Penalty, Complete, Paused }
 
@@ -187,6 +187,11 @@ namespace OutOfOffice
             hud.CoffeeCardStamps = () => progress.CardStamps;
             hud.CoffeeCardReady = () => progress.CardReady;
             hud.ClaimCoffeeCard = () => { if (progress.ClaimCard()) OpenChest("ON THE HOUSE!"); };
+            hud.HeroPoked = spin =>
+            {
+                sound.Play(spin ? Sfx.Whee : Sfx.Giggle, 0.7f, Random.Range(0.95f, 1.1f), 0.8f);
+                Haptics.Play(spin ? Haptics.Style.Success : Haptics.Style.Light, 0.7f);
+            };
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
             hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
@@ -398,6 +403,7 @@ namespace OutOfOffice
         {
             PaceFrames();
             UpdateQuips();
+            UpdateQuirks(Time.deltaTime);
             if (state == State.Ready || state == State.Aiming) HandleInput();
             UpdateAim();
             UpdateTrail();
@@ -493,6 +499,7 @@ namespace OutOfOffice
         {
             history.Push(level.Capture(restPos, shots, levelTime));
             shots++;
+            shotBounces = 0;
             TrackQuest(QuestKind.Shots);
             hud.HideSpeech();
             starCombo = 0;
@@ -562,6 +569,7 @@ namespace OutOfOffice
                     restPos = level.Puck.Body.position;
                     sound.StopContinuous();
                     state = State.Ready;
+                    if (shotBounces >= PinballBounces) OnPinballFinish();
                     break;
                 case ShotResult.Sunk:
                     StartCoroutine(CaptureRoutine());
@@ -594,6 +602,7 @@ namespace OutOfOffice
             if (info.Impact && info.ImpactSpeed >= Rules.ImpactMinSpeed && Time.time - lastImpact > Rules.ImpactCooldown)
             {
                 lastImpact = Time.time;
+                shotBounces++;
                 float vn = info.ImpactSpeed;
                 float k = Mathf.Clamp01((vn - Rules.ImpactMinSpeed) / 12f);
                 var kind = info.ImpactBlock != null ? info.ImpactBlock.Kind : BlockKind.Wall;
@@ -789,6 +798,7 @@ namespace OutOfOffice
             }, levelFx);
             Vector3 sp = cam.WorldToScreenPoint(new Vector3(star.Position.x, star.Position.y, -0.6f));
             int collected = level.StarsCollected, total = level.Stars.Count;
+            if (collected == total && total > 0) buzzUntil = Time.time + BuzzSeconds;  // caffeine buzz (OUT-26)
             hud.FlyStar(sp, () => hud.SetStars(collected, total, true));
         }
 
@@ -852,7 +862,7 @@ namespace OutOfOffice
             }
             Haptics.Play(Haptics.Style.Success);
             sound.Play(Sfx.Reward, 0.55f, 1f, 1f);
-            hud.Say(Quips.Rested(), 2.2f);
+            hud.Say(shots == 1 ? Quips.HoleInOne() : Quips.Rested(), 2.2f);  // a hole-in-one gets its own line (OUT-26)
             var head = mascot.transform.position + new Vector3(0f, 0.38f, -0.5f);
             for (int i = 0; i < (reduced ? 1 : 2); i++)
             {
@@ -1033,7 +1043,7 @@ namespace OutOfOffice
                 if (levelIndex >= 0 && levelIndex != openedLevel && shots == 0)
                 {
                     openedLevel = levelIndex;
-                    hud.Say(Quips.Opener(Def.Id), OpenerSeconds);
+                    hud.Say(SessionOpener() ?? Quips.Opener(Def.Id), OpenerSeconds);
                 }
             }
             var head = level.Puck.Visual.position + new Vector3(0f, 0f, -Mascot.BodyHalfHeight * 2f - 0.25f);

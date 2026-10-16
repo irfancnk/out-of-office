@@ -1012,7 +1012,13 @@ namespace OutOfOffice.EditorTools
                 string o = Quips.Opener(l.Id);
                 if (o.Length > longest.Length) longest = o;
             }
-            bool ok = longest.Length > 0 && longest.Length <= Quips.OpenerMaxLength && Quips.Opener("no-such-room").Length <= Quips.OpenerMaxLength;
+            // Calendar openers (OUT-26): 2026-10-12 is a Monday.
+            var monday = new System.DateTime(2026, 10, 12, 9, 0, 0);
+            string mon = Quips.Calendar(monday), wed = Quips.Calendar(monday.AddDays(2).AddHours(3)), fri = Quips.Calendar(monday.AddDays(4).AddHours(7)),
+                sat = Quips.Calendar(monday.AddDays(5)), late = Quips.Calendar(monday.AddDays(1).AddHours(14));
+            bool calendar = mon == "Monday. Again." && wed == null && fri == "Almost the weekend." && sat != null && late == "Working late?";
+            foreach (var line in new[] { mon, fri, sat, late }) calendar &= line != null && line.Length <= Quips.OpenerMaxLength;
+            bool ok = calendar && longest.Length > 0 && longest.Length <= Quips.OpenerMaxLength && Quips.Opener("no-such-room").Length <= Quips.OpenerMaxLength;
             Report("openers", ok, $"{Levels.All.Length} rooms, longest opener \"{longest}\" ({longest.Length} chars, limit {Quips.OpenerMaxLength})");
         }
 
