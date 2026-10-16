@@ -79,34 +79,18 @@ namespace OutOfOffice
             { "deadline", "Three deadlines. One you. No pressure." },
         };
 
-        // ---- Short reactions ----
-        static readonly string[] Coffee =
-        {
-            "Coffee acquired. Personality restored.",
-            "Sip. Reboot.",
-            "Caffeine: the real benefits package.",
-        };
+        // ---- Bubbles appear at three moments only: a short opener, a failure, the bed (OUT-22) ----
 
-        static readonly string[] AllCoffeeLines =
-        {
-            "Triple shot. I can hear colors.",
-            "Fully caffeinated. Fully regretful.",
-            "Three coffees. Sleep is now a rumor.",
-        };
+        // Openers are read in about a second, so they stay a few words long.
+        public const int OpenerMaxLength = 24;
+        static readonly string[] Openers = { "Clocking in.", "Here we go.", "Coffee first.", "Look busy.", "New room.", "Bed. Over there." };
 
         static readonly string[] Failures =
         {
-            "That went to the wrong meeting.",
+            "Wrong meeting.",
             "Per my last attempt...",
-            "Low battery. Unfortunately, human.",
+            "Low battery.",
             "Escalating to undo.",
-        };
-
-        static readonly string[] Idle =
-        {
-            "Any day now. My calendar is clear. Suspiciously.",
-            "I'm not procrastinating. I'm buffering.",
-            "Still here. Legally.",
         };
 
         static readonly string[] Completion =
@@ -137,13 +121,28 @@ namespace OutOfOffice
 
         public const string RewardDuplicate = "Already yours. Recognised twice.";
 
-        public static int Count => LevelLines.Count + Coffee.Length + AllCoffeeLines.Length + Failures.Length + Idle.Length + Completion.Length + Ace.Length;
+        public static int Count => LevelLines.Count + Openers.Length + Failures.Length + Completion.Length + Ace.Length;
 
         public static string ForLevel(string id) => LevelLines.TryGetValue(id, out var line) ? line : "Another room. Another reason to lie down.";
-        public static string GotCoffee() => Pick(Coffee);
-        public static string AllCoffee() => Pick(AllCoffeeLines);
+
+        // The room's line cut to its first sentence (or the part before a colon), if that is short enough to read
+        // at a glance; otherwise a stock opener. "First day. The bed is over there..." opens with "First day."
+        public static string Opener(string id)
+        {
+            if (LevelLines.TryGetValue(id, out var line))
+            {
+                int end = line.IndexOfAny(new[] { '.', '!', '?' });
+                string sentence = end >= 0 ? line.Substring(0, end + 1) : line;
+                if (sentence.Length <= OpenerMaxLength) return sentence;
+                int colon = line.IndexOf(':');
+                if (colon > 0 && colon + 1 <= OpenerMaxLength) return line.Substring(0, colon) + ".";
+            }
+            int hash = 0;
+            foreach (char c in id ?? "") hash = hash * 31 + c;  // stable per room, unlike string.GetHashCode
+            return Openers[(hash & 0x7FFFFFFF) % Openers.Length];
+        }
+
         public static string Fail() => Pick(Failures);
-        public static string Waiting() => Pick(Idle);
         public static string Rested() => Pick(Completion);
         public static string HoleInOne() => Pick(Ace);
         public static string Reward() => Pick(RewardLines);

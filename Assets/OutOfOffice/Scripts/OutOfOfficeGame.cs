@@ -185,7 +185,7 @@ namespace OutOfOffice
             hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!"); };
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
-            hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); };
+            hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
             hud.Pause = PauseGame;
             hud.Resume = ResumeGame;
             hud.Restart = () => { sound.Play(Sfx.Restart, 0.7f); StartLevel(levelIndex); };
@@ -284,14 +284,14 @@ namespace OutOfOffice
 
         // ---------- Level flow ----------
 
-        float quipAt = -1f, readyTime;
-        bool idleQuipped;
+        float quipAt = -1f;
+        int openedLevel = int.MinValue;  // the room that has had its opener; restarts and replays don't repeat it
+        const float OpenerSeconds = 1f;
 
         void StartLevel(int index)
         {
             LoadLevel(index);
             quipAt = Time.unscaledTime + 1.6f;  // after the camera has shown the hole and come back to Puffy
-            idleQuipped = false;
             hud.HideAll();
             hud.HideTitle();
             Time.timeScale = 1f;
@@ -411,6 +411,7 @@ namespace OutOfOffice
                 if (pointer.press.wasPressedThisFrame && !hud.Blocks(screen))
                 {
                     state = State.Aiming;
+                    hud.HideSpeech();  // nothing sits over the board while aiming
                     mascot.Wake();
                     dragStart = ScreenToBoard(screen);
                     dragNow = dragStart;
@@ -784,8 +785,6 @@ namespace OutOfOffice
             }, levelFx);
             Vector3 sp = cam.WorldToScreenPoint(new Vector3(star.Position.x, star.Position.y, -0.6f));
             int collected = level.StarsCollected, total = level.Stars.Count;
-            if (collected == total && total > 0) hud.Say(Quips.AllCoffee(), 2.4f);
-            else if (collected == 1 && Random.value < 0.4f) hud.Say(Quips.GotCoffee(), 1.8f);  // now and then, not every cup
             hud.FlyStar(sp, () => hud.SetStars(collected, total, true));
         }
 
@@ -959,7 +958,7 @@ namespace OutOfOffice
             mascot.Express(Eyes.Wide, Mouth.O, 0.5f, 3f);
             hud.SetStars(level.StarsCollected, level.Stars.Count, false);
             hud.Banner(fell ? "OOPS!" : "OUCH!", new Color(1f, 0.85f, 0.8f), 0.3f);
-            hud.Say(Quips.Fail(), 2.6f);
+            hud.Say(Quips.Fail(), 1.4f);
             state = State.Ready;
         }
 
@@ -1017,21 +1016,19 @@ namespace OutOfOffice
             return false;
         }
 
-        // Puffy's one-liners: the level's line once it starts, and a nudge after a long wait.
+        // Puffy speaks at three moments only, so bubbles never sit over the board while the player plays (OUT-22):
+        // a short opener when a room is first started, a line on a failure, and one in bed.
         void UpdateQuips()
         {
             if (level == null || state == State.Title) return;
             if (quipAt > 0f && Time.unscaledTime > quipAt && state == State.Ready)
             {
                 quipAt = -1f;
-                if (levelIndex >= 0) hud.Say(Quips.ForLevel(Def.Id));
-            }
-            if (state == State.Ready) readyTime += Time.unscaledDeltaTime;
-            else readyTime = 0f;
-            if (!idleQuipped && readyTime > 11f)
-            {
-                idleQuipped = true;
-                hud.Say(Quips.Waiting());
+                if (levelIndex >= 0 && levelIndex != openedLevel && shots == 0)
+                {
+                    openedLevel = levelIndex;
+                    hud.Say(Quips.Opener(Def.Id), OpenerSeconds);
+                }
             }
             var head = level.Puck.Visual.position + new Vector3(0f, 0f, -Mascot.BodyHalfHeight * 2f - 0.25f);
             Vector3 sp = cam.WorldToScreenPoint(head);

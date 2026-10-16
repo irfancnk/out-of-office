@@ -67,6 +67,7 @@ namespace OutOfOffice.EditorTools
                 DailyClock();
                 SaveFlush();
                 ChapterChest();
+                Openers();
             }
             finally
             {
@@ -974,6 +975,19 @@ namespace OutOfOffice.EditorTools
             bool once = p.ChapterMastered(0) && p.ClaimChapterChest(0) && !p.ClaimChapterChest(0) && p.ChapterChestClaimed(0);
             bool others = !p.ChapterMastered(1) && !p.ChapterChestClaimed(1) && !p.ChapterMastered(-1) && !p.ChapterMastered(Themes.All.Length);
             Report("chapter-chest", early && once && others, $"locked until all stars {early}, claim once {once}, other chapters untouched {others}");
+        }
+
+        // 17. Every room's opener is short enough to read in the second it is shown (OUT-22).
+        static void Openers()
+        {
+            string longest = "";
+            foreach (var l in Levels.All)
+            {
+                string o = Quips.Opener(l.Id);
+                if (o.Length > longest.Length) longest = o;
+            }
+            bool ok = longest.Length > 0 && longest.Length <= Quips.OpenerMaxLength && Quips.Opener("no-such-room").Length <= Quips.OpenerMaxLength;
+            Report("openers", ok, $"{Levels.All.Length} rooms, longest opener \"{longest}\" ({longest.Length} chars, limit {Quips.OpenerMaxLength})");
         }
 
         static float Min(List<float> v) { float m = float.MaxValue; foreach (var x in v) m = Mathf.Min(m, x); return m; }
