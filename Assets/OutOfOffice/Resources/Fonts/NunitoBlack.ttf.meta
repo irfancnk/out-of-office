@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 262e60d0b1da24628a4c608b0332c830
+guid: 46741eee3ee234147b1e53ac796b73bb
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Sniglet
+  - Nunito ExtraLight
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

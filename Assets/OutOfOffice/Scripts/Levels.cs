@@ -14,7 +14,7 @@ namespace OutOfOffice
 
     // Floor areas that change how the puck moves. Only Magnet has a collider (its center post).
     // Conveyor: a moving belt that carries the puck along its direction.
-    // Wind: a fan blows along its direction. Vortex: a whirlpool swirls the puck around and pulls it inward.
+    // Wind: a fan blows along its direction. Vortex: a spinning platform turns the shot its way and flings the puck off its rim.
     // Spikes: floor spikes that pop up and sink on a timer; rolling over them while up sends the puck back.
     // Jump: a trampoline that bounces the puck into the air. OneWay: a gate it can pass only along its arrow.
     public enum ZoneKind { Boost, Mud, Ramp, Portal, Ice, Magnet, Gap, Switch, Conveyor, Wind, Vortex, Spikes, Jump, OneWay }
@@ -283,7 +283,7 @@ namespace OutOfOffice
         public LevelDef Ramp(float x, float y, float w, float length, float angle = 0f) => AddZone(ZoneKind.Ramp, x, y, w, length, angle);
         public LevelDef Wind(float x, float y, float w, float length, float angle = 0f) => AddZone(ZoneKind.Wind, x, y, w, length, angle);
 
-        // A whirlpool of the given reach. Clockwise or counter-clockwise swirl.
+        // A spinning platform of the given reach, turning counter-clockwise or clockwise.
         public LevelDef Vortex(float x, float y, float reach, bool clockwise = false)
         {
             AddZone(ZoneKind.Vortex, x, y, reach * 2f, reach * 2f, 0f);
@@ -545,7 +545,7 @@ namespace OutOfOffice
                 .SpikeBall(0f, 3.9f, 0.4f).Moving(2.4f, 0f, 2.8f)
                 .Star(-3.4f, 1.2f).Star(3.4f, 1.2f).Star(0f, -1.6f),
 
-            new LevelDef("fridge", "Not Your Yogurt", 0f, 6.6f).WithHint("DOWN THE GALLEY, ROUND THE SPILL").WithPar(2)
+            new LevelDef("fridge", "Not Your Yogurt", 0f, 6.6f).WithHint("DOWN THE GALLEY, ROUND THE SPINNER").WithPar(2)
                 .Wall(-3.25f, 0.2f, 2.5f, 9.4f)
                 .Wall(3.25f, 0.2f, 2.5f, 9.4f)
                 .Vortex(0f, 0.4f, 1.4f)
@@ -680,7 +680,7 @@ namespace OutOfOffice
                 .SpikeBall(1.7f, 5f, 0.4f)
                 .Star(0f, -1.2f).Star(-3f, 2.2f).Star(3.1f, 4.6f),  // the side strip, and one daringly close to a stapler
 
-            new LevelDef("whirlpool", "Spiralling Since Monday", 0f, 6.2f).WithHint("SPILLS SPIN YOU ROUND").WithPar(2)
+            new LevelDef("whirlpool", "Spiralling Since Monday", 0f, 6.2f).WithHint("THE PLATFORM SWINGS YOU ROUND").WithPar(2)
                 .Vortex(0f, 1f, 2.6f)
                 .Wall(-3.2f, 4.4f, 2.6f, 0.6f)
                 .Wall(3.2f, 4.4f, 2.6f, 0.6f)
@@ -707,7 +707,7 @@ namespace OutOfOffice
                 .Star(-4.6f, 2.4f).Star(4.6f, -0.6f).Star(0f, -2.6f),
 
             // ---------- Chapter 5, HR & Admin (levels 38-45): spill leaps, beanbags, filing boxes, paperwork ----------
-            new LevelDef("lagoon", "Not My Spill", 0f, 6.2f).WithHint("BOUNCE OVER THE SPILL").WithPar(2)
+            new LevelDef("lagoon", "Not My Spill", 0f, 6.2f).WithHint("BOUNCE OVER THE SPINNER").WithPar(2)
                 .Vortex(0f, 2f, 2.4f)
                 .Jump(0f, -2.6f, 0.8f)
                 .SpikeBall(-3.5f, 2f, 0.4f)
@@ -750,7 +750,7 @@ namespace OutOfOffice
                 .Sticky(-3.3f, -3.4f, 1.2f, 1.2f).Rounded(0.6f).Sticky(3.3f, -3.4f, 1.2f, 1.2f).Rounded(0.6f)  // OUT-25: more beanbags, of course
                 .Star(0f, -0.5f).Star(-3f, 3f).Star(-1.2f, 4.3f),
 
-            new LevelDef("tidepool", "Twice the Mess, No Raise", -3f, 6.8f).WithHint("TWO SPILLS, TWO SPINS").WithPar(2)
+            new LevelDef("tidepool", "Twice the Mess, No Raise", -3f, 6.8f).WithHint("TWO PLATFORMS, TWO SPINS").WithPar(2)
                 .StartAt(2.6f, -6.5f)
                 .Vortex(-2f, -1f, 2f, true)
                 .Vortex(2f, 2.4f, 2f)
@@ -1041,7 +1041,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, -3.2f, 3.8f, 0.5f)
                 .Post(BlockKind.Bouncer, 3.2f, 3.8f, 0.5f)
                 .Star(-2.6f, 0f).Star(2.6f, 0f).Star(1.4f, 4.6f));
-            Remix("whirlpool", "hottub", "The CEO's Hot Tub", "THE TUB SPINS YOU ROUND");
+            Remix("whirlpool", "hottub", "The CEO's Hot Tub", "IT SPINS YOU ROUND, THEN OUT");
             Remix("lagoon", "puddle", "Rain Delay", "BOUNCE OVER THE PUDDLE");
 
             // ---------- Chapter 10, The Corner Office (levels 89-100): the boss's chair, glass awards, the last nap ----------
@@ -1052,8 +1052,8 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, -3.4f, 4.6f, 0.45f)
                 .Star(-3.6f, -1.6f).Star(3.6f, 1f).Star(-1.8f, 4.8f));
             Remix("turnstile", "privatelift", "The Private Elevator", "SPIN, THEN SLIP THROUGH");
-            Remix("tidepool", "fountain", "The Indoor Fountain", "TWO POOLS, TWO SPINS");
-            all.Add(new LevelDef("bonuspool", "The Bonus Pool", 0f, 6.4f).WithHint("THE VORTEX KEEPS IT").WithPar(2)
+            Remix("tidepool", "fountain", "The Indoor Fountain", "RIDE ONE, THEN THE OTHER");
+            all.Add(new LevelDef("bonuspool", "The Bonus Pool", 0f, 6.4f).WithHint("LET IT FLING YOU").WithPar(2)
                 .Vortex(0f, 0.6f, 1.8f)
                 .Wall(0f, 4f, 2.6f, 0.6f)
                 .Post(BlockKind.Bouncer, -3f, 3.4f, 0.5f)

@@ -88,18 +88,23 @@ namespace OutOfOffice
         public const float RampHeight = 0.45f;
         public const float RampGravity = 9f;        // pulls the puck back down the slope
         public const float RampTakeoff = 0.85f;     // fraction of the ramp length where the puck leaves the ground
-        public const float MagnetStrength = 26f;    // peak pull (units/s^2)
-        public const float MagnetMaxAccel = 30f;    // hard cap, so the pull stays smooth near the magnet
-        public const float MagnetCore = 0.9f;       // inside this radius the pull fades, so there is no spike at the center
+        // The coffee machine pulls across its whole ring, always well above floor friction, and hardest at the machine
+        // (OUT-49): a slow roll anywhere in the ring is drawn in, and passing shots slingshot round it.
+        public const float MagnetStrength = 18f;    // pull at the machine (units/s^2)
+        public const float MagnetEdge = 0.4f;       // share of that pull left at the edge of the ring
         public const int MaxTeleportsPerShot = 6;
         public const float ConveyorSpeed = 4.5f;    // belt surface speed
         public const float ConveyorGrip = 3f;       // how fast the belt brings the puck to its speed (1/s)
 
         // ---------- Breakable blocks ----------
         public const float WindAccel = 15f;         // fan push along its direction (units/s^2)
-        public const float VortexSwirl = 24f;       // whirlpool spin at its center (units/s^2), fading to its edge
-        public const float VortexPull = 7f;         // whirlpool pull toward its center
-        public const float VortexEye = 0.7f;        // calm center: inside this radius the swirl fades out, so the puck settles
+        // The spinning platform (ZoneKind.Vortex, OUT-49) turns a shot's heading the way it spins, carries the puck
+        // round and flings it off the rim: nothing ever parks on it.
+        public const float SpinTurn = 2.2f;         // how fast it turns the puck's heading at the hub (rad/s)
+        public const float SpinTurnRim = 0.4f;      // share of that turn left at the rim
+        public const float SpinCarry = 6f;          // push along the spin (units/s^2)
+        public const float SpinFling = 7f;          // push outward, off the rim
+        public const float SpinRate = 2.2f;         // how fast the platform itself turns (rad/s), for the look
         public const float KickSpeed = 14f;         // a kicker fires the puck away at least this fast
         public const float JumpMinSpeed = 7f;       // a trampoline launches at least this fast
         public const float SpikeDuty = 0.5f;        // share of each period that pop-up spikes stay up
@@ -178,6 +183,8 @@ namespace OutOfOffice
         public static readonly Color OneWay = Hex(0x43D17A);
         public static readonly Color Wind = Hex(0x8FD8FF);
         public static readonly Color Water = Hex(0x8A5A3B);       // spilled coffee
+        public static readonly Color Spin = Hex(0x1FB2C2);        // spinning platform stripes
+        public static readonly Color SpinLight = Hex(0xFFF4DE);   // ...and the deck between them
         public static readonly Color Gap = Hex(0x2B1A10);
         public static readonly Color[] GateColors = { Hex(0x35C2F2), Hex(0xFF9F1C), Hex(0xFF5E9A) };
         public static readonly Color Magnet = Hex(0xC07A45);      // the coffee machine's pull

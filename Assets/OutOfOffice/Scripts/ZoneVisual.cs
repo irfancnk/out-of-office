@@ -112,13 +112,26 @@ namespace OutOfOffice
                     }
                     break;
                 case ZoneKind.Magnet:
-                    if (Sparkles.Count > 0)
+                {
+                    if (Sparkles.Count == 0 || Zone == null) break;
+                    float reach = Zone.Def.Size.x * 0.5f;
+                    // A ring shrinks inward on a beat, and aroma wisps drift in from the edge, faster as they near the machine.
+                    float k = Mathf.Repeat(t * 0.7f, 1f);
+                    Sparkles[0].transform.localScale = Vector3.one * (Zone.Def.Size.x * (1f - 0.6f * k * k));
+                    Sparkles[0].color = new Color(1f, 0.8f, 0.55f, 0.55f * Mathf.Sin(k * Mathf.PI) + 0.25f * pulse);
+                    int n = Sparkles.Count - 1;
+                    for (int i = 0; i < n; i++)
                     {
-                        float k = Mathf.Repeat(t * 0.6f, 1f);
-                        Sparkles[0].transform.localScale = Vector3.one * (Zone.Def.Size.x * (1f - 0.35f * k));
-                        Sparkles[0].color = new Color(1f, 0.45f, 0.45f, 0.4f * Mathf.Sin(k * Mathf.PI) + 0.25f * pulse);
+                        float p = Mathf.Repeat(t * 0.55f + i * 0.618f, 1f);
+                        float rad = Mathf.Lerp(reach * 0.98f, 0.5f, p * p);
+                        float a = i * 2.39996f + p * 0.6f;
+                        var sr = Sparkles[i + 1];
+                        sr.transform.localPosition = new Vector3(Mathf.Cos(a) * rad, Mathf.Sin(a) * rad, -0.01f);
+                        sr.transform.localScale = Vector3.one * (0.14f + 0.12f * (1f - p));
+                        sr.color = new Color(1f, 0.9f, 0.75f, 0.85f * Mathf.Sin(p * Mathf.PI));
                     }
                     break;
+                }
                 case ZoneKind.Wind:
                     // Gusts stream along the push, each at its own pace, fading in and out.
                     for (int i = 0; i < Sparkles.Count; i++)
@@ -134,18 +147,10 @@ namespace OutOfOffice
                     break;
                 case ZoneKind.Vortex:
                 {
+                    // The deck turns at the platform's real rate; the rim glows when the employee lands on it.
                     float turn = Zone != null ? Zone.Def.Turn : 1f;
-                    if (Spinner != null) Spinner.localRotation = Quaternion.Euler(0f, 0f, t * 110f * turn);
-                    float r = Zone != null ? Zone.Def.Size.x * 0.5f : 1f;
-                    // Bubbles spiral inward and pop at the center.
-                    for (int i = 0; i < Sparkles.Count; i++)
-                    {
-                        float k = Mathf.Repeat(t * 0.35f + i / (float)Sparkles.Count, 1f);
-                        float a = (i * 2.4f + t * (1.5f + 2.5f * k)) * turn;
-                        float rad = r * 0.9f * (1f - k);
-                        Sparkles[i].transform.localPosition = new Vector3(Mathf.Cos(a) * rad, Mathf.Sin(a) * rad, -0.01f);
-                        Sparkles[i].color = new Color(1f, 1f, 1f, 0.75f * Mathf.Sin(k * Mathf.PI));
-                    }
+                    if (Spinner != null) Spinner.localRotation = Quaternion.Euler(0f, 0f, t * Rules.SpinRate * Mathf.Rad2Deg * turn);
+                    if (Sparkles.Count > 0) Sparkles[0].color = new Color(partColor.r, partColor.g, partColor.b, 0.12f + 0.08f * Mathf.Sin(t * 4f) + 0.7f * pulse);
                     break;
                 }
                 case ZoneKind.Spikes:

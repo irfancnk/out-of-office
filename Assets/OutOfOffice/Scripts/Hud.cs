@@ -32,9 +32,11 @@ namespace OutOfOffice
         static readonly Color Inset = Themes.Hex(0xF3E6D6);
         static readonly Color Shade = new Color(0.12f, 0.07f, 0.22f, 0.45f);  // translucent HUD capsules
 
-        // One display face for the title logo, a chunky rounded face for labels and buttons, and a semibold face for sentences.
-        TMP_FontAsset font, bodyFont, displayFont;
-        Material boldPreset, bodyBold, displayBold;
+        // The type system (OUT-50): Titan One for the logo, titles, labels, buttons and numbers; Nunito ExtraBold for
+        // sentences; Nunito Black for small captions, which need the extra weight to read at phone size.
+        TMP_FontAsset font, bodyFont, displayFont, captionFont;
+        Material boldPreset, bodyBold, captionBold;
+        static readonly Color HeroBottom = Themes.Hex(0xFFF0C8);  // white labels fade to a warm cream at their foot
 
         // The game's working title, as the logo's two lines.
         public static readonly string[] LogoWords = { "OUT OF", "OFFICE" };
@@ -107,20 +109,21 @@ namespace OutOfOffice
 
         void Build()
         {
-            displayFont = Resources.Load<TMP_FontAsset>("Fonts/LuckiestGuy SDF");
-            displayBold = Resources.Load<Material>("Fonts/LuckiestGuy Bold");
-            font = Resources.Load<TMP_FontAsset>("Fonts/LilitaOne SDF");
-            boldPreset = Resources.Load<Material>("Fonts/LilitaOne Bold");
-            bodyFont = Resources.Load<TMP_FontAsset>("Fonts/PoppinsSemi SDF");
-            bodyBold = Resources.Load<Material>("Fonts/PoppinsSemi Bold");
-            if (displayFont == null) { displayFont = font; displayBold = boldPreset; }
-            if (font == null) { font = Resources.Load<TMP_FontAsset>("Fonts/PoppinsBold SDF"); boldPreset = Resources.Load<Material>("Fonts/PoppinsBold Bold"); }
+            font = Resources.Load<TMP_FontAsset>("Fonts/TitanOne SDF");
+            boldPreset = Resources.Load<Material>("Fonts/TitanOne Bold");
+            bodyFont = Resources.Load<TMP_FontAsset>("Fonts/NunitoExtraBold SDF");
+            bodyBold = Resources.Load<Material>("Fonts/NunitoExtraBold Bold");
+            captionFont = Resources.Load<TMP_FontAsset>("Fonts/NunitoBlack SDF");
+            captionBold = Resources.Load<Material>("Fonts/NunitoBlack Bold");
+            if (font == null) { font = Resources.Load<TMP_FontAsset>("Fonts/LilitaOne SDF"); boldPreset = Resources.Load<Material>("Fonts/LilitaOne Bold"); }
             if (bodyFont == null) { bodyFont = font; bodyBold = boldPreset; }
+            if (captionFont == null) { captionFont = bodyFont; captionBold = bodyBold; }
+            displayFont = font;
             // Fill the atlases up front, so no glyph is rasterized during play.
-            const string glyphs = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,:;'-+/·&()%’";
+            const string glyphs = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?.,:;'-+/·&()%’$×";
             font.TryAddCharacters(glyphs, out _);
             bodyFont.TryAddCharacters(glyphs, out _);
-            displayFont.TryAddCharacters(glyphs, out _);
+            captionFont.TryAddCharacters(glyphs, out _);
 
             canvas = GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -297,8 +300,8 @@ namespace OutOfOffice
         {
             failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 1080f), true);
             var c = failCard.Root;
-            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(760f, 140f)),
-                "", 44f, Ink, Ink, 0f, false);
+            failLine = Body(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(760f, 140f)),
+                "", 40f, Ink, Ink);
             failLine.textWrappingMode = TextWrappingModes.Normal;
             continueAd = OfferButton(c, "+3 SHOTS", Palette.UiBlue, Vector2.zero, new Vector2(720f, 150f), 60f);
             continueAd.Press.Clicked = () => ContinueWithAd?.Invoke();
@@ -341,7 +344,7 @@ namespace OutOfOffice
         {
             undoCard = MakeCard("Undo Offer", "NO FREE UNDOS", new Vector2(860f, 1000f), true);
             var c = undoCard.Root;
-            undoLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 290f), new Vector2(760f, 150f)), "", 42f, Ink, Ink, 0f, false);
+            undoLine = Body(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 290f), new Vector2(760f, 150f)), "", 40f, Ink, Ink);
             undoLine.textWrappingMode = TextWrappingModes.Normal;
             undoAd = OfferButton(c, "UNDO", Palette.UiBlue, Vector2.zero, new Vector2(720f, 150f), 60f);
             undoAd.Press.Clicked = () => UndoWithAd?.Invoke();
@@ -1044,7 +1047,7 @@ namespace OutOfOffice
         {
             var press = FramedIcon(parent, label, new Vector2(0.5f, 0f), new Vector2(x, y + 24f), 118f, color, icon);
             Txt(Rect("Caption", press.transform as RectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, -34f), new Vector2(210f, 44f)),
-                label, 30f, Color.white, FrameDark, 0.35f, true);
+                label, 32f, Color.white, FrameDark, 0.35f, true);
             return press;
         }
 
@@ -1841,15 +1844,15 @@ namespace OutOfOffice
             if (staff && !string.IsNullOrEmpty(item.Title))
             {
                 t.Sub = Body(Rect("Title", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(tileW - 10f, 30f)), item.Title, 18f, Ink, Ink);
-                t.Sub.fontSize = Mathf.Clamp((tileW - 26f) / (0.68f * item.Title.Length), 12f, 19f);
+                t.Sub.fontSize = Mathf.Clamp((tileW - 44f) / (0.74f * item.Title.Length), 12f, 18f);
             }
             float captionY = staff ? 62f : 46f;
             string caption = owned ? item.Name : item.ForGems ? item.GemCost.ToString() : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
             t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, captionY), new Vector2(tileW - 10f, 50f)),
                 caption, 30f, Ink, Ink);
             // Long names shrink to fit the tile (OUT-29), by their length: TMP's auto-size runs several layouts per label,
-            // which made opening a tab freeze on a budget phone (OUT-36). Caps in this face run about 0.6 em wide.
-            t.Label.fontSize = Mathf.Clamp((tileW - 22f) / (0.62f * Mathf.Max(1, caption.Length)), 15f, 30f);
+            // which made opening a tab freeze on a budget phone (OUT-36). Caps in this face run about 0.65 em wide.
+            t.Label.fontSize = Mathf.Clamp((tileW - 22f) / (0.66f * Mathf.Max(1, caption.Length)), 15f, 30f);
 
             var check = Rect("Check", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -16f), new Vector2(58f, 58f));
             Img(check, UiArt.RoundButton, Palette.UiGreen);
@@ -2142,6 +2145,7 @@ namespace OutOfOffice
                 card.Ribbon = Img(head, UiArt.Ribbon, theme.Accent);
                 card.Ribbon.type = Image.Type.Sliced;
                 card.Title = Txt(Rect("Title", head, Vector2.zero, Vector2.one, new Vector2(0f, 30f), new Vector2(-200f, -40f)), titleText, 76f, Color.white, Ink, 0.45f, true);
+                FitWidth(card.Title, 44f);
             }
             r.gameObject.SetActive(false);
             return card;
@@ -2353,8 +2357,8 @@ namespace OutOfOffice
             Sliced(img, size.y, 0.36f);
             img.raycastTarget = true;
             Color dark = Color.Lerp(color, Ink, 0.55f);
-            var label = Rect("Label", r, Vector2.zero, Vector2.one, new Vector2(icon != null ? -36f : 0f, 8f), Vector2.zero);
-            Txt(label, text, fontSize, Color.white, dark, 0.45f, true);
+            var label = Rect("Label", r, Vector2.zero, Vector2.one, new Vector2(icon != null ? -36f : 0f, 8f), new Vector2(icon != null ? -size.y * 0.9f : -40f, 0f));
+            FitWidth(Txt(label, text, fontSize, Color.white, dark, 0.45f, true), fontSize * 0.6f);
             if (icon != null)
             {
                 float s = size.y * 0.36f;
@@ -2374,8 +2378,10 @@ namespace OutOfOffice
             r.anchorMax = Vector2.one;
             r.offsetMin = r.offsetMax = Vector2.zero;
             var t = go.AddComponent<TextMeshProUGUI>();
-            t.font = font;
-            t.fontSharedMaterial = TextMat(outline, width, underlay);
+            // Small labels (HUD pills, chips, timers) use the caption face: the heavy label face clogs up at that size.
+            bool small = size <= 30f;
+            t.font = small ? captionFont : font;
+            t.fontSharedMaterial = TextMat(outline, width, underlay, t.font);
             t.text = text;
             t.fontSize = size;
             t.color = face;
@@ -2383,17 +2389,35 @@ namespace OutOfOffice
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
             t.raycastTarget = false;
-            t.characterSpacing = 2f;
+            t.characterSpacing = small ? 1.5f : 0.5f;
+            // Outlined white labels (titles, buttons, counters) fade from white to a warm cream at their foot.
+            if (!small && face == Color.white && width >= 0.25f)
+            {
+                t.enableVertexGradient = true;
+                t.colorGradient = new VertexGradient(Color.white, Color.white, HeroBottom, HeroBottom);
+            }
             return t;
         }
 
-        // Sentence text in the rounded body face.
+        // A one-line label that may outgrow its box (card titles, buttons) shrinks to fit it instead. Only for these few:
+        // TMP's auto-size runs several layouts per change, too slow for tile grids (OUT-36).
+        static void FitWidth(TextMeshProUGUI t, float min)
+        {
+            t.enableAutoSizing = true;
+            t.fontSizeMax = t.fontSize;
+            t.fontSizeMin = min;
+        }
+
+        // Sentence text in the rounded body face; small captions in its heavier cut, tracked out a touch.
         TextMeshProUGUI Body(RectTransform parent, string text, float size, Color face, Color outline, float width = 0f, bool underlay = false)
         {
             var t = Txt(parent, text, size, face, outline, width, underlay);
-            t.font = bodyFont;
-            t.fontSharedMaterial = TextMat(outline, width, underlay, bodyFont);
-            t.characterSpacing = 0f;
+            bool caption = size <= 24f;
+            t.font = caption ? captionFont : bodyFont;
+            t.fontSharedMaterial = TextMat(outline, width, underlay, t.font);
+            t.characterSpacing = caption ? 1f : 0f;
+            t.lineSpacing = caption ? 0f : 4f;
+            t.enableVertexGradient = false;
             return t;
         }
 
@@ -2405,16 +2429,17 @@ namespace OutOfOffice
             face ??= font;
             var key = (outline, width, underlay, face);
             if (fontMaterials.TryGetValue(key, out var m) && m != null) return m;
-            var preset = face == bodyFont ? bodyBold : face == displayFont ? displayBold : boldPreset;
-            // Sentences get minimal outlines; the chunky UI face keeps most of its outline, like a casual game's labels.
-            if (face == bodyFont) width *= 0.5f;
-            else if (face != displayFont) width *= 0.8f;
+            bool sentence = face == bodyFont || face == captionFont;
+            var preset = face == bodyFont ? bodyBold : face == captionFont ? captionBold : boldPreset;
+            // Sentences get minimal outlines; the heavy label face keeps most of its outline, like a casual game's labels.
+            width *= sentence ? 0.5f : 0.72f;
             m = new Material(underlay && preset != null ? preset : face.material) { name = "Text " + fontMaterials.Count };
             m.SetTexture(ShaderUtilities.ID_MainTex, face.atlasTexture);
             m.SetFloat(ShaderUtilities.ID_OutlineWidth, width);
             m.SetColor(ShaderUtilities.ID_OutlineColor, outline);
             // Outline, dilation, and the drop shadow must all fit inside the atlas padding (about 0.8 of the SDF
-            // spread here); beyond that a glyph's quad samples its neighbors in the atlas and letters smear.
+            // spread here); beyond that a glyph's quad samples its neighbors in the atlas and letters smear. The label
+            // face has wider padding, so its hard drop shadow can sit a little deeper.
             float dilate = width > 0f ? 0.05f : 0f;
             m.SetFloat(ShaderUtilities.ID_FaceDilate, dilate);
             if (underlay)
@@ -2422,7 +2447,7 @@ namespace OutOfOffice
                 m.EnableKeyword(ShaderUtilities.Keyword_Underlay);
                 m.SetColor(ShaderUtilities.ID_UnderlayColor, outline);
                 m.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0f);
-                m.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -Mathf.Clamp(0.8f - width - dilate, 0.15f, 0.35f));
+                m.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -Mathf.Clamp(0.8f - width - dilate, 0.15f, sentence ? 0.35f : 0.42f));
                 m.SetFloat(ShaderUtilities.ID_UnderlayDilate, width);
                 m.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0f);
             }

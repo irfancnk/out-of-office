@@ -534,14 +534,7 @@ namespace OutOfOffice
                 }
                 if (zone.Kind == ZoneKind.Vortex)
                 {
-                    Vector2 d = zone.Def.Center - pos;
-                    float dist = d.magnitude, reach = zone.Def.Size.x * 0.5f;
-                    if (dist >= reach || dist < 1e-3f) continue;
-                    // Swirl around the center and drift inward; both fade toward the edge.
-                    float k = 1f - dist / reach;
-                    float eye = Mathf.Clamp01(dist / Rules.VortexEye);   // calm eye: no endless orbit around the center
-                    Vector2 inward = d / dist, around = new Vector2(-inward.y, inward.x) * -zone.Def.Turn;
-                    v += (around * (Rules.VortexSwirl * k * eye) + inward * (Rules.VortexPull * k * eye)) * dt;
+                    if (!SpinPlatform(zone, pos, ref v, dt)) continue;
                     nowSwirl = true;
                     if (!inSwirl) info.Swirled = zone;
                     continue;
@@ -670,9 +663,25 @@ namespace OutOfOffice
             float dist = d.magnitude, reach = zone.Def.Size.x * 0.5f;
             if (dist >= reach || dist < 1e-3f) return Vector2.zero;
             float k = 1f - dist / reach;
-            float a = Mathf.Min(Rules.MagnetStrength * k * k * Mathf.Clamp01(dist / Rules.MagnetCore), Rules.MagnetMaxAccel);
-            info.MagnetPull = Mathf.Max(info.MagnetPull, a / Rules.MagnetMaxAccel);
+            float a = Rules.MagnetStrength * Mathf.Lerp(Rules.MagnetEdge, 1f, k);
+            info.MagnetPull = Mathf.Max(info.MagnetPull, a / Rules.MagnetStrength);
             return d / dist * (a * dt);
+        }
+
+        // The spinning platform (OUT-49): the puck's heading turns the way it spins (hardest at the hub), and it is
+        // pushed round and outward, so a fast shot curves and a slow one is whirled off the rim. False when off it.
+        static bool SpinPlatform(ZoneInstance zone, Vector2 pos, ref Vector2 v, float dt)
+        {
+            Vector2 r = pos - zone.Def.Center;
+            float dist = r.magnitude, reach = zone.Def.Size.x * 0.5f;
+            if (dist >= reach) return false;
+            Vector2 outward = dist > 1e-3f ? r / dist : Vector2.right;
+            Vector2 round = new Vector2(-outward.y, outward.x) * zone.Def.Turn;
+            float turn = Rules.SpinTurn * Mathf.Lerp(1f, Rules.SpinTurnRim, dist / reach) * zone.Def.Turn * dt;
+            float c = Mathf.Cos(turn), s = Mathf.Sin(turn);
+            v = new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
+            v += (round * Rules.SpinCarry + outward * Rules.SpinFling) * dt;
+            return true;
         }
 
         void TakeOff(float speed)

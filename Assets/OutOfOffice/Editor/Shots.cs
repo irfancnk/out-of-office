@@ -184,7 +184,7 @@ namespace OutOfOffice.EditorTools
             var oldMode = RenderSettings.ambientMode;
             try
             {
-                foreach (var id in new[] { "first", "easy", "kicker", "rubber", "pinball", "door", "ring", "figure8", "hairpin", "crossroads" })
+                foreach (var id in new[] { "first", "easy", "kicker", "rubber", "pinball", "door", "ring", "figure8", "hairpin", "crossroads", "whirlpool", "magnet" })  // the last two: the spin platform and the coffee machine (OUT-49)
                     LevelShot(id, dir, false);
                 foreach (var id in new[] { "ring", "figure8", "hairpin", "crossroads", "easy", "boardroom" })  // the last two: the receptionist in her corner
                     LevelShot(id, dir, true);

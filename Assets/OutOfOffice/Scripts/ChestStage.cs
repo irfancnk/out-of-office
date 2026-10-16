@@ -314,8 +314,8 @@ namespace OutOfOffice
 
         void BuildUi(Color rarity)
         {
-            font = Resources.Load<TMP_FontAsset>("Fonts/PoppinsBold SDF");
-            var preset = Resources.Load<Material>("Fonts/PoppinsBold Bold");
+            font = Resources.Load<TMP_FontAsset>("Fonts/TitanOne SDF");
+            var preset = Resources.Load<Material>("Fonts/TitanOne Bold");
             textMat = preset != null ? new Material(preset) : null;
             if (textMat != null)
             {
@@ -387,6 +387,17 @@ namespace OutOfOffice
             t.alignment = TextAlignmentOptions.Center;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.raycastTarget = false;
+            t.characterSpacing = 0.5f;
+            // Long item names shrink to fit; white words fade to warm cream at their foot, like the HUD's (OUT-50).
+            t.enableAutoSizing = true;
+            t.fontSizeMax = size;
+            t.fontSizeMin = size * 0.6f;
+            if (color == Color.white)
+            {
+                t.enableVertexGradient = true;
+                var cream = Themes.Hex(0xFFF0C8);
+                t.colorGradient = new VertexGradient(Color.white, Color.white, cream, cream);
+            }
             return t;
         }
 

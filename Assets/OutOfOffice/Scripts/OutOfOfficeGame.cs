@@ -821,6 +821,7 @@ namespace OutOfOffice
             }
             if (info.Swirled != null)
             {
+                info.Swirled.Visual?.Pulse();
                 sound.Play(Sfx.MudEnter, 0.45f, 1.4f, 0.6f);
                 Fx.Ring(pos, new Color(0.8f, 0.95f, 1f, 0.8f), 0.4f, 1.8f, 0.35f);
                 mascot.OnDizzyShort();

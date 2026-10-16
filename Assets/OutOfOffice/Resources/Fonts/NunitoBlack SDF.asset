@@ -1,13 +1,59 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!21 &-8335874004071459339
+--- !u!28 &-8042384307660074374
+Texture2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: NunitoBlack Atlas
+  m_ImageContentsHash:
+    serializedVersion: 2
+    Hash: 00000000000000000000000000000000
+  m_IsAlphaChannelOptional: 0
+  serializedVersion: 4
+  m_Width: 1
+  m_Height: 1
+  m_CompleteImageSize: 1
+  m_MipsStripped: 0
+  m_TextureFormat: 1
+  m_MipCount: 1
+  m_IsReadable: 1
+  m_IsPreProcessed: 0
+  m_IgnoreMipmapLimit: 1
+  m_MipmapLimitGroupName: 
+  m_StreamingMipmaps: 0
+  m_StreamingMipmapsPriority: 0
+  m_VTOnly: 0
+  m_AlphaIsTransparency: 0
+  m_ImageCount: 1
+  m_TextureDimension: 2
+  m_TextureSettings:
+    serializedVersion: 2
+    m_FilterMode: 1
+    m_Aniso: 1
+    m_MipBias: 0
+    m_WrapU: 0
+    m_WrapV: 0
+    m_WrapW: 0
+  m_LightmapFormat: 0
+  m_ColorSpace: 1
+  m_PlatformBlob: 
+  image data: 1
+  _typelessdata: cd
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path: 
+--- !u!21 &-6023814908697554481
 Material:
   serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: PoppinsSemi Material
+  m_Name: NunitoBlack Material
   m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -24,7 +70,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: -4028212476719784444}
+        m_Texture: {fileID: -8042384307660074374}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
@@ -67,52 +113,6 @@ Material:
     - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!28 &-4028212476719784444
-Texture2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: PoppinsSemi Atlas
-  m_ImageContentsHash:
-    serializedVersion: 2
-    Hash: 00000000000000000000000000000000
-  m_IsAlphaChannelOptional: 0
-  serializedVersion: 4
-  m_Width: 1
-  m_Height: 1
-  m_CompleteImageSize: 1
-  m_MipsStripped: 0
-  m_TextureFormat: 1
-  m_MipCount: 1
-  m_IsReadable: 1
-  m_IsPreProcessed: 0
-  m_IgnoreMipmapLimit: 1
-  m_MipmapLimitGroupName: 
-  m_StreamingMipmaps: 0
-  m_StreamingMipmapsPriority: 0
-  m_VTOnly: 0
-  m_AlphaIsTransparency: 0
-  m_ImageCount: 1
-  m_TextureDimension: 2
-  m_TextureSettings:
-    serializedVersion: 2
-    m_FilterMode: 1
-    m_Aniso: 1
-    m_MipBias: 0
-    m_WrapU: 0
-    m_WrapV: 0
-    m_WrapW: 0
-  m_LightmapFormat: 0
-  m_ColorSpace: 1
-  m_PlatformBlob: 
-  image data: 1
-  _typelessdata: 00
-  m_StreamData:
-    serializedVersion: 2
-    offset: 0
-    size: 0
-    path: 
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -123,33 +123,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 71c1514a6bd24e1e882cebbe1904ce04, type: 3}
-  m_Name: PoppinsSemi SDF
+  m_Name: NunitoBlack SDF
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TMP_FontAsset
   m_Version: 1.1.0
   m_FaceInfo:
     m_FaceIndex: 0
-    m_FamilyName: Poppins
-    m_StyleName: SemiBold
+    m_FamilyName: Nunito ExtraLight
+    m_StyleName: Black
     m_PointSize: 64
     m_Scale: 1
     m_UnitsPerEM: 1000
-    m_LineHeight: 96
-    m_AscentLine: 67.2
-    m_CapLine: 45
-    m_MeanLine: 36
+    m_LineHeight: 87.296
+    m_AscentLine: 64.704
+    m_CapLine: 46
+    m_MeanLine: 33
     m_Baseline: 0
-    m_DescentLine: -22.4
-    m_SuperscriptOffset: 67.2
+    m_DescentLine: -22.592
+    m_SuperscriptOffset: 64.704
     m_SuperscriptSize: 0.5
-    m_SubscriptOffset: -22.4
+    m_SubscriptOffset: -22.592
     m_SubscriptSize: 0.5
-    m_UnderlineOffset: -6.4
-    m_UnderlineThickness: 3.2
-    m_StrikethroughOffset: 14.4
-    m_StrikethroughThickness: 3.2
-    m_TabWidth: 15
-  m_Material: {fileID: -8335874004071459339}
-  m_SourceFontFileGUID: c2ae2106886eb4fb38da93516e816c73
+    m_UnderlineOffset: -6.016
+    m_UnderlineThickness: 1.792
+    m_StrikethroughOffset: 13.2
+    m_StrikethroughThickness: 1.792
+    m_TabWidth: 18
+  m_Material: {fileID: -6023814908697554481}
+  m_SourceFontFileGUID: 46741eee3ee234147b1e53ac796b73bb
   m_CreationSettings:
     sourceFontFileName: 
     sourceFontFileGUID: 
@@ -169,14 +169,14 @@ MonoBehaviour:
     fontStyleModifier: 0
     renderMode: 0
     includeFontFeatures: 0
-  m_SourceFontFile: {fileID: 12800000, guid: c2ae2106886eb4fb38da93516e816c73, type: 3}
+  m_SourceFontFile: {fileID: 12800000, guid: 46741eee3ee234147b1e53ac796b73bb, type: 3}
   m_SourceFontFilePath: 
   m_AtlasPopulationMode: 1
   InternalDynamicOS: 0
   m_GlyphTable: []
   m_CharacterTable: []
   m_AtlasTextures:
-  - {fileID: -4028212476719784444}
+  - {fileID: -8042384307660074374}
   m_AtlasTextureIndex: 0
   m_IsMultiAtlasTexturesEnabled: 1
   m_GetFontFeatures: 1

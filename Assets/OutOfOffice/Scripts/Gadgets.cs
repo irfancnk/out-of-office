@@ -55,9 +55,9 @@ namespace OutOfOffice
                 In = d => Zone(d, ZoneKind.Conveyor), Demo = () => Room("conveyor").Conveyor(0f, 0f, 1.6f, 4f, -90f) },
             new Gadget { Key = "wind", Name = "AIR VENT", Text = "Blows you along its stream. Curve your shots with it.",
                 In = d => Zone(d, ZoneKind.Wind), Demo = () => Room("wind").Wind(0f, 0f, 2f, 4f, 90f) },
-            new Gadget { Key = "vortex", Name = "WHIRLPOOL", Text = "Swirls you round and pulls you in. Shoot through it fast.",
-                In = d => Zone(d, ZoneKind.Vortex), Demo = () => Room("vortex").Vortex(0f, 0f, 1.6f) },
-            new Gadget { Key = "magnet", Name = "COFFEE MACHINE", Text = "Pulls you in when you roll close. Everyone does that.",
+            new Gadget { Key = "spin", Name = "SPIN PLATFORM", Text = "Bends your shot the way it spins, then flings you off the edge.",
+                In = d => Zone(d, ZoneKind.Vortex), Demo = () => Room("spin").Vortex(0f, 0f, 1.6f) },  // was the whirlpool; a new key, so everyone meets it again (OUT-49)
+            new Gadget { Key = "magnet", Name = "COFFEE MACHINE", Text = "Pulls you in from anywhere in its ring. Roll past close and it swings you round.",
                 In = d => Zone(d, ZoneKind.Magnet), Demo = () => Room("magnet").Magnet(0f, 0f, 2.2f) },
             new Gadget { Key = "portal", Name = "PORTAL DOORS", Text = "In one door, out the other, at the same speed.",
                 In = d => Zone(d, ZoneKind.Portal), Demo = () => Room("portal").Portal(-1.4f, -0.2f, 1.4f, 0.2f) },

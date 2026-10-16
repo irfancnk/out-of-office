@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: a116d973174a149bb91db876a565b858
+guid: c3878b03b55b7fc4395f04e07ea8ef3f
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Poppins
+  - Nunito ExtraLight
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

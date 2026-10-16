@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Sniglet Bold
+  m_Name: TitanOne Bold
   m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -25,7 +25,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: 6446119043589877177, guid: 5ec1bf4be9d314296898d576a0187f03, type: 2}
+        m_Texture: {fileID: 5414766732405849693, guid: b70fa2708abe523468a1403c3bf6f89c, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
@@ -33,7 +33,7 @@ Material:
     - _ColorMask: 15
     - _CullMode: 0
     - _FaceDilate: 0
-    - _GradientScale: 21
+    - _GradientScale: 25
     - _MaskSoftnessX: 0
     - _MaskSoftnessY: 0
     - _OutlineSoftness: 0

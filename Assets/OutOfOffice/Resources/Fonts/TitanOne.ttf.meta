@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 65a4ec29129744823bc19a7cf3f30a75
+guid: ebb256b2a02723a498714aaeb85ad625
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Luckiest Guy
+  - Titan One
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

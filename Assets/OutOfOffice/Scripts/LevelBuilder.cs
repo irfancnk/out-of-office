@@ -1080,28 +1080,50 @@ namespace OutOfOffice
                 }
                 case ZoneKind.Vortex:
                 {
-                    // A swirling coffee spill: glossy coffee in a ring of milky foam, with latte-art swirls turning the
-                    // way it pulls.
-                    vis.Init(z.Kind, Palette.Water);
-                    float r = w * 0.5f;
-                    Look.AddMesh("Water", Meshes.Ring(0f, r), Look.Soft(Palette.Water, 0.95f, null, 0.1f), go.transform, new Vector3(0f, 0f, -0.004f), false);
-                    MakeSprite("Deep", Textures.Glow, new Color(0.22f, 0.12f, 0.06f, 0.75f), go.transform, new Vector3(0f, 0f, -0.006f), Vector2.one * (r * 1.3f), 2);
-                    var foam = new List<Vector2>();
+                    // A spinning platform (OUT-49): a steel rim round a deck of bright wedges, a yellow hub and arrows,
+                    // turning at its real rate the way it throws you. Flush with the floor, so the employee rides on it.
+                    vis.Init(z.Kind, Palette.Spin);
+                    float r = w * 0.5f, deck = r - 0.09f;
+                    Look.AddShadow("Shadow", Meshes.SoftShadow(Geometry.Circle(Vector2.zero, r, 48), 0.25f, 0.3f), go.transform,
+                        new Vector3(0.04f, -0.06f, ShadowZ));
+                    var rim = new List<Vector2>();
                     for (int i = 0; i <= 12; i++)
                     {
                         float a = Mathf.PI * i / 12f;
-                        foam.Add(new Vector2(r + Mathf.Cos(a) * 0.09f, Mathf.Sin(a) * 0.07f));
+                        rim.Add(new Vector2(r - 0.06f + Mathf.Cos(a) * 0.06f, Mathf.Sin(a) * 0.05f));
                     }
-                    Look.AddMesh("Foam", Meshes.Lathe(foam, 64), Look.Lit(Themes.Hex(0xEEDCC2), 0.6f), go.transform, Vector3.zero, false);
-                    var spin = new GameObject("Swirl").transform;
+                    Look.AddMesh("Rim", Meshes.Lathe(rim, 64), Look.Lit(Themes.Hex(0xA9B2C3), 0.85f), go.transform, Vector3.zero, false);
+                    var spin = new GameObject("Deck").transform;
                     spin.SetParent(go.transform, false);
-                    spin.localPosition = new Vector3(0f, 0f, -0.008f);
-                    var sw = MakeSprite("Swirl", UiArt.Icon("swirl"), new Color(0.96f, 0.88f, 0.76f, 0.6f), spin, Vector3.zero, Vector2.one * (r * 1.9f / 1.92f), 3);
-                    sw.flipX = z.Turn < 0f;
-                    MakeSprite("Swirl Small", UiArt.Icon("swirl"), new Color(0.98f, 0.92f, 0.82f, 0.5f), spin, Vector3.zero, Vector2.one * (r * 1.0f / 1.92f), 3).flipX = z.Turn < 0f;
+                    spin.localPosition = new Vector3(0f, 0f, -0.005f);
+                    Look.AddMesh("Deck", Meshes.Ring(0f, deck), Look.Lit(Palette.SpinLight, 0.55f), spin, new Vector3(0f, 0f, -0.012f), false);
+                    var stripe = Look.Lit(Palette.Spin, 0.55f);
+                    const int wedges = 8;
+                    for (int i = 0; i < wedges; i += 2)
+                    {
+                        var wedge = new List<Vector2> { Vector2.zero };
+                        for (int j = 0; j <= 6; j++)
+                        {
+                            float a = (i + j / 6f) * Mathf.PI * 2f / wedges;
+                            wedge.Add(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * deck);
+                        }
+                        Look.AddMesh("Stripe", Meshes.Extrude(wedge, 0.022f), stripe, spin, Vector3.zero, false);
+                    }
+                    var hub = new List<Vector2> { new Vector2(0.27f, 0f), new Vector2(0.26f, 0.04f), new Vector2(0.19f, 0.09f), new Vector2(0f, 0.11f) };
+                    Look.AddMesh("Hub", Meshes.Lathe(hub, 24), Look.Toy(Themes.Hex(0xFFC83D)), spin, Vector3.zero, false);
+                    // Arrows round the deck point the way it turns.
+                    int arrows = r > 1.6f ? 6 : 4;
+                    float size = Mathf.Clamp(r * 0.32f, 0.36f, 0.62f);
+                    for (int i = 0; i < arrows; i++)
+                    {
+                        float a = (i + 0.5f) * 360f / arrows;
+                        var arrow = MakeSprite("Arrow", UiArt.Icon("chevron"), new Color(1f, 1f, 1f, 0.92f), spin,
+                            Quaternion.Euler(0f, 0f, a) * new Vector3(deck * 0.68f, 0f, -0.03f), Vector2.one * (size / 1.92f), 3);
+                        arrow.transform.localRotation = Quaternion.Euler(0f, 0f, a + (z.Turn < 0f ? 180f : 0f));
+                    }
                     vis.Spinner = spin;
-                    for (int i = 0; i < 8; i++)
-                        vis.Sparkles.Add(MakeSprite("Bubble", Textures.Glow, new Color(1f, 1f, 1f, 0.7f), go.transform, Vector3.zero, Vector2.one * 0.14f, 4));
+                    // A glow round the rim that flares when the employee lands on it.
+                    vis.Sparkles.Add(MakeSprite("Glow", Shapes.Ring, new Color(1f, 1f, 1f, 0f), go.transform, new Vector3(0f, 0f, -0.03f), Vector2.one * (r * 2.06f), 4));
                     break;
                 }
                 case ZoneKind.Spikes:
@@ -1135,17 +1157,23 @@ namespace OutOfOffice
                 {
                     vis.Init(z.Kind, Palette.Magnet);
                     float reach = w * 0.5f;
-                    // The post is solid; the pull region is drawn as a faint pulsing ring.
+                    // The post is solid. The pull region (OUT-49) is a ring with a warm glow, a pulse running inward, and
+                    // wisps of coffee aroma drifting in toward the machine from all round it.
                     var post = go.AddComponent<CircleCollider2D>();
                     post.radius = 0.45f;
                     post.sharedMaterial = woodMat;
                     go.AddComponent<BlockTag>().Init(BlockKind.Wall, null);
                     inst.BlockColliders.Add(post);
-                    var ring = MakeSprite("Reach", Shapes.Ring, new Color(0.75f, 0.48f, 0.27f, 0.4f), go.transform, new Vector3(0f, 0f, -0.006f),
+                    var ring = MakeSprite("Pulse", Shapes.Ring, new Color(1f, 0.8f, 0.55f, 0.4f), go.transform, new Vector3(0f, 0f, -0.006f),
                         Vector2.one * (reach * 2f), 1);
                     vis.Sparkles.Add(ring);
-                    MakeSprite("Field", Textures.Glow, new Color(0.8f, 0.5f, 0.28f, 0.18f), go.transform, new Vector3(0f, 0f, -0.005f),
+                    MakeSprite("Reach", Shapes.Ring, new Color(0.62f, 0.38f, 0.2f, 0.55f), go.transform, new Vector3(0f, 0f, -0.006f),
                         Vector2.one * (reach * 2f), 1);
+                    MakeSprite("Field", Textures.Glow, new Color(0.85f, 0.52f, 0.26f, 0.3f), go.transform, new Vector3(0f, 0f, -0.005f),
+                        Vector2.one * (reach * 2.1f), 1);
+                    int wisps = Mathf.RoundToInt(reach * 7f);
+                    for (int i = 0; i < wisps; i++)
+                        vis.Sparkles.Add(MakeSprite("Aroma", Textures.Glow, new Color(1f, 0.9f, 0.75f, 0f), go.transform, Vector3.zero, Vector2.one * 0.22f, 2));
                     Look.AddShadow("Shadow", Meshes.SoftShadow(Geometry.Circle(Vector2.zero, 0.45f, 32), 0.35f, 0.3f), go.transform,
                         new Vector3(0.06f, -0.08f, ShadowZ));
                     // The coffee machine: the real department head. A dark machine with a steaming cup at its spout.

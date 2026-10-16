@@ -54,6 +54,7 @@ namespace OutOfOffice.EditorTools
                 Crystal(root.transform);
                 Belt(root.transform);
                 NewParts(root.transform);
+                CoffeeMachine(root.transform);
                 Gadgets(root.transform);
                 MoversClear(root.transform);
                 JumpLanding(root.transform);
@@ -297,6 +298,9 @@ namespace OutOfOffice.EditorTools
                 .StartAt(-2.6f, -6f)
                 .Conveyor(0f, 1.4f, 2.2f, 9f, -90f)
                 .Wall(-1.6f, 3.6f, 5.8f, 0.5f);
+
+            public static readonly LevelDef Machine = new LevelDef("fx-machine", "Coffee machine fixture", 0f, 6.4f)
+                .Magnet(0f, 0f, 1.8f);
         }
 
         // A moving obstacle that hits a resting puck counts as a hard hit (relative speed), like the game wakes it.
@@ -361,9 +365,21 @@ namespace OutOfOffice.EditorTools
             var inst = LevelBuilder.Build(Fixtures.Parts, root.transform, false);
             var wind = Simulate(inst, new Vector2(-3f, -5.6f), Vector2.up * 0.5f, 40);
             float windSpeed = wind[wind.Count - 1].Vel.y;
-            var swirl = Simulate(inst, new Vector2(3.6f, -4f), new Vector2(0f, 0.05f), 30);
-            Vector2 sv = swirl[swirl.Count - 1].Vel, sp = swirl[swirl.Count - 1].Pos;
-            bool swirls = sv.y > 0.5f && (sp - new Vector2(2.5f, -4f)).magnitude < 1.1f + 0.05f;
+            // Spinning platform (OUT-49): a puck dropped on it is carried round the way it turns and flung off the rim to
+            // rest clear of it; a shot across it leaves bent the way it turns.
+            var hub = new Vector2(2.5f, -4f);
+            var swirl = Simulate(inst, new Vector2(3.6f, -4f), new Vector2(0f, 0.05f), 900);
+            Vector2 sv = swirl[Mathf.Min(29, swirl.Count - 1)].Vel, sp = swirl[swirl.Count - 1].Pos;
+            bool swirls = sv.y > 0.5f && (sp - hub).magnitude > 1.8f + 0.3f && swirl[swirl.Count - 1].Info.Result == ShotResult.Rest;
+            var across = Simulate(inst, new Vector2(3.3f, -6.4f), Vector2.up * 12f, 120);
+            float bend = 0f;
+            for (int i = 1; i < across.Count; i++)
+                if ((across[i - 1].Pos - hub).magnitude < 1.8f && (across[i].Pos - hub).magnitude >= 1.8f)
+                {
+                    bend = Mathf.Atan2(-across[i].Vel.x, across[i].Vel.y) * Mathf.Rad2Deg;
+                    break;
+                }
+            swirls &= bend > 12f;
             var kick = Simulate(inst, new Vector2(2.5f, 1.8f), Vector2.up * 4f, 90);
             bool kicked = kick.Exists(f => f.Info.Kicked) && kick.Exists(f => f.Vel.y < -Rules.KickSpeed * 0.8f);
             var up = Simulate(inst, new Vector2(-2.2f, 2.8f), Vector2.up * 4f, 60);
@@ -383,7 +399,31 @@ namespace OutOfOffice.EditorTools
             Report("pinned-rest", beltRests && vortexRests,
                 $"belt into the rim rests after {pinned.Count * Rules.Dt:0.00} s; whirlpool settles after {settle.Count * Rules.Dt:0.00} s");
             Report("new-parts", windSpeed > 3f && swirls && kicked && upHurts && downSafe,
-                $"wind speed after 0.67 s {windSpeed:0.0}; vortex swirl {sv.x:0.0},{sv.y:0.0} at r {(sp - new Vector2(2.5f, -4f)).magnitude:0.00}; kicked {kicked}; spikes up hurt {upHurts}, down safe {downSafe}");
+                $"wind speed after 0.67 s {windSpeed:0.0}; platform carries {sv.x:0.0},{sv.y:0.0} and flings to r {(sp - hub).magnitude:0.00}, " +
+                $"bends a 12 u/s shot {bend:0} deg; kicked {kicked}; spikes up hurt {upHurts}, down safe {downSafe}");
+        }
+
+        // The coffee machine (OUT-49) pulls across its whole ring: a puck stopped near the edge is drawn in to the
+        // machine, and a roll passing close bends toward it.
+        static void CoffeeMachine(Transform parent)
+        {
+            var root = new GameObject("Machine");
+            root.transform.SetParent(parent, false);
+            var inst = LevelBuilder.Build(Fixtures.Machine, root.transform, false);
+            var drawn = Simulate(inst, new Vector2(1.65f, 0f), new Vector2(0f, 0.02f), 600);
+            float end = drawn[drawn.Count - 1].Pos.magnitude;
+            bool rests = drawn[drawn.Count - 1].Info.Result == ShotResult.Rest;
+            var pass = Simulate(inst, new Vector2(1.3f, -4f), Vector2.up * 10f, 120);
+            float bend = 0f;
+            for (int i = 1; i < pass.Count; i++)
+                if (pass[i - 1].Pos.magnitude < 1.8f && pass[i].Pos.magnitude >= 1.8f)
+                {
+                    bend = Mathf.Atan2(-pass[i].Vel.x, pass[i].Vel.y) * Mathf.Rad2Deg;
+                    break;
+                }
+            Object.DestroyImmediate(root);
+            Report("coffee-machine", end < 0.9f && rests && bend > 8f,
+                $"a stopped roll at r 1.65 is drawn to r {end:0.00} (rests {rests}); a 10 u/s roll passing at 1.3 bends {bend:0} deg toward it");
         }
 
         // One-way gate: passes along its arrow, bounces back against it. Trampoline: lifts the puck over a wall.
