@@ -84,7 +84,13 @@ namespace OutOfOffice
                 hud.RefreshShop();
                 hud.RefreshEnergy();
                 // The reward moment (OUT-48); a pack with a chest opens it instead.
-                if (product.Chest) OpenChest(product.Title + "!");
+                if (product.Chest && Chests.PaidAllowed) OpenChest(product.Title + "!", ChestTier.SupplyCloset);
+                else if (product.Chest)
+                {
+                    // Where paid loot boxes are restricted, the pack's chest comes as its value in gems (OUT-14).
+                    progress.AddGems(Chests.ClosetGems, "starter_no_chest");
+                    hud.Celebrate("gem", $"+{product.Gems + Chests.ClosetGems:N0} GEMS", Themes.Hex(0xB990FF));
+                }
                 else if (product.PassDays > 0) hud.Celebrate("bolt", "UNLIMITED ENERGY", Palette.Gold);
                 else if (product.Gems > 0) hud.Celebrate("gem", $"+{product.Gems:N0} GEMS", Themes.Hex(0xB990FF));
                 else if (product == Catalog.NoAds) hud.Celebrate("tv", "NO MORE AD VIDEOS", Palette.UiBlue);
@@ -105,11 +111,31 @@ namespace OutOfOffice
                 }
                 hud.RefreshShop();
             });
-            hud.BuyChestWithGems = () =>
+            // Chests for gems (OUT-14): a Supply Closet or an Executive Safe. Hidden where paid loot boxes are restricted.
+            hud.BuyChestWithGems = safe =>
             {
-                if (!progress.SpendGems(Catalog.ChestCost, "chest")) return;
+                if (!Chests.PaidAllowed) return;
+                int cost = safe ? Chests.SafeGems : Chests.ClosetGems;
+                if (!progress.SpendGems(cost, safe ? "safe" : "chest")) { hud.ShowShop(); return; }
                 hud.RefreshShop();
-                OpenChest("BOUGHT WITH GEMS");
+                OpenChest("BOUGHT WITH GEMS", safe ? ChestTier.ExecutiveSafe : ChestTier.SupplyCloset);
+            };
+            hud.PaidChests = () => Chests.PaidAllowed;
+            hud.ChestOdds = tier => Chests.Odds(tier, progress.Owns, progress.SinceEpic, progress.SinceLegendary);
+            hud.ChestItemsLeft = r => Chests.Left(r, progress.Owns);
+            hud.Pity = () => (Chests.EpicPity - progress.SinceEpic, Chests.LegendaryPity - progress.SinceLegendary);
+            hud.ClipBalance = () => progress.Clips;
+            hud.BuyWithClips = item =>
+            {
+                if (!progress.BuyWithClips(item))
+                {
+                    sound.Play(Sfx.Cancel, 0.4f);
+                    return;
+                }
+                sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                Haptics.Play(Haptics.Style.Success);
+                hud.RefreshClipShop();
+                hud.Celebrate("clip", item.Name + "!", Cosmetics.RarityColor(item.Rarity));
             };
 
             // Hiring the C-suite and the bosses with gems (OUT-45). Short of gems: the shop, then back to the hire card.

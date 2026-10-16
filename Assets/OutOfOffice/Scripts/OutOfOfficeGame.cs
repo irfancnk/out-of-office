@@ -134,10 +134,12 @@ namespace OutOfOffice
             hud.SetShots(shots, Def.Par, ShotLimit);
         }
 
-        // Rolls a chest, saves the prize, and plays the opening scene. The prize may be worn right away.
-        void OpenChest(string heading)
+        // Rolls a chest of a tier (OUT-14), saves the prize (or its clips, for a duplicate), and plays the opening scene.
+        // The prize may be worn right away.
+        void OpenChest(string heading, ChestTier tier = ChestTier.DeskDrawer)
         {
-            var item = progress.OpenChest(new System.Random(), out bool duplicate);
+            var item = progress.OpenChest(tier, new System.Random(), out bool duplicate, out int clips);
+            string note = duplicate ? $"ALREADY YOURS: +{clips} CLIPS" : null;
             ChestStage.Open(item, duplicate, Cosmetics.Compose(progress.Outfit.With(item)), heading, (clip, volume) => sound.Play(clip, volume, 1f, 0.9f), equip =>
             {
                 if (equip)
@@ -149,7 +151,7 @@ namespace OutOfOffice
                 hud.RefreshChapterChest();
                 hud.RefreshCoffeeCard();
                 hud.SetQuestBadge(progress.ChestsWaiting);
-            }, progress.ReducedMotion);
+            }, progress.ReducedMotion, tier, note);
             hud.SetQuestBadge(progress.ChestsWaiting);
         }
 
@@ -191,10 +193,10 @@ namespace OutOfOffice
             hud.ClaimQuest = i => { if (progress.ClaimQuest(i)) OpenChest("TASK COMPLETE!"); };
             hud.OpenDailyChest = () => { if (progress.ClaimDailyChest()) OpenChest("EMPLOYEE APPRECIATION"); };
             hud.ChapterChestClaimed = c => progress.ChapterChestClaimed(c);
-            hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!"); };
+            hud.ClaimChapterChest = c => { if (progress.ClaimChapterChest(c)) OpenChest("CHAPTER MASTERED!", ChestTier.ExecutiveSafe); };
             hud.CoffeeCardStamps = () => progress.CardStamps;
             hud.CoffeeCardReady = () => progress.CardReady;
-            hud.ClaimCoffeeCard = () => { if (progress.ClaimCard()) OpenChest("ON THE HOUSE!"); };
+            hud.ClaimCoffeeCard = () => { if (progress.ClaimCard()) OpenChest("ON THE HOUSE!", ChestTier.SupplyCloset); };
             hud.HeroPoked = spin =>
             {
                 sound.Play(spin ? Sfx.Whee : Sfx.Giggle, 0.7f, Random.Range(0.95f, 1.1f), 0.8f);

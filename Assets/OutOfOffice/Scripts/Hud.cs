@@ -154,6 +154,8 @@ namespace OutOfOffice
             BuildGuide();
             BuildHand();
             BuildBoosters();  // OUT-13
+            BuildOdds();  // OUT-14
+            BuildClipShop();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -450,7 +452,7 @@ namespace OutOfOffice
 
         Card OpenCard()
         {
-            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, gadgetCard, guideCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
+            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, gadgetCard, guideCard, oddsCard, clipCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
                 if (c != null && c.Root.gameObject.activeSelf) return c;
             return null;
         }
@@ -464,7 +466,8 @@ namespace OutOfOffice
         public System.Func<Product, bool> CanBuyProduct;
         public System.Func<bool> PassFirst;
         public System.Action<Product> BuyProduct;
-        public System.Action ClaimPass, WatchAdForGems, BuyChestWithGems, ShopOpened;
+        public System.Action ClaimPass, WatchAdForGems, ShopOpened;
+        public System.Action<bool> BuyChestWithGems;  // true: an Executive Safe, else a Supply Closet (OUT-14)
 
         Card shopCard;
         RectTransform shopContent, shopBadge;
@@ -533,8 +536,10 @@ namespace OutOfOffice
             rows.Add(r =>
             {
                 bool can = CanBuyProduct?.Invoke(Catalog.Starter) ?? false;
-                ShopRow(r, "chest", Catalog.Starter.Title, Catalog.Starter.Blurb, can ? PriceOf?.Invoke(Catalog.Starter) ?? "" : "OWNED", can && store, Palette.UiGreen,
-                    () => BuyProduct?.Invoke(Catalog.Starter));
+                bool paid = PaidChests?.Invoke() ?? true;
+                string blurb = paid ? Catalog.Starter.Blurb : $"{Catalog.Starter.Gems + Chests.ClosetGems} gems. Once only.";
+                ShopRow(r, "chest", Catalog.Starter.Title, blurb, can ? PriceOf?.Invoke(Catalog.Starter) ?? "" : "OWNED", can && store, Palette.UiGreen,
+                    () => BuyProduct?.Invoke(Catalog.Starter), paid ? () => ShowOdds(ChestTier.SupplyCloset) : (System.Action)null);
             });
             // Energy (OUT-48): a play, a full bar, or a play for a video. With the pass there's nothing to buy.
             bool unlimited = EnergyUnlimited?.Invoke() ?? false;
@@ -560,11 +565,15 @@ namespace OutOfOffice
                 ShopRow(r, "tv", $"FREE {Catalog.AdGems} GEMS", free ? "Ad-free: yours without the video." : "Watch a short video.", ready ? (free ? "TAKE" : "WATCH") : "LATER",
                     ready, Palette.UiBlue, () => WatchAdForGems?.Invoke());
             });
-            rows.Add(r =>
+            // Chests (OUT-14): two tiers for gems, each with its odds, where paid chests are allowed; and the Clip Shop.
+            if (PaidChests?.Invoke() ?? true)
             {
-                bool afford = (GemBalance?.Invoke() ?? 0) >= Catalog.ChestCost;
-                ShopRow(r, "chest", "ONE CHEST", "A random item for your wardrobe.", $"{Catalog.ChestCost} GEMS", afford, Themes.Hex(0x8A5CF0), () => BuyChestWithGems?.Invoke());
-            });
+                rows.Add(r => ShopRow(r, "chest", Chests.Name(ChestTier.SupplyCloset), Chests.Promise(ChestTier.SupplyCloset), $"{Chests.ClosetGems} GEMS",
+                    gemsNow >= Chests.ClosetGems, GemPurple, () => BuyChestWithGems?.Invoke(false), () => ShowOdds(ChestTier.SupplyCloset)));
+                rows.Add(r => ShopRow(r, "chest", Chests.Name(ChestTier.ExecutiveSafe), Chests.Promise(ChestTier.ExecutiveSafe), $"{Chests.SafeGems} GEMS",
+                    gemsNow >= Chests.SafeGems, Themes.Hex(0x2B2738), () => BuyChestWithGems?.Invoke(true), () => ShowOdds(ChestTier.ExecutiveSafe)));
+            }
+            rows.Add(r => ShopRow(r, "clip", "CLIP SHOP", $"{ClipBalance?.Invoke() ?? 0} clips. Trade them for the item you want.", "OPEN", true, Palette.UiBlue, ShowClipShop));
             rows.Add(r =>
             {
                 bool can = CanBuyProduct?.Invoke(Catalog.NoAds) ?? false;
@@ -583,7 +592,8 @@ namespace OutOfOffice
             shopContent.sizeDelta = new Vector2(0f, rows.Count * (rowH + gap));
         }
 
-        void ShopRow(RectTransform r, string icon, string title, string blurb, string button, bool active, Color color, System.Action click)
+        // odds: shows "What's inside" for a row that sells a chest (OUT-14).
+        void ShopRow(RectTransform r, string icon, string title, string blurb, string button, bool active, Color color, System.Action click, System.Action odds = null)
         {
             Sliced(Img(r, UiArt.Button, Inset), 190f, 0.2f);
             var art = UiArt.Icon3D(icon);
@@ -605,6 +615,15 @@ namespace OutOfOffice
             label.fontSizeMin = 22f;
             label.fontSizeMax = 40f;
             if (active) btn.gameObject.AddComponent<UiPress>().Clicked = click;
+            if (odds != null)
+            {
+                var chip = Rect("Odds", r, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(95f, -64f), new Vector2(124f, 46f));
+                var chipImage = Img(chip, UiArt.Pill, FrameDark);
+                Sliced(chipImage, 46f, 0.5f);
+                chipImage.raycastTarget = true;
+                Txt(chip, "ODDS", 26f, Color.white, FrameDark, 0.2f, false);
+                chip.gameObject.AddComponent<UiPress>().Clicked = odds;
+            }
         }
 
         // The home button's gem count, and a badge when the pass reward is waiting.
@@ -1101,6 +1120,7 @@ namespace OutOfOffice
         {
             IconStudio.Rendered -= RefreshWelcomeIcon;
             IconStudio.Rendered -= RefreshWardrobeIcons;
+            IconStudio.Rendered -= RefreshClipIcons;
         }
 
         void RefreshWelcomeIcon()
@@ -2165,7 +2185,7 @@ namespace OutOfOffice
             SetBoosterTray(false);
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard, quitCard, gadgetCard, guideCard, oddsCard, clipCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);

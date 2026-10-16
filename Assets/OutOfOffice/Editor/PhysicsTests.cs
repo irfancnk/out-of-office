@@ -77,6 +77,7 @@ namespace OutOfOffice.EditorTools
                 QualityTiers();
                 GadgetGuide();
                 BoosterChecks(root.transform);
+                ChestChecks();
                 Data();
             }
             finally
@@ -1450,6 +1451,87 @@ namespace OutOfOffice.EditorTools
             Report("boosters", ok, $"magnet bed sinks a roll beside the bed {pulls} (without it: {plain} at {plainEnd}, with it: {pulled}); nothing out of reach {reach}; " +
                 $"coffee break holds movers {still}, pop walls keep the beat {beat}, movers resume {resumes}; locked {locked}, unlocks {unlocks}, three to start once {gift}, " +
                 $"counts {counts}; unlocks in order {ordered}; box discount {prices}");
+        }
+
+        // 27. Chests (OUT-14): the published odds add up and keep each tier's floor; a seeded run of 20,000 opens lands
+        // on them; the pity timer guarantees an Epic within 10 and a Legendary within 30; duplicates pay clips and avoid
+        // repeating; the Clip Shop sells what's missing; paid chests are off in Belgium and the Netherlands.
+        static void ChestChecks()
+        {
+            System.Func<CosmeticItem, bool> none = i => false;
+            bool sums = true, floors = true;
+            foreach (ChestTier tier in System.Enum.GetValues(typeof(ChestTier)))
+            {
+                var odds = Chests.Odds(tier, none, 0, 0);
+                float total = 0f;
+                foreach (var o in odds) total += o;
+                sums &= Mathf.Abs(total - 1f) < 1e-4f;
+                if (tier == ChestTier.SupplyCloset) floors &= odds[(int)Rarity.Common] == 0f;
+                if (tier == ChestTier.ExecutiveSafe) floors &= odds[(int)Rarity.Common] == 0f && odds[(int)Rarity.Rare] == 0f;
+            }
+
+            // Seeded: the drawer's spread over 20,000 opens (nothing owned, no pity) sits within 1.5 points of its odds.
+            var drawer = Chests.Odds(ChestTier.DeskDrawer, none, 0, 0);
+            var seen = new int[4];
+            var rng = new System.Random(4242);
+            const int N = 20000;
+            for (int i = 0; i < N; i++) seen[(int)Chests.Roll(ChestTier.DeskDrawer, none, rng, 0, 0, "", out _).Rarity]++;
+            bool spread = true;
+            string got = "";
+            for (int r = 0; r < 4; r++)
+            {
+                float share = seen[r] / (float)N;
+                spread &= Mathf.Abs(share - drawer[r]) < 0.015f;
+                got += $"{(Rarity)r} {share:P1}/{drawer[r]:P1} ";
+            }
+
+            // Pity: 9 dry opens make the 10th Epic or better; 29 make the 30th Legendary.
+            bool epicPity = true, legendPity = true;
+            for (int i = 0; i < 300; i++)
+            {
+                epicPity &= Chests.Roll(ChestTier.DeskDrawer, none, new System.Random(i), Chests.EpicPity - 1, 0, "", out _).Rarity >= Rarity.Epic;
+                legendPity &= Chests.Roll(ChestTier.DeskDrawer, none, new System.Random(i), 0, Chests.LegendaryPity - 1, "", out _).Rarity == Rarity.Legendary;
+            }
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var p = new Progress(new MemoryPrefs(), clock);
+            int dry = 0;
+            bool counted = true;
+            for (int i = 0; i < 40; i++)
+            {
+                var item = p.OpenChest(ChestTier.DeskDrawer, new System.Random(1000 + i), out _, out _);
+                dry = item.Rarity >= Rarity.Epic ? 0 : dry + 1;
+                counted &= p.SinceEpic == dry && dry < Chests.EpicPity;
+            }
+
+            // Everything owned: duplicates pay clips by rarity, never the same one twice running, and nothing is regranted.
+            var full = new Progress(new MemoryPrefs(), clock);
+            foreach (var i in Cosmetics.All) if (i.FromChest) full.Grant(i);
+            bool dupes = true;
+            string last = null;
+            int clipsBefore = full.Clips;
+            for (int i = 0; i < 30; i++)
+            {
+                var item = full.OpenChest(ChestTier.SupplyCloset, new System.Random(77 + i), out bool dup, out int clips);
+                dupes &= dup && clips == Chests.DuplicateClips[(int)item.Rarity] && full.Clips == clipsBefore + clips;
+                bool canRepeat = Chests.InChests(item.Rarity) < 2;
+                dupes &= canRepeat || item.Id != last;
+                last = item.Id;
+                clipsBefore = full.Clips;
+            }
+
+            // The Clip Shop: a chosen missing item for its price; refused when short or already owned.
+            var shopper = new Progress(new MemoryPrefs(), clock);
+            var want = System.Array.Find(Cosmetics.All.ToArray(), i => i.FromChest && i.Rarity == Rarity.Rare);
+            bool refused = !shopper.BuyWithClips(want);
+            shopper.AddClips(Chests.ClipPrice[(int)Rarity.Rare], "test");
+            bool bought = shopper.BuyWithClips(want) && shopper.Owns(want) && shopper.Clips == 0 && !shopper.BuyWithClips(want);
+
+            bool region = !Chests.PaidAllowedIn("BE") && !Chests.PaidAllowedIn("NL") && Chests.PaidAllowedIn("TR") && Chests.PaidAllowedIn("US");
+            bool prices = Chests.ClosetGems < Chests.SafeGems && Chests.ClipPrice[0] < Chests.ClipPrice[3] && Chests.DuplicateClips[3] < Chests.ClipPrice[3];
+
+            bool ok = sums && floors && spread && epicPity && legendPity && counted && dupes && refused && bought && region && prices;
+            Report("chests", ok, $"odds add up {sums}, tier floors {floors}; seeded spread {spread} ({got}); pity epic {epicPity}, legendary {legendPity}, counters {counted}; " +
+                $"duplicates pay clips, no repeats {dupes}; clip shop refuses when short {refused}, sells {bought}; paid chests off in BE/NL {region}; prices {prices}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

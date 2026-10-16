@@ -530,6 +530,38 @@ def briefcase():
     face_camera(parts, tilt=-10, turn=24)
 
 
+def clip():
+    # Chest duplicates turn into paper clips (OUT-14): a chunky silver clip, three bends of round wire.
+    steel = material("Steel", hexc("#C9D3E6"), 0.18, metal=0.85, coat=0.4)
+
+    def arc(cx, cz, r, a0, a1, n=14):
+        return [(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)), cz + r * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+
+    pts = [(0.18, 0.55)]
+    pts += arc(0.0, -0.7, 0.18, 0, -180)
+    pts += arc(0.06, 0.95, 0.24, 180, 0)
+    pts += arc(0.0, -0.95, 0.30, 0, -180)
+    pts.append((-0.30, 0.3))
+    data = bpy.data.curves.new("Clip", "CURVE")
+    data.dimensions = "3D"
+    data.bevel_depth = 0.075
+    data.bevel_resolution = 6
+    data.use_fill_caps = True
+    spline = data.splines.new("POLY")
+    spline.points.add(len(pts) - 1)
+    for i, (x, z) in enumerate(pts):
+        spline.points[i].co = (x, 0.0, z, 1.0)
+    wire = bpy.data.objects.new("Clip", data)
+    bpy.context.scene.collection.objects.link(wire)
+    bpy.context.view_layer.objects.active = wire
+    wire.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    finish(wire, steel)
+    for light in bpy.data.lights:
+        light.energy *= 0.7
+    face_camera([wire], tilt=-18, turn=28)
+
+
 def restart():
     arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
 
@@ -540,7 +572,7 @@ def undo():
 
 PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
          "restart": restart, "undo": undo, "bolt": bolt, "tv": tv, "hand": hand,
-         "laser": laser, "alarm": alarm, "mulligan": mulligan, "magnet": magnet, "briefcase": briefcase}
+         "laser": laser, "alarm": alarm, "mulligan": mulligan, "magnet": magnet, "briefcase": briefcase, "clip": clip}
 
 
 def render(name):

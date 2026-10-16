@@ -21,6 +21,8 @@ namespace OutOfOffice
         bool duplicate;
         SkinDef look;
         string heading;
+        ChestTier tier;
+        string note;
         Action<bool> done;
         Action<AudioClip, float> play;
 
@@ -41,7 +43,9 @@ namespace OutOfOffice
         public static bool Showing => live > 0;
         static int live;
 
-        public static void Open(CosmeticItem item, bool duplicate, SkinDef look, string heading, Action<AudioClip, float> play, Action<bool> done, bool reducedMotion = false)
+        // tier: which box (OUT-14). note: the line under the item, such as what a duplicate paid in clips.
+        public static void Open(CosmeticItem item, bool duplicate, SkinDef look, string heading, Action<AudioClip, float> play, Action<bool> done, bool reducedMotion = false,
+            ChestTier tier = ChestTier.DeskDrawer, string note = null)
         {
             live++;
             var go = new GameObject("Gift Stage");
@@ -51,6 +55,8 @@ namespace OutOfOffice
             stage.duplicate = duplicate;
             stage.look = look;
             stage.heading = heading;
+            stage.tier = tier;
+            stage.note = note;
             stage.play = play;
             stage.done = done;
         }
@@ -253,9 +259,11 @@ namespace OutOfOffice
             // The box: walls with real thickness around a cream-lined interior, a gold ribbon, and a latch.
             chest = new GameObject("Gift Box").transform;
             chest.SetParent(transform, false);
-            var navy = Look.Lit(Themes.Hex(0x2F3A6E), 0.55f);
+            // Each tier its own box (OUT-14): a wooden desk drawer with brass, a steel-blue supply closet with silver, a black
+            // executive safe with gold.
+            var navy = Look.Lit(Themes.Hex(tier == ChestTier.DeskDrawer ? 0x9A6238 : tier == ChestTier.SupplyCloset ? 0x2F64B0 : 0x24222E), 0.55f);
             var lining = Look.Flat(Themes.Hex(0xF3E7D2), 0.2f);
-            var gold = Look.Lit(Palette.Gold, 0.9f);
+            var gold = Look.Lit(tier == ChestTier.SupplyCloset ? Themes.Hex(0xDDE6F4) : tier == ChestTier.DeskDrawer ? Themes.Hex(0xE2B24C) : Palette.Gold, 0.9f);
             const float W = 1.7f, D = 1.2f, H = 0.8f, T = 0.09f;
             Look.AddMesh("Bottom", Meshes.RoundedPrism(W, D, 0.08f, 0.08f, 0.03f), navy, chest, Vector3.zero);
             Look.AddMesh("Front", Meshes.RoundedPrism(W, T, 0.03f, H, 0.02f), navy, chest, new Vector3(0f, -D / 2f + T / 2f, 0f));
@@ -333,6 +341,7 @@ namespace OutOfOffice
             catcher.gameObject.AddComponent<Button>().onClick.AddListener(() => tapped = true);
 
             Text(Rect("Heading", ui, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -230f), new Vector2(1000f, 140f)), heading, 96f, Themes.Hex(0xFFE45C));
+            Text(Rect("Tier", ui, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -330f), new Vector2(1000f, 70f)), Chests.Name(tier), 50f, Color.white);
             prompt = Rect("Prompt", ui, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 330f), new Vector2(900f, 110f));
             Text(prompt, "TAP TO OPEN!", 72f, Color.white);
             prompt.gameObject.SetActive(false);
@@ -346,7 +355,7 @@ namespace OutOfOffice
             rb.color = rarity;
             Text(ribbon, Cosmetics.RarityName(item.Rarity), 52f, Color.white);
             Text(Rect("Name", result, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(1000f, 120f)), item.Name, 92f, Color.white);
-            string sub = duplicate ? Quips.RewardDuplicate : "NEW " + Cosmetics.SlotName(item.Slot) + ". " + Quips.Reward();
+            string sub = note ?? (duplicate ? Quips.RewardDuplicate : "NEW " + Cosmetics.SlotName(item.Slot) + ". " + Quips.Reward());
             Text(Rect("Sub", result, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -235f), new Vector2(1000f, 70f)), sub, 46f, Themes.Hex(0xFFE45C));
             Button(result, "WEAR IT", Palette.UiGreen, new Vector2(-220f, 80f), () => Close(true));
             Button(result, "CLAIM", Palette.UiBlue, new Vector2(220f, 80f), () => Close(false));

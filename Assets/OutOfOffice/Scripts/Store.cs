@@ -49,7 +49,6 @@ namespace OutOfOffice
         public const int ContinueCost = 15;   // +shots when out of shots: the same play goes on
         public const int PlayGems = 20;       // +5 energy: one play
         public const int RefillGems = 60;     // a full bar: six plays
-        public const int ChestCost = 60;      // one chest
         public const int AdGems = 10;         // a rewarded ad in the shop
         public const int AdEnergy = Energy.PlayCost;  // a rewarded ad on the energy card: one play
 

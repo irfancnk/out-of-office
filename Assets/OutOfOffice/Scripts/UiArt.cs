@@ -143,7 +143,7 @@ namespace OutOfOffice
         {
             { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" }, { "gem", "gem" },
             { "restart", "restart" }, { "undo", "undo" }, { "bolt", "bolt" }, { "tv", "tv" }, { "hand", "hand" },
-            { "laser", "laser" }, { "alarm", "alarm" }, { "mulligan", "mulligan" }, { "magnet", "magnet" }, { "briefcase", "briefcase" },
+            { "laser", "laser" }, { "alarm", "alarm" }, { "mulligan", "mulligan" }, { "magnet", "magnet" }, { "briefcase", "briefcase" }, { "clip", "clip" },
         };
 
         public static Sprite Icon3D(string name)

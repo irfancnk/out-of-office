@@ -365,6 +365,21 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-shop.png"), Canvas.ForceUpdateCanvases);
 
+                // Chests (OUT-14): the odds card, and the Clip Shop.
+                hud.ChestOdds = t => Chests.Odds(t, i => false, 3, 12);
+                hud.ChestItemsLeft = r => Chests.InChests(r);
+                hud.Pity = () => (7, 18);
+                hud.ShowOdds(ChestTier.SupplyCloset);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-odds.png"), Canvas.ForceUpdateCanvases);
+                hud.ClipBalance = () => 120;
+                hud.OwnsItem = item => false;
+                IconStudio.RenderItemsNow(Cosmetics.Default);
+                hud.ShowClipShop();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-clipshop.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
+
                 // Out of energy (OUT-48): the refills, and the stand-in for a rewarded video.
                 hud.EnergyPoints = () => 2;
                 hud.EnergyUntilPlay = () => new System.TimeSpan(2, 24, 0);

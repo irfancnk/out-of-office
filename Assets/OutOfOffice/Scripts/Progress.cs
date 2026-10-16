@@ -339,14 +339,56 @@ namespace OutOfOffice
         }
 
         // Rolls a chest and keeps what it gives. Returns the item and whether it was already owned.
-        public CosmeticItem OpenChest(System.Random rng, out bool duplicate)
+        // Opens a chest of a tier (OUT-14): a new item is granted; a duplicate pays its paper clips instead. The pity
+        // counters move with every open.
+        public CosmeticItem OpenChest(System.Random rng, out bool duplicate) => OpenChest(ChestTier.DeskDrawer, rng, out duplicate, out _);
+
+        public CosmeticItem OpenChest(ChestTier tier, System.Random rng, out bool duplicate, out int clips)
         {
-            var item = Cosmetics.Roll(Owns, rng);
-            duplicate = Owns(item);
-            Grant(item);
+            var item = Chests.Roll(tier, Owns, rng, SinceEpic, SinceLegendary, prefs.GetString("buca.chest.lastdup", ""), out duplicate);
+            clips = 0;
+            if (duplicate)
+            {
+                clips = Chests.DuplicateClips[(int)item.Rarity];
+                prefs.SetString("buca.chest.lastdup", item.Id);
+                AddClips(clips, "duplicate");
+            }
+            else Grant(item);
+            prefs.SetInt("buca.pity.epic", item.Rarity >= Rarity.Epic ? 0 : SinceEpic + 1);
+            prefs.SetInt("buca.pity.legendary", item.Rarity == Rarity.Legendary ? 0 : SinceLegendary + 1);
             prefs.SetInt("buca.chests.opened", prefs.GetInt("buca.chests.opened", 0) + 1);
             prefs.Save();
+            Analytics.Event("chest_open", ("tier", tier.ToString()), ("item", item.Id), ("rarity", item.Rarity.ToString()), ("duplicate", duplicate),
+                ("clips", clips), ("since_epic", SinceEpic), ("since_legendary", SinceLegendary));
             return item;
+        }
+
+        // Opens since the last Epic-or-better, and since the last Legendary.
+        public int SinceEpic => prefs.GetInt("buca.pity.epic", 0);
+        public int SinceLegendary => prefs.GetInt("buca.pity.legendary", 0);
+
+        // ---------- Paper clips (OUT-14) ----------
+
+        public int Clips => prefs.GetInt("buca.clips", 0);
+
+        public void AddClips(int amount, string source)
+        {
+            if (amount <= 0) return;
+            prefs.SetInt("buca.clips", Clips + amount);
+            prefs.Save();
+            Analytics.Event("clips_earn", ("amount", amount), ("source", source), ("balance", Clips));
+        }
+
+        // A chest item of the player's choice, for clips by its rarity.
+        public bool BuyWithClips(CosmeticItem item)
+        {
+            if (item == null || !item.FromChest || Owns(item)) return false;
+            int price = Chests.ClipPrice[(int)item.Rarity];
+            if (Clips < price) return false;
+            prefs.SetInt("buca.clips", Clips - price);
+            Grant(item);
+            Analytics.Event("clips_spend", ("item", item.Id), ("price", price), ("balance", Clips));
+            return true;
         }
 
         public int ChestsOpened => prefs.GetInt("buca.chests.opened", 0);
