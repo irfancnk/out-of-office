@@ -25,6 +25,9 @@ namespace OutOfOffice
         static readonly Color BeltColor = Themes.Hex(0x4A3428);
         static readonly Color BrassColor = Themes.Hex(0xD8B25C);
         static readonly Color TattooInk = Themes.Hex(0x2E5E7A);
+        static readonly Color SkirtColor = Themes.Hex(0x343A55);
+        static readonly Color HeelColor = Themes.Hex(0xD6283E);
+        static readonly Color GoldColor = Themes.Hex(0xF2C04A);
 
         // The head, in its tipped frame: half sizes. The front (-Y) sits at Mascot.HeadRadius, where the face is printed.
         static readonly Vector3 Skull = new Vector3(0.272f, Mascot.HeadRadius, 0.25f);
@@ -33,8 +36,9 @@ namespace OutOfOffice
         {
             var roll = Pivot(parent, "Roll", new Vector3(0f, 0f, -Mascot.BodyHalfHeight));
             var skinMat = Look.Person(skin.SkinTone, 0.12f);
-            var shirt = Look.Person(ShirtColor, 0.12f);
-            var trousers = Look.Person(TrouserColor, 0.15f);
+            var shirt = Look.Person(skin.Shirt.a > 0f ? skin.Shirt : ShirtColor, 0.12f);
+            bool skirt = (skin.Extras & PersonLook.Skirt) != 0;
+            var trousers = Look.Person(skirt ? SkirtColor : TrouserColor, 0.15f);
 
             BuildTorso(roll, skin, shirt, trousers);
             foreach (float side in new[] { -1f, 1f })
@@ -49,8 +53,16 @@ namespace OutOfOffice
                     foreach (float z in new[] { 0.09f, 0.128f })  // two ink bands round the forearm (OUT-30)
                         Round("Tattoo", new Vector3(0.096f, 0.096f, 0.024f), Look.Person(TattooInk, 0.3f), arm, new Vector3(0f, 0f, z), false, 3f);
 
-                // Legs: a round trouser leg and a bean of a shoe that pokes out in front.
+                // Legs: a round trouser leg and a bean of a shoe that pokes out in front. Or a pencil skirt to the knee,
+                // a bare shin and a little red heel.
                 var leg = Pivot(roll, side < 0f ? "Leg L" : "Leg R", new Vector3(side * 0.078f, 0f, 0.215f));
+                if (skirt)
+                {
+                    Round("Skirt", new Vector3(0.165f, 0.172f, 0.12f), trousers, leg, new Vector3(-side * 0.008f, 0f, 0.035f));
+                    Round("Shin", new Vector3(0.082f, 0.082f, 0.09f), skinMat, leg, new Vector3(0f, 0f, 0.1f));
+                    Round("Shoe", new Vector3(0.11f, 0.17f, 0.065f), Look.Person(HeelColor, 0.6f), leg, new Vector3(0f, -0.03f, 0.135f));
+                    continue;
+                }
                 Round("Trousers", new Vector3(0.155f, 0.165f, 0.14f), trousers, leg, new Vector3(0f, 0f, 0.05f));
                 Round("Shoe", new Vector3(0.15f, 0.205f, 0.085f), Look.Person(ShoeColor, 0.55f), leg, new Vector3(0f, -0.035f, 0.1f));
             }
@@ -73,6 +85,23 @@ namespace OutOfOffice
                 flap.transform.localRotation = Quaternion.Euler(-30f, side * 25f, 0f);
             }
             var tieMat = Look.Person(skin.Body, 0.3f);
+            if ((skin.Extras & PersonLook.Blouse) != 0)
+            {
+                // A blouse: a soft bow at the collar instead of a tie, its two tails hanging from the knot.
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    var loop = Round("Bow", new Vector3(0.075f, 0.035f, 0.055f), tieMat, torso, new Vector3(side * 0.045f, -0.14f, -0.245f));
+                    loop.transform.localRotation = Quaternion.Euler(0f, side * -22f, 0f);
+                }
+                Round("Knot", new Vector3(0.036f, 0.034f, 0.036f), tieMat, torso, new Vector3(0f, -0.15f, -0.24f));
+                var tails = Pivot(torso, "Tie", new Vector3(0f, -0.15f, -0.225f));
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    var tail = Round("Tail", new Vector3(0.032f, 0.016f, 0.07f), tieMat, tails, new Vector3(side * 0.018f, 0f, 0.035f));
+                    tail.transform.localRotation = Quaternion.Euler(0f, side * -14f, 0f);
+                }
+                return;
+            }
             Round("Knot", new Vector3(0.046f, 0.032f, 0.042f), tieMat, torso, new Vector3(0.004f, -0.132f, -0.24f));
             var tie = Pivot(torso, "Tie", new Vector3(0.006f, -0.148f, -0.222f));
             tie.localRotation = Quaternion.Euler(14f, 0f, 6f);
@@ -95,6 +124,13 @@ namespace OutOfOffice
             if ((skin.Extras & PersonLook.Earrings) != 0)
                 foreach (float side in new[] { -1f, 1f })
                     Round("Earring", Vector3.one * 0.042f, Look.Person(BrassColor, 0.7f), frame, new Vector3(side * 0.3f, 0.03f, 0.1f));
+            if ((skin.Extras & PersonLook.Hoops) != 0)
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    // Chunky gold hoops hanging from the lobes, facing front.
+                    var hoop = Look.AddMesh("Hoop", Meshes.Lathe(Scenery.Torus(0.05f, 0.017f), 28), Look.Person(GoldColor, 0.75f), frame, new Vector3(side * 0.305f, 0.03f, 0.165f), false);
+                    hoop.transform.localRotation = Quaternion.Euler(90f, side * 12f, 0f);
+                }
             if ((skin.Extras & PersonLook.Beard) != 0)  // a round beard under the mouth, in the hair color
                 Round("Beard", new Vector3(0.3f, 0.12f, 0.12f), hair, frame, new Vector3(0f, -0.15f, 0.215f), false, 2.4f);
 

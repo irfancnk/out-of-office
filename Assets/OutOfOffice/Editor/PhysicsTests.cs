@@ -71,6 +71,7 @@ namespace OutOfOffice.EditorTools
                 CoffeeCard();
                 ShotLimits();
                 Money();
+                Undos();
                 Data();
             }
             finally
@@ -1106,6 +1107,58 @@ namespace OutOfOffice.EditorTools
                 $"ads gated in first rooms {gate}, daily cap {cap} ({rewarded}), cooldown {cooldown}, resets daily {newDay}, ad-free skips video {adFree}");
         }
 
+        // 22. Undos (OUT-41): three free per attempt, then gems or an ad, the shop when neither; restart resets; the
+        // first rooms stay unlimited.
+        static void Undos()
+        {
+            var u = new UndoAllowance();
+            u.Reset(true);
+            bool three = true;
+            for (int i = 0; i < UndoAllowance.Free; i++)
+            {
+                three &= u.Check(0, false) == UndoAllowance.Next.Free;
+                u.UseFree();
+            }
+            bool counted = u.FreeLeft == 0;
+            bool shop = u.Check(UndoAllowance.GemCost - 1, false) == UndoAllowance.Next.Shop;
+            bool payGems = u.Check(UndoAllowance.GemCost, false) == UndoAllowance.Next.Pay;
+            bool payAd = u.Check(0, true) == UndoAllowance.Next.Pay;
+
+            // Paying with gems takes exactly the price, and never more than the wallet holds.
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var p = new Progress(new MemoryPrefs(), clock);
+            p.AddGems(25, "test");
+            bool paid = UndoAllowance.PayWithGems(p) && p.Gems == 25 - UndoAllowance.GemCost;
+            var poor = new Progress(new MemoryPrefs(), clock);
+            poor.AddGems(UndoAllowance.GemCost - 1, "test");
+            bool refused = !UndoAllowance.PayWithGems(poor) && poor.Gems == UndoAllowance.GemCost - 1;
+
+            // Paying with an ad goes through the ad caps like any rewarded video.
+            var oldAds = Ads.Provider;
+            var stub = new StubAds();
+            Ads.Provider = stub;
+            Ads.ResetCooldown();
+            var watcher = new Progress(new MemoryPrefs(), clock);
+            for (int i = 0; i < Levels.All.Length; i++) watcher.Record(i, 1, 9);
+            bool adPaid = false;
+            Ads.ShowRewarded(watcher, "undo", ok => adPaid = ok, 7000f);
+            bool adCounted = adPaid && stub.Shown == 1 && watcher.AdsToday == 1;
+            Ads.Provider = oldAds;
+            Ads.ResetCooldown();
+
+            // Restart: three free again. First rooms: never limited.
+            u.Reset(true);
+            bool restart = u.FreeLeft == UndoAllowance.Free && u.Check(0, false) == UndoAllowance.Next.Free;
+            var early = new UndoAllowance();
+            early.Reset(false);
+            for (int i = 0; i < 10; i++) early.UseFree();
+            bool unlimited = early.Check(0, false) == UndoAllowance.Next.Free && early.FreeLeft == UndoAllowance.Free;
+
+            bool ok = three && counted && shop && payGems && payAd && paid && refused && adCounted && restart && unlimited;
+            Report("undos", ok, $"three free {three} (counted {counted}); then shop when broke {shop}, pay with gems {payGems} or an ad {payAd}; " +
+                $"gems charged {paid}, refused when short {refused}; ad path through the caps {adCounted}; restart resets {restart}; first rooms unlimited {unlimited}");
+        }
+
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.
         static void Data()
         {
@@ -1123,6 +1176,7 @@ namespace OutOfOffice.EditorTools
             foreach (var old in new[] { path, path + ".1" }) if (System.IO.File.Exists(old)) System.IO.File.Delete(old);
             var sink = new LocalLogSink(path, 2000);
             for (int i = 0; i < 100; i++) sink.Send("test", new Dictionary<string, object> { { "i", i }, { "text", "a \"quoted\" line" } });
+            sink.Flush();  // lines are buffered (OUT-36)
             bool rolled = System.IO.File.Exists(path + ".1") && new System.IO.FileInfo(path).Length < 4000;
             string first = System.IO.File.ReadAllLines(path)[0];
             bool json = first.StartsWith("{\"e\":\"test\"") && first.Contains("\\\"quoted\\\"");

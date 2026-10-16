@@ -94,7 +94,7 @@ namespace OutOfOffice
 
             LoadLevel(progress.CurrentIndex);
             ShowTitle();
-            IconStudio.RenderHero(Cosmetics.Compose(progress.Outfit));
+            IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);
         }
 
@@ -124,8 +124,8 @@ namespace OutOfOffice
                 mascot.OnJoy(0.8f);
                 mascot.Hop();
             }
-            IconStudio.RenderHero(look);
-            IconStudio.RenderItems(progress.Outfit, true);  // tiles show items on the outfit you wear now (OUT-29)
+            IconStudio.RenderHero(progress.Outfit);
+            IconStudio.RenderItems(progress.Outfit);  // tiles show items on the outfit you wear now (OUT-29); unchanged ones are kept
         }
 
         // Rolls a chest, saves the prize, and plays the opening scene. The prize may be worn right away.
@@ -157,6 +157,7 @@ namespace OutOfOffice
 
         void ApplyMotionSetting(bool reduced)
         {
+            Secretary.Calm = reduced;
             Fx.Amount = reduced ? 0.5f : 1f;
             Puck.MotionScale = reduced ? 0.35f : 1f;
         }
@@ -194,6 +195,8 @@ namespace OutOfOffice
                 Haptics.Play(spin ? Haptics.Style.Success : Haptics.Style.Light, 0.7f);
             };
             WireShop();
+            WireReceptionist();
+            UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
             hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
@@ -311,6 +314,7 @@ namespace OutOfOffice
 
         void LoadLevel(int index)
         {
+            FrameWatch.Note("load");
             StopAllCoroutines();
             KillLevelFx();
             celebrating = false;
@@ -352,6 +356,8 @@ namespace OutOfOffice
             hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
             hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
+            undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom);  // a new attempt: three free again
+            hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
             hud.SetUndoAvailable(false);
             hud.SetHint(true);
             state = State.Ready;
@@ -405,6 +411,7 @@ namespace OutOfOffice
         void Update()
         {
             PaceFrames();
+            IconStudio.Playing = state == State.Ready || state == State.Aiming || state == State.Moving || state == State.Capturing || state == State.Penalty;
             TickServices();  // ad and consent SDK callbacks, ad SDK start-up (OUT-31)
             UpdateQuips();
             UpdateQuirks(Time.deltaTime);
@@ -494,11 +501,15 @@ namespace OutOfOffice
         // A backgrounded app can be killed by the OS with no further callback, so this is the last safe moment to save.
         void OnApplicationPause(bool paused)
         {
-            if (paused) { progress?.Flush(); BackUpSave(); }
+            if (paused) { progress?.Flush(); BackUpSave(); Analytics.Flush(); }
             else if (serverClock != null) StartCoroutine(ServerTime.Sync(serverClock));  // the clock may have changed while away
         }
 
-        void OnApplicationQuit() => progress?.Flush();
+        void OnApplicationQuit()
+        {
+            progress?.Flush();
+            Analytics.Flush();
+        }
 
         void Launch()
         {
@@ -1012,6 +1023,9 @@ namespace OutOfOffice
             if (state == State.Failed) ShowOutOfShotsOffers();
         }
 
+        // Undo (OUT-41): three free a try, then gems or a rewarded ad. Restart stays free (OUT-13).
+        readonly UndoAllowance undoAllowance = new UndoAllowance();
+
         void UndoShot()
         {
             if (mascot != null) mascot.Tumble = false;
@@ -1021,6 +1035,49 @@ namespace OutOfOffice
                 sound.Play(Sfx.Cancel, 0.4f);
                 return;
             }
+            if (undoAllowance.Check(progress.Gems, false) == UndoAllowance.Next.Free)
+            {
+                undoAllowance.UseFree();
+                if (undoAllowance.Limited) Analytics.Event("undo_free", ("level", Def.Id), ("left", undoAllowance.FreeLeft));
+                Rewind();
+                return;
+            }
+            OfferPaidUndo();
+        }
+
+        // The free undos are used: the game holds still while the player picks gems, an ad, or no. With neither
+        // possible the shop opens over the offer, which it returns to.
+        void OfferPaidUndo()
+        {
+            CancelAim(false);
+            stateBeforePause = state;
+            state = State.Paused;
+            Time.timeScale = 0f;
+            sound.StopContinuous();
+            bool ad = Ads.CanOffer(progress, Ads.Now);
+            Analytics.Event("undo_offer", ("level", Def.Id), ("ad", ad), ("balance", progress.Gems));
+            hud.ShowUndoOffer(ad);
+            if (undoAllowance.Check(progress.Gems, ad) == UndoAllowance.Next.Shop)
+            {
+                Analytics.Event("undo_blocked", ("level", Def.Id), ("balance", progress.Gems));
+                hud.ShowShop();
+            }
+        }
+
+        // Leaves the offer and goes back into the attempt, rewound if paid for ("gems" or "ad").
+        void CloseUndoOffer(string paidWith)
+        {
+            if (state != State.Paused) return;
+            hud.HideAll();
+            Time.timeScale = 1f;
+            state = stateBeforePause;
+            if (paidWith == null) return;
+            Analytics.Event("undo_paid", ("level", Def.Id), ("how", paidWith), ("balance", progress.Gems));
+            Rewind();
+        }
+
+        void Rewind()
+        {
             StopAllCoroutines();
             KillLevelFx();
             var snap = history.Pop();
@@ -1036,6 +1093,7 @@ namespace OutOfOffice
             hud.SetShots(shots, Def.Par, ShotLimit);
             hud.SetStars(level.StarsCollected, level.Stars.Count, false);
             hud.SetUndoAvailable(history.Count > 0);
+            hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
             state = State.Ready;
         }
 
@@ -1081,6 +1139,8 @@ namespace OutOfOffice
                 }
             }
             var head = level.Puck.Visual.position + new Vector3(0f, 0f, -Mascot.BodyHalfHeight * 2f - 0.25f);
+            if (speaker != null && hud.Speaking && hud.SpeechLine == Secretary.PhoneLine) head = speaker.HeadTop;  // the receptionist has the floor (OUT-38)
+            else speaker = null;
             Vector3 sp = cam.WorldToScreenPoint(head);
             hud.SetSpeechAnchor(sp, sp.z > 0f && state != State.Paused && state != State.Complete);
         }

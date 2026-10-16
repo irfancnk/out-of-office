@@ -17,6 +17,16 @@ namespace OutOfOffice
         float buzzUntil = -1f;
         int shotBounces;
         bool sessionOpenerUsed;
+        Secretary speaker;  // who the speech bubble belongs to while the receptionist talks
+
+        // The receptionist (OUT-38) talks only while the employee waits, nobody else is talking and no card is open.
+        void WireReceptionist()
+        {
+            Secretary.MayTalk = () => state == State.Ready && !hud.Speaking && !hud.PanelOpen;
+            Secretary.Say = (who, line) => { speaker = who; hud.Say(line, 2.4f); };
+            // Silent behind the home screen: the room there is only a backdrop.
+            Secretary.Sound = (clip, volume) => { if (state != State.Title) sound.Play(clip, volume, Random.Range(0.96f, 1.04f), 0.4f); };
+        }
 
         void UpdateQuirks(float dt)
         {

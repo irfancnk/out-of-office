@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 
 namespace OutOfOffice
@@ -24,6 +25,16 @@ namespace OutOfOffice
         // Read once on the main thread: Debug.isDebugBuild throws on the SDK threads some callbacks arrive on.
         static readonly bool DebugBuild = Debug.isDebugBuild;
 
+        // Writes buffered events now: the app may be closing.
+        public static void Flush()
+        {
+            foreach (var sink in Sinks)
+            {
+                try { (sink as LocalLogSink)?.Flush(); }
+                catch (Exception) { }
+            }
+        }
+
         public static void Event(string name, params (string Key, object Value)[] fields)
         {
             var data = new Dictionary<string, object>(fields.Length + 4);
@@ -31,6 +42,7 @@ namespace OutOfOffice
             data["iid"] = InstallId;
             data["sid"] = Session;
             data["t"] = DateTime.UtcNow.ToString("o");
+            FrameWatch.Note(name);
             Sent?.Invoke(name, data);
             foreach (var sink in Sinks)
             {
@@ -91,10 +103,15 @@ namespace OutOfOffice
     }
 
     // Appends events to a capped JSON-lines file on the device; the oldest half rolls into a ".1" file when full.
+    // Lines are buffered and written off the main thread every few seconds (OUT-36), so an event never stalls a frame.
     public class LocalLogSink : IAnalyticsSink
     {
         public readonly string Path;
         public readonly long MaxBytes;
+        readonly List<string> pending = new List<string>();
+        readonly object fileLock = new object();
+        DateTime nextWrite;
+        bool writing;
 
         public LocalLogSink(string path, long maxBytes = 512 * 1024)
         {
@@ -104,14 +121,68 @@ namespace OutOfOffice
 
         public void Send(string name, IReadOnlyDictionary<string, object> data)
         {
-            var info = new FileInfo(Path);
-            if (info.Exists && info.Length > MaxBytes)
+            bool due;
+            lock (pending)
             {
-                string old = Path + ".1";
-                if (File.Exists(old)) File.Delete(old);
-                File.Move(Path, old);
+                pending.Add(Analytics.ToJson(name, data));
+                due = pending.Count >= 64 || DateTime.UtcNow >= nextWrite;
             }
-            File.AppendAllText(Path, Analytics.ToJson(name, data) + "\n");
+            if (due) Flush(false);
+        }
+
+        // Writes what is buffered: on a worker thread, or right here (wait) when the app may be closing.
+        public void Flush(bool wait = true)
+        {
+            if (wait)
+            {
+                WritePending();
+                return;
+            }
+            lock (pending)
+            {
+                if (writing) return;
+                writing = true;
+            }
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { WritePending(); }
+                catch (Exception) { }  // no log is better than no game
+                finally { lock (pending) writing = false; }
+            });
+        }
+
+        // Lines leave the buffer under the file lock, so they reach the file in the order they were sent.
+        void WritePending()
+        {
+            lock (fileLock)
+            {
+                string[] lines;
+                lock (pending)
+                {
+                    nextWrite = DateTime.UtcNow.AddSeconds(5);
+                    if (pending.Count == 0) return;
+                    lines = pending.ToArray();
+                    pending.Clear();
+                }
+                var info = new FileInfo(Path);
+                long size = info.Exists ? info.Length : 0;
+                var chunk = new StringBuilder();
+                foreach (var line in lines)
+                {
+                    if (size > MaxBytes)
+                    {
+                        if (chunk.Length > 0) File.AppendAllText(Path, chunk.ToString());
+                        chunk.Clear();
+                        string old = Path + ".1";
+                        if (File.Exists(old)) File.Delete(old);
+                        File.Move(Path, old);
+                        size = 0;
+                    }
+                    chunk.Append(line).Append('\n');
+                    size += Encoding.UTF8.GetByteCount(line) + 1;
+                }
+                if (chunk.Length > 0) File.AppendAllText(Path, chunk.ToString());
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ namespace OutOfOffice
         public System.Func<string, int> BestStars;
 
         public const float TopHeight = 175f;     // reference units the top bar covers (the board may scroll under it)
-        public const float BottomHeight = 120f;  // reference units the bottom buttons cover
+        public const float BottomHeight = 170f;  // reference units the bottom buttons cover (OUT-40: 160 px buttons)
         const float RefWidth = 1080f, RefHeight = 1920f;
 
         // Reduced Motion: cards fade instead of sliding and popping; no idle wobble, spins, or sparkle bursts.
@@ -142,6 +142,7 @@ namespace OutOfOffice
             BuildSpeech();
             BuildComplete();
             BuildFail();
+            BuildUndoOffer();
             BuildShop();
         }
 
@@ -159,7 +160,7 @@ namespace OutOfOffice
                 r.anchorMax = new Vector2(1f, 1f - topInset);
             }
             ReducedMotion = true;
-            Calm = true;
+            Calm = UiPress.Calm = true;
         }
 
         // Tall screens match width; wide screens (tablets, desktop windows) match height.
@@ -208,11 +209,20 @@ namespace OutOfOffice
             starText = Txt(Rect("Count", starPill, Vector2.zero, Vector2.one, new Vector2(42f, 0f), new Vector2(-84f, 0f)), "0/1", 50f, Color.white, Ink, 0.35f, true);
             hudBlockers.Add(starPill);
 
-            var undo = IconButton(hudRoot, "Undo", new Vector2(0f, 0f), new Vector2(90f, 90f), 124f, Palette.UiBlue, "undo", Color.white);
+            // Undo and restart: big, thumb-sized buttons in the bottom corners (OUT-40), clear of the board.
+            var undo = IconButton(hudRoot, "Undo", new Vector2(0f, 0f), new Vector2(100f, 96f), 160f, Palette.UiBlue, "undo", Color.white);
             undo.Clicked = () => Undo?.Invoke();
             undoButton = undo.transform as RectTransform;
+            undoBadge = Badge(undoButton, "3");  // free undos left (OUT-41)
+            undoBadgeText = undoBadge.GetComponentInChildren<TextMeshProUGUI>();
+            var badgeGem = UiArt.Icon3D("gem");
+            if (badgeGem != null)
+            {
+                undoBadgeGem = Img(Rect("Gem", undoBadge, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 2f), new Vector2(60f, 60f)), badgeGem, Color.white).gameObject;
+                undoBadgeGem.SetActive(false);
+            }
             hudBlockers.Add(undoButton);
-            var restart = IconButton(hudRoot, "Restart", new Vector2(1f, 0f), new Vector2(-90f, 90f), 124f, Palette.UiRed, "restart", Color.white);
+            var restart = IconButton(hudRoot, "Restart", new Vector2(1f, 0f), new Vector2(-100f, 96f), 160f, Palette.UiRed, "restart", Color.white);
             restart.Clicked = () => Restart?.Invoke();
             hudBlockers.Add(restart.transform as RectTransform);
 
@@ -302,6 +312,58 @@ namespace OutOfOffice
             continueAdLabel.text = $"+{shots} · AD";
             continueGemsLabel.text = $"+{shots} · {gemCost}";
             ShowCard(failCard);
+        }
+
+        // ---------- Paid undo (OUT-41) ----------
+
+        public System.Action UndoWithAd, UndoWithGems, UndoDeclined;
+        Card undoCard;
+        RectTransform undoAd, undoGems, undoBadge;
+        TextMeshProUGUI undoBadgeText;
+        GameObject undoBadgeGem;
+        int undoBadgeShown = -1;
+
+        void BuildUndoOffer()
+        {
+            undoCard = MakeCard("Undo Offer", "NO FREE UNDOS", new Vector2(860f, 800f), true);
+            var c = undoCard.Root;
+            var line = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 170f), new Vector2(760f, 150f)),
+                $"{UndoAllowance.Free} free undos a try. All used.\nTime travel costs extra.", 42f, Ink, Ink, 0f, false);
+            line.textWrappingMode = TextWrappingModes.Normal;
+            var ad = TextButton(c, "UNDO · AD", Palette.UiBlue, new Vector2(-190f, -30f), new Vector2(340f, 150f), 48f, "play");
+            ad.Clicked = () => UndoWithAd?.Invoke();
+            undoAd = ad.transform as RectTransform;
+            var gems = TextButton(c, $"UNDO · {UndoAllowance.GemCost}", Themes.Hex(0x8A5CF0), new Vector2(190f, -30f), new Vector2(340f, 150f), 48f, null);
+            gems.Clicked = () => UndoWithGems?.Invoke();
+            undoGems = gems.transform as RectTransform;
+            gems.GetComponentInChildren<TextMeshProUGUI>().rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem
+            var gemIcon = UiArt.Icon3D("gem");
+            if (gemIcon != null)
+                Img(Rect("Gem", undoGems, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-62f, 8f), new Vector2(84f, 84f)), gemIcon, Color.white);
+            // Retrying is always free (OUT-13), and the card says so.
+            TextButton(c, "RESTART · FREE", Palette.UiGreen, new Vector2(0f, -230f), new Vector2(560f, 150f), 56f, "restart").Clicked = () => Restart?.Invoke();
+            CloseButton(undoCard, () => UndoDeclined?.Invoke());
+        }
+
+        public void ShowUndoOffer(bool adOk)
+        {
+            HideAll();
+            undoAd.gameObject.SetActive(adOk);
+            undoGems.anchoredPosition = new Vector2(adOk ? 190f : 0f, -30f);
+            ShowCard(undoCard);
+        }
+
+        // The small count on the undo button: free undos left, or a gem once they cost. Hidden where undos are unlimited.
+        public void SetUndoCount(int freeLeft, bool limited)
+        {
+            if (undoBadge == null) return;
+            undoBadge.gameObject.SetActive(limited);
+            if (!limited) return;
+            undoBadgeText.text = freeLeft > 0 ? freeLeft.ToString() : "";
+            if (undoBadgeGem != null) undoBadgeGem.SetActive(freeLeft == 0);
+            undoBadge.GetComponent<Image>().color = freeLeft > 0 ? Palette.UiRed : Themes.Hex(0x8A5CF0);
+            if (undoBadgeShown >= 0 && freeLeft != undoBadgeShown) Pop(undoBadge, 0f, 1.3f);
+            undoBadgeShown = freeLeft;
         }
 
         // ---------- Shop (OUT-31, OUT-32, OUT-33) ----------
@@ -639,6 +701,7 @@ namespace OutOfOffice
             Img(Rect("Top", stage, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(680f, 186f)), Shapes.Circle, Themes.Hex(0xFFF3DE));
             Img(Rect("Rug", stage, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(520f, 136f)), Shapes.Ring, new Color(1f, 0.79f, 0.29f, 0.55f));
             welcomePortrait = Rect("Employee", area, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(700f, 700f));
+            OwnCanvas(welcomePortrait, true);  // it bobs every frame
             welcomeIcon = welcomePortrait.gameObject.AddComponent<RawImage>();
             welcomeIcon.raycastTarget = false;
             heroBobber = welcomePortrait.gameObject.AddComponent<Bobber>();
@@ -652,6 +715,7 @@ namespace OutOfOffice
 
             // The logo, above the stage.
             var logo = Rect("Logo", area, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -400f), new Vector2(900f, 400f));
+            OwnCanvas(logo, true);  // the letters wave every frame
             logo.localScale = Vector3.one * 0.6f;
             logo.localRotation = Quaternion.Euler(0f, 0f, 3f);
             AddWord(logo, LogoWords[0], new Vector2(-14f, 92f), Color.white, Themes.Hex(0xFFE9C9));
@@ -703,6 +767,7 @@ namespace OutOfOffice
             var rays = Rect("Rays", back, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(2000f, 2000f));
             Img(rays, UiArt.Sunburst, new Color(1f, 1f, 1f, 0.22f));
             rays.gameObject.AddComponent<Spin>().Speed = 4f;
+            OwnCanvas(rays);
             var glow = Rect("Glow", back, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(1100f, 1100f));
             Img(glow, Shapes.Circle, new Color(1f, 1f, 1f, 0.16f));
 
@@ -716,6 +781,7 @@ namespace OutOfOffice
                 foreach (var (x, y, d) in new[] { (-70f, -10f, 110f), (0f, 15f, 150f), (75f, -10f, 105f) })
                     Img(Rect("Puff", cloud, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, y), new Vector2(d, d)), Shapes.Circle, new Color(1f, 1f, 1f, 0.92f));
                 Sliced(Img(Rect("Base", cloud, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(250f, 64f)), UiArt.Pill, new Color(1f, 1f, 1f, 0.92f)), 64f, 0.5f);
+                OwnCanvas(cloud);
                 var drift = cloud.gameObject.AddComponent<Drift>();
                 drift.Speed = 10f + i * 4f;
             }
@@ -1224,7 +1290,7 @@ namespace OutOfOffice
         public void UpdateSettings(bool sfx, bool music, bool reduced)
         {
             ReducedMotion = reduced;
-            Calm = reduced;
+            Calm = UiPress.Calm = reduced;
             SetSwitch("sfx", sfx);
             SetSwitch("music", music);
             SetSwitch("motion", reduced);
@@ -1355,6 +1421,7 @@ namespace OutOfOffice
             var disc = Rect("Disc", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -365f), new Vector2(430f, 430f));
             Img(disc, Shapes.Circle, Themes.Hex(0xE9EEF6));
             var prev = Rect("Preview", c, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -350f), new Vector2(470f, 470f));  // big enough to see a hat or a face item (OUT-29)
+            OwnCanvas(prev);  // it bobs every frame
             wardrobePreview = prev.gameObject.AddComponent<RawImage>();
             wardrobePreview.raycastTarget = false;
             prev.gameObject.AddComponent<Bobber>().Hud = this;
@@ -1379,6 +1446,7 @@ namespace OutOfOffice
             Img(view, UiArt.Pill, new Color(1f, 1f, 1f, 0.001f)).raycastTarget = true;
             wardrobeContent = Rect("Content", view, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, 800f));
             wardrobeContent.pivot = new Vector2(0.5f, 1f);
+            OwnCanvas(wardrobeContent, true);  // scrolling moves only this canvas
             var scroll = view.gameObject.AddComponent<ScrollRect>();
             scroll.content = wardrobeContent;
             scroll.horizontal = false;
@@ -1400,18 +1468,37 @@ namespace OutOfOffice
             HideAll();
             RefreshSkins();
             ShowCard(skinsCard);
+            IconStudio.WardrobeOpen = true;  // its icons render first, and faster
         }
 
-        readonly List<(CosmeticItem item, RawImage icon)> wardrobeIcons = new List<(CosmeticItem, RawImage)>();
+        // Wardrobe tiles are built once per tab and afterwards only repainted (OUT-36): an equip or a tab switch no
+        // longer rebuilds every tile. A tab is rebuilt only when what the player owns in it changes. Icons come with
+        // their rounded corners already cut (IconStudio), so tiles need no stencil mask.
+        class SkinTile
+        {
+            public CosmeticItem Item;
+            public bool Owned;
+            public Image Bg;
+            public RawImage Icon;
+            public TextMeshProUGUI Label;
+            public GameObject Check;
+        }
+
+        readonly Dictionary<Slot, (RectTransform root, List<SkinTile> tiles)> skinTabs = new Dictionary<Slot, (RectTransform, List<SkinTile>)>();
 
         void RefreshWardrobeIcons()
         {
-            if (wardrobePreview != null) wardrobePreview.texture = IconStudio.HeroIcon;
-            foreach (var (item, icon) in wardrobeIcons)
-                if (icon != null && IconStudio.ItemIcons.TryGetValue(item.Id, out var tex)) icon.texture = tex;
+            if (wardrobePreview != null && wardrobePreview.texture != IconStudio.HeroIcon) wardrobePreview.texture = IconStudio.HeroIcon;
+            foreach (var tab in skinTabs.Values)
+                foreach (var t in tab.tiles)
+                    if (IconStudio.ItemIcons.TryGetValue(t.Item.Id, out var tex) && t.Icon.texture != tex)
+                    {
+                        t.Icon.texture = tex;
+                        t.Icon.color = t.Owned ? Color.white : new Color(0.5f, 0.5f, 0.56f, 1f);
+                    }
         }
 
-        void RefreshSkins()
+        void RefreshSkins(bool tabChanged = true)
         {
             foreach (var (slot, bg, label) in wardrobeTabs)
             {
@@ -1419,69 +1506,98 @@ namespace OutOfOffice
                 bg.color = on ? theme.Accent : Inset;
                 label.color = on ? Color.white : Ink;
             }
-            foreach (Transform c in wardrobeContent) Destroy(c.gameObject);
-            wardrobeIcons.Clear();
-            var outfit = CurrentOutfit?.Invoke() ?? Cosmetics.Default;
-            string worn = outfit.Get(wardrobeTab);
-            var items = Cosmetics.InSlot(wardrobeTab);
-            const float tileW = 210f, tileH = 270f;
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                bool owned = OwnsItem?.Invoke(item) ?? false;
-                bool equipped = item.Id == worn;
-                int col = i % 4, row = i / 4;
-                var tile = Rect(item.Id, wardrobeContent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                    new Vector2((col - 1.5f) * (tileW + 14f), -tileH / 2f - 10f - row * (tileH + 16f)), new Vector2(tileW, tileH));
-                var bg = Img(tile, UiArt.Button, equipped ? theme.Accent : owned ? Inset : Themes.Hex(0xE2DAEA));
-                Sliced(bg, tileH, 0.18f);
-                bg.raycastTarget = true;
-                // Rarity stripe along the top.
-                var stripe = Img(Rect("Rarity", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(tileW - 40f, 12f)), UiArt.Pill, Cosmetics.RarityColor(item.Rarity));
-                Sliced(stripe, 12f, 0.5f);
-
-                var frame = Rect("Portrait", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(184f, 184f));
-                Sliced(Img(frame, UiArt.Button, Color.white), 184f, 0.22f);
-                var maskR = Rect("Mask", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(166f, 166f));
-                Sliced(Img(maskR, UiArt.Button, Color.white), 166f, 0.2f);  // a rounded square: no hat or chin cut off by a circle
-                maskR.gameObject.AddComponent<Mask>().showMaskGraphic = false;
-                var raw = Rect("Icon", maskR, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
-                raw.raycastTarget = false;
-                raw.color = owned ? Color.white : new Color(0.5f, 0.5f, 0.56f, 1f);
-                if (IconStudio.ItemIcons.TryGetValue(item.Id, out var tex)) raw.texture = tex;
-                else raw.color = item.Slot == Slot.Color ? item.Body : new Color(1f, 1f, 1f, 0.2f);
-                wardrobeIcons.Add((item, raw));
-
-                string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
-                var label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, 46f), new Vector2(tileW - 10f, 50f)),
-                    caption, 30f, equipped ? Color.white : Ink, Ink);
-                label.enableAutoSizing = true;  // long names shrink to fit the tile instead of spilling over (OUT-29)
-                label.fontSizeMin = 15f;
-                label.fontSizeMax = 30f;
-                if (equipped)
-                {
-                    Img(Rect("Check", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -16f), new Vector2(58f, 58f)), UiArt.RoundButton, Palette.UiGreen);
-                    Img(Rect("CheckIcon", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -13f), new Vector2(36f, 36f)), UiArt.Icon("check"), Color.white);
-                }
-                if (!owned)
-                {
-                    Img(Rect("Lock", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(60f, 60f)), UiArt.Icon(item.FromChest ? "chest" : "lock"), Color.white)
-                        .gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.35f);
-                    if (!item.FromChest)
-                        Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-30f, 48f), new Vector2(40f, 40f)), UiArt.Star, Color.white);
-                    continue;
-                }
-                var chosen = item;
-                tile.gameObject.AddComponent<UiPress>().Clicked = () =>
-                {
-                    EquipItem?.Invoke(chosen);
-                    RefreshSkins();
-                };
-            }
-            int rows = (items.Count + 3) / 4;
-            wardrobeContent.sizeDelta = new Vector2(0f, rows * (tileH + 16f) + 20f);
-            wardrobeContent.anchoredPosition = Vector2.zero;
+            IconStudio.ShowingTab = wardrobeTab;
+            if (!skinTabs.TryGetValue(wardrobeTab, out var tab) || tab.root == null || OwnershipChanged(tab.tiles)) tab = BuildSkinTab(wardrobeTab);
+            foreach (var kv in skinTabs) kv.Value.root.gameObject.SetActive(kv.Key == wardrobeTab);
+            string worn = (CurrentOutfit?.Invoke() ?? Cosmetics.Default).Get(wardrobeTab);
+            foreach (var t in tab.tiles) PaintTile(t, t.Item.Id == worn);
+            wardrobeContent.sizeDelta = new Vector2(0f, tab.root.sizeDelta.y);
+            if (tabChanged) wardrobeContent.anchoredPosition = Vector2.zero;
             RefreshWardrobeIcons();
+        }
+
+        bool OwnershipChanged(List<SkinTile> tiles)
+        {
+            foreach (var t in tiles)
+                if (t.Owned != (OwnsItem?.Invoke(t.Item) ?? false)) return true;
+            return false;
+        }
+
+        void PaintTile(SkinTile t, bool equipped)
+        {
+            t.Bg.color = equipped ? theme.Accent : t.Owned ? Inset : Themes.Hex(0xE2DAEA);
+            t.Label.color = equipped ? Color.white : Ink;
+            t.Check.SetActive(equipped);
+        }
+
+        const float SkinTileW = 210f, SkinTileH = 270f;
+
+        (RectTransform root, List<SkinTile> tiles) BuildSkinTab(Slot slot)
+        {
+            if (skinTabs.TryGetValue(slot, out var old) && old.root != null)
+            {
+                old.root.gameObject.SetActive(false);
+                Destroy(old.root.gameObject);
+            }
+            FrameWatch.Note("tiles");
+            var items = Cosmetics.InSlot(slot);
+            int rows = (items.Count + 3) / 4;
+            var root = Rect("Tab " + slot, wardrobeContent, new Vector2(0f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(0f, rows * (SkinTileH + 16f) + 20f));
+            root.pivot = new Vector2(0.5f, 1f);
+            var tiles = new List<SkinTile>(items.Count);
+            for (int i = 0; i < items.Count; i++) tiles.Add(SkinTileFor(root, items[i], i));
+            skinTabs[slot] = (root, tiles);
+            return (root, tiles);
+        }
+
+        SkinTile SkinTileFor(RectTransform parent, CosmeticItem item, int i)
+        {
+            const float tileW = SkinTileW, tileH = SkinTileH;
+            bool owned = OwnsItem?.Invoke(item) ?? false;
+            int col = i % 4, row = i / 4;
+            var tile = Rect(item.Id, parent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2((col - 1.5f) * (tileW + 14f), -tileH / 2f - 10f - row * (tileH + 16f)), new Vector2(tileW, tileH));
+            var t = new SkinTile { Item = item, Owned = owned };
+            t.Bg = Img(tile, UiArt.Button, Inset);
+            Sliced(t.Bg, tileH, 0.18f);
+            t.Bg.raycastTarget = true;
+            // Rarity stripe along the top.
+            var stripe = Img(Rect("Rarity", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(tileW - 40f, 12f)), UiArt.Pill, Cosmetics.RarityColor(item.Rarity));
+            Sliced(stripe, 12f, 0.5f);
+
+            var frame = Rect("Portrait", tile, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(184f, 184f));
+            Sliced(Img(frame, UiArt.Button, Color.white), 184f, 0.22f);
+            // A rounded square, cut into the icon itself: no hat or chin cut off by a circle.
+            t.Icon = Rect("Icon", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(166f, 166f)).gameObject.AddComponent<RawImage>();
+            t.Icon.raycastTarget = false;
+            t.Icon.color = item.Slot == Slot.Color ? item.Body : new Color(1f, 1f, 1f, 0.2f);  // until the icon is drawn
+
+            string caption = owned ? item.Name : item.FromChest ? "CHEST" : item.StarsNeeded.ToString();
+            t.Label = Body(Rect("Name", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(item.FromChest || owned ? 0f : 16f, 46f), new Vector2(tileW - 10f, 50f)),
+                caption, 30f, Ink, Ink);
+            // Long names shrink to fit the tile (OUT-29). Tiles are built once per tab, so this is not paid on every equip.
+            t.Label.enableAutoSizing = true;
+            t.Label.fontSizeMin = 15f;
+            t.Label.fontSizeMax = 30f;
+
+            var check = Rect("Check", tile, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -16f), new Vector2(58f, 58f));
+            Img(check, UiArt.RoundButton, Palette.UiGreen);
+            Img(Rect("CheckIcon", check, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 3f), new Vector2(36f, 36f)), UiArt.Icon("check"), Color.white);
+            t.Check = check.gameObject;
+            if (!owned)
+            {
+                Img(Rect("Lock", frame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(60f, 60f)), UiArt.Icon(item.FromChest ? "chest" : "lock"), Color.white)
+                    .gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.35f);
+                if (!item.FromChest)
+                    Img(Rect("Star", tile, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-30f, 48f), new Vector2(40f, 40f)), UiArt.Star, Color.white);
+                return t;
+            }
+            tile.gameObject.AddComponent<UiPress>().Clicked = () =>
+            {
+                EquipItem?.Invoke(item);
+                RefreshSkins(false);
+            };
+            return t;
         }
 
         // ---------- Daily quests ----------
@@ -1619,6 +1735,9 @@ namespace OutOfOffice
                 Tweens.Run(0.35f, k => speech.localScale = Vector3.one * k, Tweens.OutBack, 0f, owner: speech);
             }
         }
+
+        public bool Speaking => speech != null && speech.gameObject.activeSelf;
+        public string SpeechLine => speechText != null ? speechText.text : "";
 
         public void HideSpeech()
         {
@@ -1760,7 +1879,8 @@ namespace OutOfOffice
         void Remember()
         {
             titleReturn = title.gameObject.activeSelf;
-            returnTo = pauseCard.Root.gameObject.activeSelf ? pauseCard : failCard.Root.gameObject.activeSelf ? failCard : null;  // the shop can open from the out-of-shots card
+            returnTo = pauseCard.Root.gameObject.activeSelf ? pauseCard : failCard.Root.gameObject.activeSelf ? failCard
+                : undoCard.Root.gameObject.activeSelf ? undoCard : null;  // the shop can open from the out-of-shots and undo cards
         }
 
         void Back()
@@ -1774,8 +1894,9 @@ namespace OutOfOffice
 
         public void HideAll()
         {
+            IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);
@@ -1910,8 +2031,11 @@ namespace OutOfOffice
             Sliced(shadow, size * 1.25f, 0.5f);
             var img = Img(r, UiArt.RoundButton, color);
             img.raycastTarget = true;
-            var ic = Img(Rect("Icon", r, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, size * 0.05f), Vector2.one * size * 0.56f), UiArt.Icon(icon), iconColor);
-            if (iconColor == Color.white) ic.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.22f);
+            // Restart and undo use their 3D renders (OUT-39), which carry their own shading and outline.
+            var icon3D = icon == "restart" || icon == "undo" ? UiArt.Icon3D(icon) : null;
+            var ic = Img(Rect("Icon", r, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, size * (icon3D != null ? 0.04f : 0.05f)),
+                Vector2.one * size * (icon3D != null ? 0.74f : 0.56f)), icon3D ?? UiArt.Icon(icon), icon3D != null ? Color.white : iconColor);
+            if (icon3D == null && iconColor == Color.white) ic.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.22f);
             shadow.transform.SetAsFirstSibling();
             return r.gameObject.AddComponent<UiPress>();
         }
@@ -2020,6 +2144,15 @@ namespace OutOfOffice
             var border = img.sprite.border;
             float spriteRadius = Mathf.Max(1f, border.w);
             img.pixelsPerUnitMultiplier = spriteRadius / Mathf.Max(1f, height * radiusFraction);
+        }
+
+        // A moving piece gets its own canvas (OUT-36): its motion then never re-batches the rest of the screen.
+        static void OwnCanvas(RectTransform r, bool clickable = false)
+        {
+            var parent = r.GetComponentInParent<Canvas>();
+            var c = r.gameObject.AddComponent<Canvas>();
+            if (parent != null) c.additionalShaderChannels = parent.rootCanvas.additionalShaderChannels;
+            if (clickable) r.gameObject.AddComponent<GraphicRaycaster>();
         }
 
         static Image Img(RectTransform r, Sprite sprite, Color color)

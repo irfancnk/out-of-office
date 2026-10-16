@@ -342,6 +342,15 @@ namespace OutOfOffice
                 }
                 footprint = Geometry.Circle(Vector2.zero, rc, 40);
             }
+            else if (b.Reception != 0)
+            {
+                visual = Reception(go.transform, b.Size, b.Reception, theme);
+                footprint = Geometry.Fillet(new List<Vector2>
+                {
+                    new Vector2(-b.Size.x / 2f, -b.Size.y / 2f), new Vector2(b.Size.x / 2f, -b.Size.y / 2f),
+                    new Vector2(b.Size.x / 2f, b.Size.y / 2f), new Vector2(-b.Size.x / 2f, b.Size.y / 2f),
+                }, rc);
+            }
             else
             {
                 float bevel = Mathf.Min(0.16f, Mathf.Min(b.Size.x, b.Size.y) * 0.3f, rc * 0.9f + 0.02f);
@@ -492,6 +501,56 @@ namespace OutOfOffice
             holder.gameObject.AddComponent<CoworkerFace>();
             var head = holder.Find("Roll/Head/Skull");
             return head != null ? head.GetComponent<MeshRenderer>() : holder.GetComponentInChildren<MeshRenderer>();
+        }
+
+        // The receptionist's corner (OUT-38): a plum carpet over the whole footprint, a reception counter along the
+        // front with a desk phone and a bell, a swivel chair behind it, a bin by her side, and the receptionist herself,
+        // sat facing the room. side: -1 in the top left corner, +1 in the top right. The block's collider covers it all,
+        // so no shot ever reaches her: she is scenery.
+        static MeshRenderer Reception(Transform parent, Vector2 size, int side, Theme theme)
+        {
+            float hw = size.x / 2f, hh = size.y / 2f;
+            var carpet = Look.AddMesh("Carpet", Meshes.RoundedPrism(size.x, size.y, 0.2f, 0.05f, 0.025f), Look.Lit(Themes.Hex(0x8E4F7A), 0.15f, Textures.Fabric), parent, Vector3.zero, false);
+            carpet.receiveShadows = true;
+
+            // The counter: a cream front with a coloured band, and a wooden top that overhangs a little.
+            const float deskH = 0.6f, deskD = 0.48f;
+            float deskY = -hh + 0.06f + deskD / 2f;
+            var desk = Look.AddMesh("Visual", Meshes.RoundedPrism(size.x - 0.14f, deskD, 0.1f, deskH, 0.05f), Look.Lit(Themes.Hex(0xF1EBE1), 0.4f), parent,
+                new Vector3(0f, deskY, 0f));
+            Look.AddMesh("Band", Meshes.RoundedPrism(size.x - 0.1f, deskD + 0.04f, 0.11f, 0.08f, 0.02f), Look.Lit(theme.Accent, 0.5f), desk.transform,
+                new Vector3(0f, 0f, -0.2f), false);
+            Look.AddMesh("Top", Meshes.RoundedPrism(size.x - 0.06f, deskD + 0.08f, 0.12f, 0.05f, 0.02f), Look.Lit(Themes.Hex(0x7A4E34), 0.55f), desk.transform,
+                new Vector3(0f, 0.02f, -deskH), false);
+            float top = -deskH - 0.05f;
+
+            // The desk phone: a base and a handset (she picks it up), and the bell nobody is allowed to ring.
+            var phoneAt = new Vector3(0.48f, deskY + 0.04f, top);
+            var dark = Look.Lit(Themes.Hex(0x2B2F3A), 0.6f);
+            Look.AddMesh("Phone", Meshes.SoftBox(new Vector3(0.24f, 0.2f, 0.07f), 0.03f), dark, desk.transform, phoneAt - desk.transform.localPosition + new Vector3(0f, 0f, -0.035f), false);
+            var handset = Look.AddMesh("Handset", Meshes.Blob(new Vector3(0.26f, 0.07f, 0.06f), 2.2f), dark, desk.transform,
+                phoneAt - desk.transform.localPosition + new Vector3(0f, 0f, -0.1f), false);
+            Look.AddMesh("Bell", Meshes.Lathe(Scenery.Sphere(0.06f), 16), Look.Lit(Themes.Hex(0xF2C04A), 0.85f), desk.transform,
+                new Vector3(-0.5f, 0.02f, top), false);
+
+            // Her chair, and the bin she never misses.
+            var chair = new GameObject("Chair").transform;
+            chair.SetParent(parent, false);
+            chair.localPosition = new Vector3(0f, 0.22f, 0f);
+            OfficeChair(chair, 0.36f, 0.4f, false);
+            var binAt = new Vector3(side * 0.72f, 0.34f, 0f);
+            var bin = Look.AddMesh("Bin", Meshes.Lathe(new List<Vector2> { new Vector2(0.1f, 0f), new Vector2(0.135f, 0.26f), new Vector2(0.115f, 0.26f), new Vector2(0.085f, 0.03f), new Vector2(0f, 0.03f) }, 24),
+                Look.Lit(Themes.Hex(0x9AA4B5), 0.5f), parent, binAt);
+
+            // The receptionist, turned a little toward the room.
+            var holder = new GameObject("Receptionist").transform;
+            holder.SetParent(chair, false);
+            holder.localPosition = new Vector3(0f, 0.02f, -0.3f);
+            holder.localRotation = Quaternion.Euler(0f, 0f, -side * 14f);
+            holder.localScale = Vector3.one * 0.95f;
+            People.Build(holder, Secretary.Look);
+            holder.gameObject.AddComponent<Secretary>().Init(handset.transform, bin.transform, side);
+            return desk;
         }
 
         // An office chair seen from above: a five-spoke base on casters, a gas lift, a cushioned seat with a piped edge,

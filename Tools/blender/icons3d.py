@@ -9,6 +9,7 @@ import math
 import os
 import sys
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -300,7 +301,77 @@ def gem():
                 p.use_smooth = False                                           # facets, not a blob
 
 
-PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee}
+def arc_arrow(a0, a1, head_at_start, radius=0.9, tube=0.2):
+    # A chunky curved arrow (OUT-39): a round tube along an arc in the picture plane, ending in a fat arrowhead. The arc
+    # leaves a wide gap and tucks under the head, so the arrow never reads as a closed ring. Angles in degrees,
+    # counterclockwise as the camera sees it; the head sits at a0 pointing clockwise, or at a1 pointing onward.
+    body = material("Arrow", hexc("#D3DBEC"), 0.45, coat=0.15)  # off-white: pure white clips to a flat shape
+    head_len, head_w = 0.8, 0.52
+    # Pull the tube's end back under the head.
+    start, end = (a0 + 8, a1) if head_at_start else (a0, a1 - 8)
+    data = bpy.data.curves.new("Arc", "CURVE")
+    data.dimensions = "3D"
+    data.bevel_depth = tube
+    data.bevel_resolution = 8
+    data.use_fill_caps = True
+    spline = data.splines.new("POLY")
+    steps = 64
+    spline.points.add(steps)
+    for i in range(steps + 1):
+        a = math.radians(start + (end - start) * i / steps)
+        spline.points[i].co = (radius * math.cos(a), 0.0, radius * math.sin(a), 1.0)
+    arc = bpy.data.objects.new("Arc", data)
+    bpy.context.scene.collection.objects.link(arc)
+    bpy.context.view_layer.objects.active = arc
+    arc.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    finish(arc, body)
+
+    at = math.radians(a0 if head_at_start else a1)
+    point = Vector((radius * math.cos(at), 0.0, radius * math.sin(at)))
+    radial = point.normalized()
+    # Tangent along the arrow's travel: clockwise at the start, counterclockwise at the end.
+    tangent = Vector((math.sin(at), 0.0, -math.cos(at))) if head_at_start else Vector((-math.sin(at), 0.0, math.cos(at)))
+    # A thick flat arrowhead in the arc's plane, its base across the tube's end.
+    base = point - tangent * 0.06
+    tri = [base + radial * head_w, base - radial * head_w, base + tangent * head_len]
+    depth = Vector((0.0, tube * 1.05, 0.0))
+    verts = [p - depth for p in tri] + [p + depth for p in tri]
+    faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
+    mesh = bpy.data.meshes.new("Head")
+    mesh.from_pydata([tuple(v) for v in verts], [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)  # outward, whatever order the corners came in
+    bm.to_mesh(mesh)
+    bm.free()
+    head = bpy.data.objects.new("Head", mesh)
+    bpy.context.scene.collection.objects.link(head)
+    finish(head, body, bevel=0.07, segments=5)
+
+    # Softer light than the other props: a near-white object otherwise clips to a flat cut-out.
+    for light in bpy.data.lights:
+        light.energy *= 0.5
+
+    # Face the camera, turned a little so it still reads as a solid thing.
+    pivot = bpy.data.objects.new("Pivot", None)
+    bpy.context.scene.collection.objects.link(pivot)
+    for o in (arc, head):
+        o.parent = pivot
+    pivot.rotation_euler = (math.radians(-22), 0, math.radians(26))
+    pivot.location = (0, 0, 0.35)
+
+
+def restart():
+    arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
+
+
+def undo():
+    arc_arrow(-25, 185, False)     # ↶: over the top, the head at the left pointing down
+
+
+PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
+         "restart": restart, "undo": undo}
 
 
 def render(name):

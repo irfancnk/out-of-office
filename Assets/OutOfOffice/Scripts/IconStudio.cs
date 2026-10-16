@@ -1,106 +1,193 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace OutOfOffice
 {
-    // Renders Puffy portraits: the big title cut-out of the current outfit, and a small icon for every wardrobe item
-    // (Puffy wearing that item). Rigs are built far from the board, rendered by their own cameras for a frame,
-    // read back, and removed. Also composes the app icon.
+    // Renders employee portraits: the big title cut-out of the current outfit, and a small icon for every wardrobe item
+    // (the employee wearing that item). Also composes the app icon.
+    //
+    // Portraits are queued and rendered a few per frame (OUT-36). Each one builds its rig far from the board, renders it
+    // with Camera.Render into a temporary anti-aliased target, copies that into the portrait's own RenderTexture (shown
+    // directly by the UI, so the GPU is never read back), and hides the rig at once. Only one rig exists at a time, and
+    // each camera clips just behind its subject, so no other employee can ever end up in a portrait (OUT-37).
     public class IconStudio : MonoBehaviour
     {
-        public static Texture2D HeroIcon;  // big cut-out with a transparent background, for the title screen
-        public static readonly Dictionary<string, Texture2D> ItemIcons = new Dictionary<string, Texture2D>();
+        public static Texture HeroIcon;  // big cut-out with a transparent background, for the title screen
+        public static readonly Dictionary<string, Texture> ItemIcons = new Dictionary<string, Texture>();
         public static System.Action Rendered;
         static readonly Vector3 Origin = new Vector3(400f, 400f, 0f);
         public static readonly Color PortraitBack = new Color(0.82f, 0.91f, 1f);
-        static int slot;
+
+        // Set by the game and the HUD. Nothing renders while a shot is in play; on menus one portrait a frame; with the
+        // wardrobe open, as many as fit in a few milliseconds, the open tab's items first.
+        public static bool Playing, WardrobeOpen;
+        public static Slot ShowingTab = Slot.Employee;
+        const double FrameBudgetMs = 4.0;
+
+        const int HeroSize = 768, ItemSize = 192;
 
         class Job
         {
-            public string Key;
-            public SkinDef Look;
+            public string Key, LookKey;
+            public Outfit Outfit;
             public int Size;
             public bool Hero, Head;
+            public Slot Slot;
         }
 
-        public static void RenderHero(SkinDef look) =>
-            Run(new List<Job> { new Job { Key = "hero", Look = look, Size = HeroSize, Hero = true } });
+        static IconStudio instance;
+        static readonly List<Job> queue = new List<Job>();
+        static readonly Dictionary<string, RenderTexture> targets = new Dictionary<string, RenderTexture>();
+        static readonly Dictionary<string, string> shown = new Dictionary<string, string>();  // portrait key -> look it shows
+        static readonly Dictionary<string, Job> latest = new Dictionary<string, Job>();       // to redraw lost targets
+
+        static string KeyOf(Outfit o) => o.Employee + "|" + o.Color + "|" + o.Hat + "|" + o.Face;
+
+        public static void RenderHero(Outfit outfit) =>
+            Enqueue(new Job { Key = "hero", LookKey = KeyOf(outfit), Outfit = outfit, Size = HeroSize, Hero = true });
 
         // One icon per wardrobe item: the player's own employee in their current outfit, with that one item swapped in,
         // so every tile shows what it would look like on you (OUT-29). Hats and face items are framed on the head,
-        // where the change is; staff and ties show the whole body. `force` re-renders after an outfit change.
-        public static void RenderItems(Outfit outfit, bool force = false)
+        // where the change is; staff and ties show the whole body. Icons whose look didn't change are kept: after a new
+        // hat, the hat tab's icons are already right.
+        public static void RenderItems(Outfit outfit)
         {
-            var jobs = new List<Job>();
             foreach (var item in Cosmetics.All)
             {
-                if (!force && ItemIcons.ContainsKey(item.Id)) continue;
                 var o = outfit.With(item);
-                jobs.Add(new Job { Key = item.Id, Look = Cosmetics.Compose(o), Size = ItemSize, Head = item.Slot == Slot.Hat || item.Slot == Slot.Face });
+                Enqueue(new Job { Key = item.Id, LookKey = KeyOf(o), Outfit = o, Size = ItemSize, Slot = item.Slot, Head = item.Slot == Slot.Hat || item.Slot == Slot.Face });
             }
-            if (jobs.Count > 0) Run(jobs);
         }
 
-        const int ItemSize = 192;
+        // Pending jobs for the same portrait merge into the newest; a portrait that already shows the look is skipped.
+        static void Enqueue(Job job)
+        {
+            EnsureInstance();
+            for (int i = 0; i < queue.Count; i++)
+                if (queue[i].Key == job.Key)
+                {
+                    queue.RemoveAt(i);
+                    break;
+                }
+            if (shown.TryGetValue(job.Key, out var look) && look == job.LookKey && targets.TryGetValue(job.Key, out var rt) && rt != null && rt.IsCreated())
+                return;
+            queue.Add(job);
+        }
+
+        static void EnsureInstance()
+        {
+            if (instance != null || !Application.isPlaying) return;
+            var go = new GameObject("Icon Studio");
+            DontDestroyOnLoad(go);
+            instance = go.AddComponent<IconStudio>();
+        }
+
+        void LateUpdate()
+        {
+            if (queue.Count == 0 || (Playing && !WardrobeOpen)) return;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            int done = 0;
+            while (queue.Count > 0)
+            {
+                int next = NextJob();
+                if (next < 0) break;
+                var job = queue[next];
+                queue.RemoveAt(next);
+                Draw(job);
+                done++;
+                if (!WardrobeOpen || watch.Elapsed.TotalMilliseconds > FrameBudgetMs) break;
+            }
+            if (done > 0) Rendered?.Invoke();
+        }
+
+        // The hero first, then the open wardrobe tab, then the rest. Item icons wait while the wardrobe is closed and
+        // the hero is still pending, so the title portrait is never late.
+        static int NextJob()
+        {
+            int best = -1, bestRank = int.MaxValue;
+            for (int i = 0; i < queue.Count; i++)
+            {
+                var j = queue[i];
+                int rank = j.Hero ? 0 : WardrobeOpen && j.Slot == ShowingTab ? 1 : 2;
+                if (rank < bestRank) { best = i; bestRank = rank; }
+            }
+            return best;
+        }
+
+        static void Draw(Job job)
+        {
+            FrameWatch.Note(job.Hero ? "portrait" : "icon");
+            if (!targets.TryGetValue(job.Key, out var target) || target == null)
+            {
+                target = new RenderTexture(job.Size, job.Size, 0, RenderTextureFormat.ARGB32) { name = "Portrait " + job.Key };
+                target.Create();
+                targets[job.Key] = target;
+            }
+            var temp = RenderTexture.GetTemporary(job.Size, job.Size, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
+            var rig = new GameObject("Icon Rig");
+            try
+            {
+                var cam = job.Hero ? HeroCamera(rig.transform, Origin, temp) : ItemCamera(rig.transform, Origin, temp, job.Head);
+                Pose(rig.transform, Origin, Cosmetics.Compose(job.Outfit), cam);
+                cam.Render();
+                if (job.Hero) Graphics.Blit(temp, target);
+                else Graphics.Blit(temp, target, Corners);  // wardrobe icons get their rounded corners here
+            }
+            finally
+            {
+                RenderTexture.ReleaseTemporary(temp);
+                Remove(rig);
+            }
+            shown[job.Key] = job.LookKey;
+            latest[job.Key] = job;
+            if (job.Hero) HeroIcon = target;
+            else ItemIcons[job.Key] = target;
+        }
+
+        static Material corners;
+        static Material Corners => corners != null ? corners : corners = new Material(Resources.Load<Shader>("OutOfOfficeRoundCorners")) { hideFlags = HideFlags.HideAndDontSave };
+
+        // The employee, placed and posed at once: the rig never lives to the next frame.
+        static Mascot Pose(Transform rig, Vector3 pos, SkinDef look, Camera cam)
+        {
+            var m = LevelBuilder.MakeMascot(rig, pos, look).GetComponent<Mascot>();
+            m.ViewCamera = cam;
+            m.Mode = MascotMode.Idle;
+            m.Pose(Eyes.Open, Mouth.Smile);
+            for (int i = 0; i < 8; i++) m.TickPresentation(1f / 60f);
+            return m;
+        }
+
+        static void Remove(GameObject rig)
+        {
+            rig.SetActive(false);
+            Meshes.ReleaseLevel(rig);
+            if (Application.isPlaying) Destroy(rig);
+            else DestroyImmediate(rig);
+        }
+
+        // RenderTextures can lose their contents when the app goes to the background on some phones: redraw them.
+        void OnApplicationPause(bool paused)
+        {
+            if (paused) return;
+            foreach (var kv in targets)
+                if (kv.Value != null && !kv.Value.IsCreated() && latest.TryGetValue(kv.Key, out var job))
+                {
+                    shown.Remove(kv.Key);
+                    Enqueue(job);
+                }
+        }
 
         // The item icon camera: the whole employee, or a head-and-hat close-up with room above for tall hats.
-        static Camera ItemCamera(Transform parent, Vector3 pos, RenderTexture rt, bool head) => head
-            ? MakeCamera(parent, pos + new Vector3(0f, 0.04f, -0.68f), 2f, 28f, rt, PortraitBack)
-            : MakeCamera(parent, pos + new Vector3(0f, 0f, -0.46f), 2.35f, 28f, rt, PortraitBack);
-
-        static void Run(List<Job> jobs)
+        static Camera ItemCamera(Transform parent, Vector3 pos, RenderTexture rt, bool head)
         {
-            var go = new GameObject("Icon Studio");
-            go.AddComponent<IconStudio>().StartCoroutine(RunRoutine(go, jobs));
-        }
-
-        static IEnumerator RunRoutine(GameObject owner, List<Job> jobs)
-        {
-            const int batch = 12;
-            for (int start = 0; start < jobs.Count; start += batch)
-            {
-                int n = Mathf.Min(batch, jobs.Count - start);
-                var rigs = new List<GameObject>();
-                var targets = new RenderTexture[n];
-                for (int i = 0; i < n; i++)
-                {
-                    var job = jobs[start + i];
-                    int s = slot++ % 400;
-                    var pos = Origin + new Vector3(s % 20 * 6f, s / 20 * 6f, 0f);
-                    var rig = new GameObject("Icon Rig");
-                    rigs.Add(rig);
-                    var puck = LevelBuilder.MakeMascot(rig.transform, pos, job.Look);
-                    targets[i] = new RenderTexture(job.Size, job.Size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
-                    Camera cam;
-                    if (job.Hero) cam = HeroCamera(rig.transform, pos, targets[i]);
-                    else cam = ItemCamera(rig.transform, pos, targets[i], job.Head);
-                    var m = puck.GetComponent<Mascot>();
-                    m.ViewCamera = cam;
-                    m.Pose(Eyes.Open, Mouth.Smile);
-                }
-                yield return null;  // Puck and Mascot place the body and face
-                yield return new WaitForEndOfFrame();
-                for (int i = 0; i < n; i++)
-                {
-                    var job = jobs[start + i];
-                    var tex = ReadBack(targets[i], false);
-                    if (job.Hero)
-                    {
-                        if (HeroIcon != null) Destroy(HeroIcon);
-                        HeroIcon = tex;
-                    }
-                    else
-                    {
-                        if (ItemIcons.TryGetValue(job.Key, out var old) && old != null) Destroy(old);
-                        ItemIcons[job.Key] = tex;
-                    }
-                    targets[i].Release();
-                }
-                foreach (var r in rigs) Destroy(r);
-                Rendered?.Invoke();
-            }
-            Destroy(owner);
+            var cam = head
+                ? MakeCamera(parent, pos + new Vector3(0f, 0.04f, -0.68f), 2f, 28f, rt, PortraitBack)
+                : MakeCamera(parent, pos + new Vector3(0f, 0f, -0.46f), 2.35f, 28f, rt, PortraitBack);
+            cam.GetUniversalAdditionalCameraData().renderShadows = false;  // small icons: the shadow pass costs more than it shows
+            return cam;
         }
 
         // The app icon: the employee, glasses on and running on coffee, on a corporate-blue sunburst. Saved as PNG.
@@ -110,6 +197,8 @@ namespace OutOfOffice
             var pos = Origin + new Vector3(0f, 60f, 0f);
             var target = new RenderTexture(size, size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 8 };
             var cam = MakeCamera(rig.transform, pos + new Vector3(0f, 0.02f, -0.5f), 2.05f, 30f, target, Themes.Hex(0x3B5BD9));
+            cam.enabled = true;
+            cam.farClipPlane = 30f;  // the sunburst sits 8 units behind
             cam.transform.rotation = Quaternion.Euler(-30f, 0f, 0f);
             cam.transform.position = pos + new Vector3(0f, 0.02f, -0.5f) - cam.transform.forward * 2.05f;
 
@@ -120,8 +209,8 @@ namespace OutOfOffice
             float viewHeight = 2f * 8f * Mathf.Tan(15f * Mathf.Deg2Rad);
             back.transform.localScale = Vector3.one * viewHeight * 1.05f;
 
-            // Soft round shadow under Puffy.
-            var shadow = LevelBuilder.MakeSprite("Shadow", Textures.Glow, new Color(0.12f, 0.05f, 0.3f, 0.45f), rig.transform, pos + new Vector3(0f, 0.05f, -0.005f), Vector2.one * 1.1f, 0);
+            // Soft round shadow under the employee.
+            LevelBuilder.MakeSprite("Shadow", Textures.Glow, new Color(0.12f, 0.05f, 0.3f, 0.45f), rig.transform, pos + new Vector3(0f, 0.05f, -0.005f), Vector2.one * 1.1f, 0);
 
             var puck = LevelBuilder.MakeMascot(rig.transform, pos, Cosmetics.Compose(Cosmetics.Default));
             var m = puck.GetComponent<Mascot>();
@@ -145,8 +234,6 @@ namespace OutOfOffice
             Debug.Log("HSICON saved " + path);
         }
 
-        const int HeroSize = 768;
-
         // The title screen hero: almost from the front, so the employee stands up like a character on a stage.
         static Camera HeroCamera(Transform parent, Vector3 pos, RenderTexture rt)
         {
@@ -157,69 +244,65 @@ namespace OutOfOffice
             return cam;
         }
 
-        // The same hero render, done at once (for editor review shots, where coroutines do not run).
+        // The same hero render, done at once and read back (for editor review shots).
         public static Texture2D RenderHeroNow(SkinDef look)
         {
             var rig = new GameObject("Hero Rig");
-            var pos = Origin + new Vector3(0f, -40f, 0f);
             var rt = new RenderTexture(HeroSize, HeroSize, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
             try
             {
-                var cam = HeroCamera(rig.transform, pos, rt);
-                var m = LevelBuilder.MakeMascot(rig.transform, pos, look).GetComponent<Mascot>();
-                m.ViewCamera = cam;
-                m.Mode = MascotMode.Idle;
-                m.Pose(Eyes.Open, Mouth.Smile);
-                for (int i = 0; i < 8; i++) m.TickPresentation(1f / 60f);
+                var cam = HeroCamera(rig.transform, Origin, rt);
+                Pose(rig.transform, Origin, look, cam);
                 cam.Render();
                 return ReadBack(rt, false);
             }
             finally
             {
                 rt.Release();
-                DestroyImmediate(rig);
+                Remove(rig);
             }
         }
 
-        // Every item icon at once, for editor review shots (coroutines don't run there).
+        // Every item icon at once, read back, for editor review shots.
         public static void RenderItemsNow(Outfit outfit)
         {
             foreach (var item in Cosmetics.All)
             {
                 var rig = new GameObject("Item Rig");
-                var pos = Origin + new Vector3(0f, -60f, 0f);
                 var rt = new RenderTexture(ItemSize, ItemSize, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
                 try
                 {
-                    var cam = ItemCamera(rig.transform, pos, rt, item.Slot == Slot.Hat || item.Slot == Slot.Face);
-                    var m = LevelBuilder.MakeMascot(rig.transform, pos, Cosmetics.Compose(outfit.With(item))).GetComponent<Mascot>();
-                    m.ViewCamera = cam;
-                    m.Mode = MascotMode.Idle;
-                    m.Pose(Eyes.Open, Mouth.Smile);
-                    for (int i = 0; i < 8; i++) m.TickPresentation(1f / 60f);
+                    var cam = ItemCamera(rig.transform, Origin, rt, item.Slot == Slot.Hat || item.Slot == Slot.Face);
+                    Pose(rig.transform, Origin, Cosmetics.Compose(outfit.With(item)), cam);
                     cam.Render();
-                    if (ItemIcons.TryGetValue(item.Id, out var old) && old != null) DestroyImmediate(old);
-                    ItemIcons[item.Id] = ReadBack(rt, false);
+                    var cut = RenderTexture.GetTemporary(ItemSize, ItemSize, 0, RenderTextureFormat.ARGB32);
+                    Graphics.Blit(rt, cut, Corners);
+                    if (ItemIcons.TryGetValue(item.Id, out var old) && old != null && !(old is RenderTexture)) DestroyImmediate(old);
+                    ItemIcons[item.Id] = ReadBack(cut, false);
+                    RenderTexture.ReleaseTemporary(cut);
                 }
                 finally
                 {
                     rt.Release();
-                    DestroyImmediate(rig);
+                    Remove(rig);
                 }
             }
             Rendered?.Invoke();
         }
 
+        // A camera that renders only when asked, and sees only what stands within a step of its target.
         static Camera MakeCamera(Transform parent, Vector3 target, float distance, float fov, RenderTexture rt, Color back)
         {
             var go = new GameObject("Icon Camera");
             go.transform.SetParent(parent, false);
             var cam = go.AddComponent<Camera>();
+            cam.enabled = false;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = back;
             cam.fieldOfView = fov;
             cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 30f;
+            cam.farClipPlane = distance + 1.5f;
+            cam.allowHDR = false;
             cam.depth = -10f;
             cam.targetTexture = rt;
             // A little more from the front than the game camera, so the face reads.

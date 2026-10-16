@@ -80,7 +80,7 @@ namespace OutOfOffice.EditorTools
             {
                 foreach (var id in new[] { "first", "easy", "kicker", "rubber", "pinball", "door", "ring", "figure8", "hairpin", "crossroads" })
                     LevelShot(id, dir, false);
-                foreach (var id in new[] { "ring", "figure8", "hairpin", "crossroads" })
+                foreach (var id in new[] { "ring", "figure8", "hairpin", "crossroads", "easy", "boardroom" })  // the last two: the receptionist in her corner
                     LevelShot(id, dir, true);
                 TitleShot(dir);
                 Closeups(dir);
@@ -203,6 +203,7 @@ namespace OutOfOffice.EditorTools
                 hud.SetShots(1, 3, 6);
                 hud.SetStars(2, 3, false);
                 hud.SetUndoAvailable(true);
+                hud.SetUndoCount(2, true);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-hud.png"), Canvas.ForceUpdateCanvases);
 
@@ -217,6 +218,10 @@ namespace OutOfOffice.EditorTools
                 hud.ShowOutOfShots(5, "Overtime was not approved.", 3, true, true, 30);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-out-of-shots.png"), Canvas.ForceUpdateCanvases);
+
+                hud.ShowUndoOffer(true);
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-undo-offer.png"), Canvas.ForceUpdateCanvases);
 
                 hud.GemBalance = () => 140;
                 hud.StoreAvailable = () => true;
@@ -376,6 +381,35 @@ namespace OutOfOffice.EditorTools
                 Render(cam, 1200, 700, Path.Combine(dir, "obstacles.png"));
                 Object.DestroyImmediate(inst.Root);
 
+                // The receptionist (OUT-38) at her desk, in each moment of her idle loop: unbothered, a gum bubble about
+                // to pop, filing her nails, on the phone, flicking a memo into the bin, and rolling her eyes.
+                var desks = new LevelDef("reception", "Reception", 0f, 9f);
+                var moments = new[] { Secretary.Act.None, Secretary.Act.Gum, Secretary.Act.Nails, Secretary.Act.Phone, Secretary.Act.Paper, Secretary.Act.EyeRoll };
+                float[] at = { 0f, 1.75f, 1.2f, 1.4f, 1.15f, 0f };
+                for (int i = 0; i < moments.Length; i++) desks.Reception((i % 3 - 1) * 2.3f, (i < 3 ? 1.1f : -1.1f), i % 3 == 2 ? 1 : -1);
+                var deskInst = LevelBuilder.Build(desks, root.transform, false, Cosmetics.Compose(Cosmetics.Default), theme);
+                deskInst.Puck.gameObject.SetActive(false);
+                var staff = deskInst.Root.GetComponentsInChildren<Secretary>();
+                for (int i = 0; i < staff.Length && i < moments.Length; i++)
+                {
+                    staff[i].BuildFace();
+                    staff[i].Pose(moments[i], at[i]);
+                }
+                // One close-up a moment, three across and two down.
+                const int tile = 600;
+                var sheet = new Texture2D(tile * 3, tile * 2, TextureFormat.RGB24, false);
+                for (int i = 0; i < staff.Length && i < moments.Length; i++)
+                {
+                    Aim(cam, staff[i].transform.position + new Vector3(0f, -0.2f, -0.35f), 3.3f);
+                    var shot = Grab(cam, tile, tile);
+                    sheet.SetPixels(i % 3 * tile, (1 - i / 3) * tile, tile, tile, shot.GetPixels());
+                    Object.DestroyImmediate(shot);
+                }
+                sheet.Apply();
+                File.WriteAllBytes(Path.Combine(dir, "secretary.png"), sheet.EncodeToPNG());
+                Object.DestroyImmediate(sheet);
+                Object.DestroyImmediate(deskInst.Root);
+
                 // The slingshot at a full pull and a half pull, as OutOfOfficeGame lays it out.
                 for (int s = 0; s < 2; s++)
                 {
@@ -450,6 +484,31 @@ namespace OutOfOffice.EditorTools
         {
             Ray ray = cam.ViewportPointToRay(new Vector3(viewport.x, viewport.y, 0f));
             return ray.origin + ray.direction * (-ray.origin.z / ray.direction.z);
+        }
+
+        // A render read back into a texture, for sheets made of several shots.
+        static Texture2D Grab(Camera camera, int w, int h)
+        {
+            var target = new RenderTexture(w, h, 24) { antiAliasing = 4 };
+            var previous = RenderTexture.active;
+            var image = new Texture2D(w, h, TextureFormat.RGB24, false);
+            try
+            {
+                camera.aspect = w / (float)h;
+                camera.targetTexture = target;
+                camera.Render();
+                RenderTexture.active = target;
+                image.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                image.Apply();
+                return image;
+            }
+            finally
+            {
+                camera.targetTexture = null;
+                RenderTexture.active = previous;
+                target.Release();
+                Object.DestroyImmediate(target);
+            }
         }
 
         static void Render(Camera camera, int w, int h, string path, System.Action beforeRender = null)

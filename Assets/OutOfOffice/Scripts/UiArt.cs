@@ -142,6 +142,7 @@ namespace OutOfOffice
         static readonly Dictionary<string, string> Icon3DNames = new Dictionary<string, string>
         {
             { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" }, { "gem", "gem" },
+            { "restart", "restart" }, { "undo", "undo" },
         };
 
         public static Sprite Icon3D(string name)
@@ -187,10 +188,10 @@ namespace OutOfOffice
                         d = SignedDistance(p, poly) - 12f;
                         break;
                     case "restart":
-                        d = ArcArrow(p, c, 50f, 13f, 70f, 400f, true);
+                        d = ArcArrow(p, c, 48f, 13f, 100f, 370f, true);  // three quarters of a turn: the gap keeps the head clear (OUT-39)
                         break;
                     case "undo":
-                        d = ArcArrow(p + new Vector2(0, 16), c, 50f, 13f, 10f, 180f, false);
+                        d = ArcArrow(p + new Vector2(0, 12), c, 50f, 13f, -20f, 185f, false);
                         break;
                     case "home":
                     {
@@ -367,20 +368,23 @@ namespace OutOfOffice
         }
 
         // A ring arc from a0 to a1 degrees with an arrowhead at the end (clockwise when cw is true).
+        // A ring from a0 to a1 degrees (counterclockwise) with an arrowhead at a0 pointing clockwise (cw), or at a1
+        // pointing onward. The ring stops under the head, so the tip and the gap both read clearly.
         static float ArcArrow(Vector2 p, Vector2 c, float r, float halfWidth, float a0, float a1, bool cw)
         {
+            float endA = cw ? a0 : a1;
+            if (cw) a0 += 10f;
+            else a1 -= 10f;
             Vector2 v = p - c;
             float ang = Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg;
             float span = a1 - a0;
             float rel = Mathf.Repeat(ang - a0, 360f);
             float ring = rel <= span ? Mathf.Abs(v.magnitude - r) - halfWidth
                 : Mathf.Min((p - (c + Dir(a0) * r)).magnitude, (p - (c + Dir(a1) * r)).magnitude) - halfWidth;
-            float endA = cw ? a0 : a1;
             Vector2 radial = Dir(endA), tangent = cw ? new Vector2(radial.y, -radial.x) : new Vector2(-radial.y, radial.x);
-            Vector2 b = c + radial * r;
-            var head = new List<Vector2> { b + tangent * 34f, b - radial * 30f, b + radial * 30f };
+            Vector2 b = c + radial * r - tangent * 3f;
+            var head = new List<Vector2> { b + tangent * 42f, b - radial * 34f, b + radial * 34f };
             float arrow = SignedDistance(p, head) - 4f;
-            // Shorten the ring under the head so the arrow tip reads clearly.
             return Mathf.Min(ring, arrow);
         }
 

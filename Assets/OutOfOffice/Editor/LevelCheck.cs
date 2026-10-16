@@ -46,6 +46,9 @@ namespace OutOfOffice.EditorTools
                 string chapters = CheckChapters(out bool chaptersOk);
                 if (!chaptersOk) bad++;
                 report.AppendLine($"HSLEVEL chapters {(chaptersOk ? "PASS" : "FAIL")} {chapters}");
+                string desks = CheckReceptions(out bool desksOk);
+                if (!desksOk) bad++;
+                report.AppendLine($"HSLEVEL receptionists {(desksOk ? "PASS" : "FAIL")} {desks}");
             }
             var watch = System.Diagnostics.Stopwatch.StartNew();
             try
@@ -149,10 +152,55 @@ namespace OutOfOffice.EditorTools
             bool furnished = EmptyRun(def) <= MaxEmptyRun;
             if (!furnished) starNote += $"  EMPTY START ({EmptyRun(def):0.0} of bare floor, max {MaxEmptyRun})";
             limitOk &= furnished;
+            starNote += ReceptionRules(def, out bool receptionOk);
+            limitOk &= receptionOk;
             coffeeOk &= limitOk;
             ok = solved && coffeeOk;
             string stats = $"min shots {minShots}  par {def.Par}  one-shot win {100f * wins / shots,5:0.0}%  hazard {100f * hazards / shots,4:0.0}%  {starNote}  e.g. {example}{parNote}";
             return !solved ? $"UNSOLVED in {MaxShots} shots  ({starNote})" : coffeeOk ? "OK  " + stats : "BAD " + stats;
+        }
+
+        // The receptionist's corner (OUT-38) only takes floor no route needs: it keeps a puck's width and a little more
+        // from everything else in the room, so it never narrows a lane or traps the employee.
+        public const float ReceptionClearance = 0.9f;
+
+        static string ReceptionRules(LevelDef def, out bool ok)
+        {
+            ok = true;
+            var notes = new StringBuilder();
+            foreach (var desk in def.Blocks)
+            {
+                if (desk.Reception == 0) continue;
+                var r = new Rect(desk.Center - desk.Size / 2f, desk.Size);
+                float clear = float.MaxValue;
+                string what = "";
+                void Near(string name, float d) { if (d < clear) { clear = d; what = name; } }
+                foreach (var b in def.Blocks)
+                {
+                    if (b == desk) continue;
+                    float reach = b.Shape == BlockShape.Post ? b.Size.x * 0.5f : 0.5f * b.Size.magnitude;
+                    Near(b.Kind.ToString().ToLowerInvariant(), Geometry.DistanceToRect(b.Center, r) - reach - b.MoveOffset.magnitude);
+                }
+                foreach (var s in def.Stars) Near("coffee", Geometry.DistanceToRect(s, r) - 0.3f);
+                foreach (var z in def.Zones) Near(z.Kind.ToString().ToLowerInvariant(), Geometry.DistanceToRect(z.Center, r) - 0.5f * Mathf.Max(z.Size.x, z.Size.y));
+                foreach (var rail in def.Rails) foreach (var p in rail.Path) Near("rail", Geometry.DistanceToRect(p, r) - rail.Width * 0.5f);
+                Near("bed", Geometry.DistanceToRect(def.Hole, r) - 0.6f);
+                Near("start", Geometry.DistanceToRect(def.Start, r) - 0.4f);
+                notes.Append($"  reception {clear:0.0} clear");
+                if (clear < ReceptionClearance) { ok = false; notes.Append($" RECEPTION CROWDED (by the {what})"); }
+            }
+            return notes.ToString();
+        }
+
+        // One receptionist a chapter (OUT-38).
+        static string CheckReceptions(out bool ok)
+        {
+            var counts = new int[Themes.All.Length];
+            for (int i = 0; i < Levels.All.Length; i++)
+                foreach (var b in Levels.All[i].Blocks)
+                    if (b.Reception != 0) counts[Themes.ChapterOf(i)]++;
+            ok = System.Array.TrueForAll(counts, c => c == 1);
+            return "per chapter " + string.Join(",", counts);
         }
 
         // Coffee placement rules (OUT-25). Coffees should reward a clever line, not sit where the player goes anyway:

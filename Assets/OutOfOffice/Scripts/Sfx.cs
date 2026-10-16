@@ -10,7 +10,7 @@ namespace OutOfOffice
         const int Rate = 44100;
         const float TwoPi = Mathf.PI * 2f;
 
-        public static AudioClip Select, Cancel, UiTap, Undo, Restart;
+        public static AudioClip Select, Cancel, UiTap, UiBoing, Undo, Restart;
         public static AudioClip[] Launch;       // weak, medium, strong
         public static AudioClip[] Wood, Rubber; // variants
         public static AudioClip Soft, Crate, RimTouch, IceEnter, MudEnter;
@@ -20,7 +20,7 @@ namespace OutOfOffice
         // The mascot's little voice: tiny pitched chirps, never words.
         public static AudioClip Squeak, Whee, Yay, Giggle, Boing, Yawn, Oops, Crack, Pop;
         // Office palette: a pillow landing, a blanket swish, a paper rustle, a printer chirp.
-        public static AudioClip Pillow, Swish, Paper, Chirp;
+        public static AudioClip Pillow, Swish, Paper, Chirp, Ring;
         public static AudioClip SlideWoodLoop, SlideIceLoop, RubLoop, ChargeLoop, MagnetLoop, MusicLoop;
 
         static System.Random rng;
@@ -34,6 +34,9 @@ namespace OutOfOffice
             Cancel = Make("cancel", 0.16f, t => Mathf.Sin(TwoPi * Sweep(t, 520f, 300f, 0.16f)) * Env(t, 0.005f, 18f) * 0.28f);
             // UI tap: a soft keyboard click.
             UiTap = Make("tap", 0.05f, t => Bandnoise(0.6f) * Mathf.Exp(-t * 260f) * 0.35f + Mathf.Sin(TwoPi * 2400f * t) * Mathf.Exp(-t * 320f) * 0.06f);
+            // Button press (OUT-40): a short, soft rubbery boing, quiet enough to hear on every tap.
+            UiBoing = Make("uiboing", 0.2f, t =>
+                Voice(t, (500f + 280f * Mathf.Exp(-t * 32f)) * (1f + 0.05f * Mathf.Sin(TwoPi * 15f * t) * Mathf.Exp(-t * 14f))) * Swell(t, 0.004f, 0.2f) * Mathf.Exp(-t * 10f) * 0.24f);
             Undo = Make("undo", 0.26f, t => Bandnoise(0.3f) * Mathf.Sin(Mathf.PI * t / 0.26f) * 0.45f + Mathf.Sin(TwoPi * Sweep(t, 300f, 600f, 0.26f)) * Env(t, 0.02f, 9f) * 0.12f);
             Restart = Make("restart", 0.3f, t => Bandnoise(0.25f) * Mathf.Sin(Mathf.PI * t / 0.3f) * 0.4f + Mathf.Sin(TwoPi * Sweep(t, 700f, 250f, 0.3f)) * Env(t, 0.01f, 8f) * 0.15f);
 
@@ -103,6 +106,12 @@ namespace OutOfOffice
             Swish = Make("swish", 0.6f, t => Bandnoise(0.12f + 0.25f * Mathf.Clamp01(t / 0.6f)) * Swell(t, 0.25f, 0.6f) * 0.45f);
             Paper = Make("paper", 0.25f, t => (Noise() - Lowpass(Noise(), 0.3f)) * Swell(t, 0.02f, 0.25f) * 0.25f);
             Chirp = Make("chirp", 0.22f, t => (Note(t, 0f, 0.09f, 1500f, 1560f) + Note(t, 0.1f, 0.1f, 1980f, 2000f)) * 1.2f);
+            // The reception desk phone (OUT-38): two short, polite trills.
+            Ring = Make("ring", 0.62f, t =>
+            {
+                float burst = t < 0.24f ? Swell(t, 0.01f, 0.24f) : t > 0.34f ? Swell(t - 0.34f, 0.01f, 0.24f) : 0f;
+                return (Mathf.Sin(TwoPi * 1320f * t) + 0.6f * Mathf.Sin(TwoPi * 1650f * t)) * (0.6f + 0.4f * Mathf.Sign(Mathf.Sin(TwoPi * 22f * t))) * burst * 0.12f;
+            });
 
             Switch = Make("switch", 0.4f, t =>
                 Noise() * Mathf.Exp(-t * 400f) * 0.3f + Bell(Mathf.Max(0f, t - 0.04f), 880f) * 0.2f + Bell(Mathf.Max(0f, t - 0.12f), 1318.5f) * 0.22f);

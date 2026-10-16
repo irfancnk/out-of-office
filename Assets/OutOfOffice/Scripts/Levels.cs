@@ -33,6 +33,7 @@ namespace OutOfOffice
         public float Spin;          // degrees per second; 0 = no spin
         public int Group = -1;      // gates: which switch opens them
         public float BlinkPeriod, BlinkPhase;  // pop walls: seconds per up/down cycle, offset as a fraction of it
+        public int Reception;       // the receptionist's desk (OUT-38): -1 in the top left corner, +1 in the top right; 0 otherwise
 
         public bool Moves => Period > 0f || Spin != 0f;
 
@@ -299,6 +300,27 @@ namespace OutOfOffice
             return this;
         }
 
+        // The receptionist's corner (OUT-38): her desk, an ordinary wall flush in a top corner of the board, with her
+        // sat behind it where no shot can reach. Decorative: it only takes floor no route needs, which LevelCheck proves.
+        // Call it after the board's shape is set.
+        public static readonly Vector2 ReceptionSize = new Vector2(1.9f, 1.45f);
+
+        public LevelDef Reception(bool right)
+        {
+            Rect floor = Geometry.Bounds(Shape.Outline);
+            float x = right ? floor.xMax - ReceptionSize.x / 2f : floor.xMin + ReceptionSize.x / 2f;
+            return Reception(x, floor.yMax - ReceptionSize.y / 2f, right ? 1 : -1);
+        }
+
+        // A reception desk centered anywhere (review shots); side picks which way she faces the room.
+        public LevelDef Reception(float x, float y, int side)
+        {
+            Add(BlockKind.Wall, x, y, ReceptionSize.x, ReceptionSize.y);
+            LastBlock.Reception = side < 0 ? -1 : 1;
+            LastBlock.Corner = 0.2f;
+            return this;
+        }
+
         BlockDef LastBlock => Blocks[Blocks.Count - 1];
 
         LevelDef Add(BlockKind kind, float x, float y, float w, float h)
@@ -333,7 +355,7 @@ namespace OutOfOffice
                 .Wall(0f, 1.2f, 5.4f, 2.6f).Rounded(0.6f)
                 .SpikeBall(3.6f, 1.2f, 0.4f).Moving(0f, 1.7f, 3f)
                 .Wall(-2.9f, -3.8f, 2.2f, 0.6f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: a side desk and a chair by the start
-                .Star(-3.5f, -1.4f).Star(-3.5f, 2.8f).Star(-1.4f, 4.4f),
+                .Star(-3.5f, -1.4f).Star(-3.5f, 2.8f).Star(-1.4f, 4.4f).Reception(false),
 
             new LevelDef("bank", "Bounce Off the Walls", 2.8f, 5.8f).WithHint("BOUNCE OFF THE WALL").WithPar(2)
                 .StartAt(-2.6f, -6.2f)
@@ -437,7 +459,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, 0f, 4.4f, 0.55f)
                 .SpikeBall(3f, 3.2f, 0.4f).Moving(1f, 0f, 2.6f)
                 .Wall(2.9f, -3.4f, 2.4f, 0.6f).Post(BlockKind.Bouncer, -3.1f, -3.8f, 0.45f)  // OUT-25: a side desk and a chair
-                .Star(-3f, -1f).Star(-3f, 4f).Star(1.4f, 6.6f),
+                .Star(-3f, -1f).Star(-3f, 4f).Star(1.4f, 6.6f).Reception(false),
 
             new LevelDef("switch", "Badge In, Lose Your Soul", 0f, 6.2f).WithHint("PRESS THE BADGE READER FIRST").WithPar(3)
                 .Rail(BlockKind.Wall, 0f, -2.2f, 8.1f, -2.2f, 3.6f)
@@ -558,7 +580,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, -2.6f, 3f, 0.45f)
                 .Post(BlockKind.Bouncer, 2.6f, -1.4f, 0.45f)
                 .Post(BlockKind.Bouncer, 2.6f, 3f, 0.45f)
-                .Star(-3.7f, 0.8f).Star(3.7f, 0.8f).Star(0f, -2.8f),
+                .Star(-3.7f, 0.8f).Star(3.7f, 0.8f).Star(0f, -2.8f).Reception(true),
 
             new LevelDef("standup", "Stand Up, Shut Up", 0f, 6f).WithHint("WAIT FOR THE DESKS TO SIT").WithPar(2)
                 .PopWall(-2.25f, -1.5f, 4.5f, 0.5f, 2.2f, 0f)
@@ -633,7 +655,7 @@ namespace OutOfOffice
                 .Kicker(-3.6f, 3.6f, 0.45f)
                 .Kicker(3.6f, 3.6f, 0.45f)
                 .Post(BlockKind.Bouncer, -3f, -3.4f, 0.45f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: the audience for your feedback
-                .Star(-3.6f, 0f).Star(3.6f, 0f).Star(0f, 5f),
+                .Star(-3.6f, 0f).Star(3.6f, 0f).Star(0f, 5f).Reception(false),
 
             new LevelDef("window", "View of Another Office", 0f, 5.2f).WithHint("ROUND THE DESK, UP THE FAST LANE").WithPar(2)
                 .WithShape(ShapeDef.Circle(6.8f))
@@ -712,7 +734,7 @@ namespace OutOfOffice
                 .Breakable(-1.2f, 3.4f, 6.6f, 0.6f)
                 .Wall(3.3f, 3.4f, 2.4f, 0.6f)
                 .Breakable(-3f, -3.6f, 2f, 0.6f).Post(BlockKind.Bouncer, 3.1f, -3.8f, 0.45f)  // OUT-25: a first pile of folders to smash
-                .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(-3.4f, 5.2f),  // the last one is behind the folders
+                .Star(-3.6f, 1.7f).Star(3.6f, 1.7f).Star(-3.4f, 5.2f).Reception(true),  // the last one is behind the folders
 
             // ---------- Chapter 6, Executive Floor (levels 46-54): mail belts, sliding doors, air con, elevators ----------
             new LevelDef("conveyor", "Conveyor Belt of Life", -3f, 6.3f).WithHint("THE BELTS CARRY YOU").WithPar(3)
@@ -782,7 +804,7 @@ namespace OutOfOffice
                 .Portal(3.2f, -3f, -3.2f, 3.6f, 0f, 0f)
                 .SpikeBall(0f, 3.4f, 0.4f).Moving(2.4f, 0f, 2.8f)
                 .Ice(0f, -3f, 9f, 2f)
-                .Star(-3.2f, -3f).Star(3.2f, 4.2f).Star(-1.7f, 5.4f),
+                .Star(-3.2f, -3f).Star(3.2f, 4.2f).Star(-1.7f, 5.4f).Reception(true),
 
             new LevelDef("green", "The CEO Is Golfing Again", 0f, 4.6f).WithHint("JUMP THE WATER FEATURE").WithPar(2)
                 .WithShape(ShapeDef.Circle(7f))
@@ -859,7 +881,7 @@ namespace OutOfOffice
                 .OneWay(-3f, 1.8f, 3f, 0f)
                 .Wall(1.5f, 1.8f, 6f, 0.6f)
                 .SpikeBall(2.8f, 3.8f, 0.4f).Moving(1f, 0f, 2.6f)
-                .Star(-2f, -1.5f).Star(-3f, 3.4f).Star(0.6f, 4.6f),
+                .Star(-2f, -1.5f).Star(-3f, 3.4f).Star(0.6f, 4.6f).Reception(false),
 
             new LevelDef("cleaner", "The Cleaner Saw Nothing", 0f, 6.2f).WithHint("WET FLOOR, THEN STAPLES").WithPar(2)
                 .Ice(0f, 0f, 9f, 6f)

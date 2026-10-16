@@ -726,8 +726,11 @@ namespace OutOfOffice
         static readonly Color IrisDeep = new Color(0.33f, 0.2f, 0.14f);
         static readonly Color IrisWarm = new Color(0.78f, 0.52f, 0.3f);
 
-        // lidLine: the eye is cut off above it by a lid stroke (99 = wide open).
-        static Color GlossyEye(float x, float y, float lidLine)
+        // The receptionist's eye roll (OUT-38): the iris up under the lid, the white showing below.
+        public static Sprite EyeRoll => Get("eyeRoll", (x, y) => GlossyEye(x, y, 99f, 26f));
+
+        // lidLine: the eye is cut off above it by a lid stroke (99 = wide open). lookUp lifts the iris and pupil.
+        static Color GlossyEye(float x, float y, float lidLine, float lookUp = 0f)
         {
             float eye = Ellipse(x, y, 64, 62, 36, 46);
             float shape = Mathf.Max(eye, y - lidLine);
@@ -741,6 +744,17 @@ namespace OutOfOffice
             {
                 if (lash < 1.5f) { var ink = Ink; ink.a = Cover(lash); return ink; }
                 return new Color(1f, 1f, 1f, 0f);
+            }
+            if (lookUp > 0f)
+            {
+                // Rolled up: white below, the iris tucked under the top edge.
+                var w = new Color(0.98f, 0.97f, 0.99f);
+                float iris = Ellipse(x, y, 64, 62 + lookUp, 24, 30);
+                w = Color.Lerp(w, Color.Lerp(IrisWarm, IrisDeep, 0.5f), Cover(iris));
+                w = Color.Lerp(w, Ink, Cover(Ellipse(x, y, 64, 66 + lookUp, 14, 17)) * 0.85f);
+                w = Color.Lerp(w, Ink, Cover(-eye - 3f));
+                w = Color.Lerp(w, Ink, Cover(lash));
+                return WithRim(w, shape, 4f);
             }
             float t = Mathf.Clamp01((y - 16f) / 92f);
             Color c = Color.Lerp(IrisWarm, IrisDeep, Mathf.SmoothStep(0f, 1f, t));             // warm at the bottom
@@ -939,6 +953,22 @@ namespace OutOfOffice
                 best = Mathf.Min(best, Segment(x, y, 64 + Mathf.Cos(a0) * 58f, 112 + Mathf.Sin(a0) * 58f, 64 + Mathf.Cos(a1) * 58f, 112 + Mathf.Sin(a1) * 58f));
             }
             return Stroke(best - 7.5f, 0f);
+        });
+        // Red lipstick in a closed little smirk (the receptionist, OUT-38): a bowed upper lip, a fuller glossy lower one,
+        // the line rising toward her left. Already colored: tint it white.
+        public static Sprite Lips => Get("lips", (x, y) =>
+        {
+            float yy = y - (x - 64f) * 0.12f;
+            float upper = Mathf.Max(Ellipse(x, yy, 64, 69, 31, 10), -Circle(x, yy, 64, 81, 6f));
+            float lower = Ellipse(x, yy, 64, 58, 26, 12);
+            float shape = Mathf.Min(upper, lower);
+            var red = new Color(0.84f, 0.15f, 0.24f);
+            var deep = new Color(0.46f, 0.05f, 0.12f);
+            var c = Color.Lerp(red, new Color(1f, 0.62f, 0.68f), Cover(Ellipse(x, yy, 71, 54, 9f, 3.5f)) * 0.85f);
+            c = Color.Lerp(c, deep, Cover(Mathf.Max(Mathf.Abs(yy - 63.5f) - 1.6f, Mathf.Abs(x - 64f) - 27f)));
+            c = Color.Lerp(deep, c, Cover(shape + 2.5f));
+            c.a = Cover(shape);
+            return c;
         });
         public static Sprite MouthFlat => Get("mouthFlat", (x, y) => Stroke(Segment(x, y, 36, 64, 92, 64) - 8f, 0f));
         public static Sprite MouthWavy => Get("mouthWavy", (x, y) =>

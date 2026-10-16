@@ -37,6 +37,9 @@ namespace OutOfOffice
             try { Analytics.Sinks.Add(new LocalLogSink(Path.Combine(Application.persistentDataPath, "analytics.jsonl"))); }
             catch (System.Exception) { }  // no log is better than no game
             Analytics.CaptureErrors();
+            // Plain log lines (analytics events in development builds) skip the stack trace: capturing one costs a frame on a phone.
+            if (!Application.isEditor) Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
+            FrameWatch.Attach(gameObject, () => state + (IconStudio.WardrobeOpen ? " wardrobe" : ""));
             backup = new LocalBackup(Path.Combine(Application.persistentDataPath, "save-backup.json"));
             Analytics.Event("session_start", ("session", Analytics.Session), ("days", progress.DaysSinceInstall), ("device", SystemInfo.deviceModel),
                 ("os", SystemInfo.operatingSystem), ("version", Application.version), ("gems", progress.Gems), ("pass", progress.PassActive),
@@ -102,6 +105,15 @@ namespace OutOfOffice
                 hud.RefreshShop();
                 OpenChest("BOUGHT WITH GEMS");
             };
+
+            // Undo past the free ones (OUT-41).
+            hud.UndoWithAd = () => Ads.ShowRewarded(progress, "undo", ok => { if (ok) CloseUndoOffer("ad"); });
+            hud.UndoWithGems = () =>
+            {
+                if (UndoAllowance.PayWithGems(progress)) CloseUndoOffer("gems");
+                else hud.ShowShop();  // not enough gems: the shop, then back to the offer
+            };
+            hud.UndoDeclined = () => CloseUndoOffer(null);
 
             hud.ContinueWithAd = () => Ads.ShowRewarded(progress, "continue", ok => { if (ok) Continue("ad"); });
             hud.ContinueWithGems = () =>

@@ -8,7 +8,9 @@ namespace OutOfOffice
     public enum HairStyle { Bob, Short, Bun, Curly, Mohawk, Long, Afro, Spiky, Ponytail, Buzz }
 
     // Extra details on a person (OUT-30). Cosmetic only.
-    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4 }
+    // Blouse, Skirt and Hoops dress the receptionist (OUT-38): a blouse with a bow instead of the shirt and tie, a pencil
+    // skirt over bare shins and heels, and chunky gold hoops.
+    [System.Flags] public enum PersonLook { None = 0, Tattoos = 1, Earrings = 2, Beard = 4, Blouse = 8, Skirt = 16, Hoops = 32 }
 
     // A look for the employee. Every look uses the same round collider and physics.
     // Body is the tie color; the shirt stays office white.
@@ -20,6 +22,7 @@ namespace OutOfOffice
         public Color HairColor = new Color(0.36f, 0.23f, 0.16f);
         public HairStyle Hair = HairStyle.Bob;
         public PersonLook Extras;
+        public Color Shirt;                // shirt or blouse color; left clear, office white
         public Accessory Accessory;
         public FaceItem Face;
         public int StarsNeeded;
