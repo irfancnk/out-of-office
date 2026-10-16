@@ -73,6 +73,7 @@ namespace OutOfOffice.EditorTools
                 ShotLimits();
                 Money();
                 Undos();
+                EnergyPlays();
                 Data();
             }
             finally
@@ -1194,6 +1195,82 @@ namespace OutOfOffice.EditorTools
             bool ok = three && counted && shop && payGems && payAd && paid && refused && adCounted && restart && unlimited;
             Report("undos", ok, $"three free {three} (counted {counted}); then shop when broke {shop}, pay with gems {payGems} or an ad {payAd}; " +
                 $"gems charged {paid}, refused when short {refused}; ad path through the caps {adCounted}; restart resets {restart}; first rooms unlimited {unlimited}");
+        }
+
+        // 23. Energy (OUT-48): a full bar of six plays to start, a point back every 48 minutes, a play lasts while you
+        // win, ends on a fail or a restart after a shot, a continue revives it, and the pass makes it free.
+        static void EnergyPlays()
+        {
+            var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
+            var p = new Progress(new MemoryPrefs(), clock);
+            var e = p.Energy;
+            bool full = e.Points == OutOfOffice.Energy.Max && e.UntilNext == System.TimeSpan.Zero;
+
+            // Six plays, then the card.
+            int plays = 0;
+            while (e.Start(true, "test")) { plays++; e.MarkAttempt(); e.EndPlay("fail", "test"); }
+            bool six = plays == OutOfOffice.Energy.Max / OutOfOffice.Energy.PlayCost && e.Points == 0 && !e.CanStart(true);
+
+            // The refill: a point every 48 minutes, a whole bar in a day, and a play's wait reported right.
+            bool waits = System.Math.Abs((e.UntilPlay - System.TimeSpan.FromMinutes(48 * OutOfOffice.Energy.PlayCost)).TotalSeconds) < 1;
+            clock.UtcNow += System.TimeSpan.FromMinutes(47);
+            bool notYet = e.Points == 0;
+            clock.UtcNow += System.TimeSpan.FromMinutes(1);
+            bool one = e.Points == 1;
+            clock.UtcNow += System.TimeSpan.FromHours(30);
+            bool refilled = e.Points == OutOfOffice.Energy.Max;
+
+            // A play runs on through wins, and a start with a play running is free.
+            int before = e.Points;
+            e.Start(true, "a");
+            e.MarkAttempt();
+            e.FinishAttempt();
+            bool winFree = e.InPlay && e.StartsFree(true) && e.Start(true, "b") && e.Points == before - OutOfOffice.Energy.PlayCost;
+            // Leaving after a shot needs a new play; leaving before one doesn't.
+            bool noShot = e.CanStart(true, e.AttemptOpen) && e.StartsFree(true);
+            e.MarkAttempt();
+            bool atStake = e.AttemptOpen;
+            e.EndPlay("restart", "b");
+            bool restartPays = e.Start(true, "b") && e.Points == before - 2 * OutOfOffice.Energy.PlayCost;
+            // A fail ends it; a continue picks it back up with the room still at stake.
+            e.MarkAttempt();
+            e.EndPlay("fail", "b");
+            bool failed = !e.InPlay && !e.AttemptOpen;
+            e.Revive();
+            bool revived = e.InPlay && e.AttemptOpen;
+
+            // Rewards add past the bar; the first rooms and the lab never cost.
+            e.Add(OutOfOffice.Energy.PlayCost, "test");
+            bool over = e.Points > before - 2 * OutOfOffice.Energy.PlayCost;
+            var fresh = new Progress(new MemoryPrefs(), clock);
+            bool firstRooms = !fresh.PlaysCost(0) && !fresh.PlaysCost(-1);
+            for (int i = 0; i < OutOfOffice.Energy.FirstRoom; i++) fresh.Record(i, 1, 9);
+            bool laterRooms = fresh.PlaysCost(OutOfOffice.Energy.FirstRoom) && !fresh.PlaysCost(-1);
+
+            // The Office Pass: unlimited, nothing spent.
+            var holder = new Progress(new MemoryPrefs(), clock);
+            holder.Grant(Catalog.Pass);
+            int kept = holder.Energy.Points;
+            for (int i = 0; i < 10; i++) holder.Energy.Start(true, "pass");
+            bool pass = holder.Energy.Unlimited && holder.Energy.Points == kept;
+
+            // A clock wound back can't refill: the guarded clock holds, and the wait starts again.
+            var rewind = new Progress(new MemoryPrefs(), clock);
+            rewind.Energy.Spend(OutOfOffice.Energy.Max, "test");
+            clock.UtcNow -= System.TimeSpan.FromHours(10);
+            bool noRewind = rewind.Energy.Points == 0;
+            clock.UtcNow += System.TimeSpan.FromHours(10);
+
+            // The price ladder: what keeps a play going costs less than a new one.
+            bool prices = UndoAllowance.GemCost < Catalog.ContinueCost && Catalog.ContinueCost < Catalog.PlayGems
+                && Catalog.RefillGems < Catalog.PlayGems * OutOfOffice.Energy.Max / OutOfOffice.Energy.PlayCost;
+
+            bool ok = full && six && waits && notYet && one && refilled && winFree && noShot && atStake && restartPays && failed && revived && over
+                && firstRooms && laterRooms && pass && noRewind && prices;
+            Report("energy", ok, $"starts full {full}; six plays {six} ({plays}); refill one per 48 min {notYet}/{one}, a play's wait {waits}, full again {refilled}; " +
+                $"wins carry the play {winFree}; no shot no cost {noShot}; at stake after a shot {atStake}, restart pays {restartPays}; fail ends {failed}, " +
+                $"continue revives {revived}; rewards stack {over}; first rooms free {firstRooms}, later rooms cost {laterRooms}; pass unlimited {pass}; " +
+                $"no rewind refill {noRewind}; price ladder {prices}");
         }
 
         // 21. Data (OUT-34, OUT-35): stable A/B buckets, the event log cap, save snapshots, merge, and server time.

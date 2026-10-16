@@ -1026,7 +1026,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Bouncer, -2.6f, 3f, 0.5f)
                 .Post(BlockKind.Bouncer, 2.6f, 3f, 0.5f)
                 .Star(-3.6f, 0.6f).Star(3.6f, 0.6f).Star(0f, 3.4f).Reception(false));
-            Remix("thorns", "planters", "Succulents of Doom", "CACTI SEND YOU BACK");
+            Remix("popspikes", "planters", "Succulents of Doom", "CROSS WHEN THE SPIKES ARE DOWN");
             Remix("maze", "fireescape", "The Fire Escape Plan", "FIND THE BADGE READER");
             all.Add(new LevelDef("skylight", "Avoid the Skylight", 0f, 6.2f).WithHint("THE GLASS IS A DROP").WithPar(2)
                 .Gap(0f, 1f, 4f, 2.2f)

@@ -31,6 +31,18 @@ namespace OutOfOffice.EditorTools
             EditorApplication.Exit(code);
         }
 
+        // Only the title and the HUD's cards: a quick loop for UI changes.
+        public static void RunUiBatch()
+        {
+            int code = 0;
+            string dir = System.Environment.GetEnvironmentVariable("OOO_SHOTS");
+            if (string.IsNullOrEmpty(dir)) dir = Path.Combine(Path.GetTempPath(), "out-of-office-shots");
+            Directory.CreateDirectory(dir);
+            try { TitleShot(dir); }
+            catch (System.Exception e) { Debug.LogException(e); code = 3; }
+            EditorApplication.Exit(code);
+        }
+
         // The whole staff as title portraits, side by side in wardrobe order (OUT-43): interns first, the boss last.
         // Rendered at the title size and halved, so the sheet stays a sensible size.
         static void Heroes(string dir)
@@ -289,6 +301,10 @@ namespace OutOfOffice.EditorTools
                 hud.SetQuestBadge(2);
                 hud.UntilQuestReset = () => new System.TimeSpan(7, 42, 0);
                 hud.CoffeeCardStamps = () => 7;
+                hud.EnergyPoints = () => 15;  // energy (OUT-48): half a bar, the next point on its way
+                hud.EnergyUntilNext = () => new System.TimeSpan(0, 31, 20);
+                hud.EnergyUntilPlay = () => System.TimeSpan.Zero;
+                hud.NextPlayCost = () => Energy.PlayCost;
                 hud.ShowTitle(23, 9, theme);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "title.png"), Canvas.ForceUpdateCanvases);
@@ -310,11 +326,11 @@ namespace OutOfOffice.EditorTools
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-complete-final.png"), Canvas.ForceUpdateCanvases);
 
-                hud.ShowOutOfShots(5, "Overtime was not approved.", 3, true, true, 30);
+                hud.ShowOutOfShots(5, "Overtime was not approved.", 3, true, true, Catalog.ContinueCost, false, Energy.PlayCost);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-out-of-shots.png"), Canvas.ForceUpdateCanvases);
 
-                hud.ShowUndoOffer(true);
+                hud.ShowUndoOffer(true, UndoAllowance.GemCost, false, Energy.PlayCost);
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-undo-offer.png"), Canvas.ForceUpdateCanvases);
 
@@ -331,6 +347,19 @@ namespace OutOfOffice.EditorTools
                 hud.ShowShop();
                 Tweens.FinishAll();
                 Render(cam, 1080, 2340, Path.Combine(dir, "ui-shop.png"), Canvas.ForceUpdateCanvases);
+
+                // Out of energy (OUT-48): the refills, and the stand-in for a rewarded video.
+                hud.EnergyPoints = () => 2;
+                hud.EnergyUntilPlay = () => new System.TimeSpan(2, 24, 0);
+                hud.ShowEnergy();
+                Tweens.FinishAll();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-energy.png"), Canvas.ForceUpdateCanvases);
+                hud.HideAll();
+                hud.ShowTestAd(Hud.RewardFor("energy"), null);
+                Canvas.ForceUpdateCanvases();
+                Render(cam, 1080, 2340, Path.Combine(dir, "ui-test-ad.png"), Canvas.ForceUpdateCanvases);
+                Tweens.FinishAll();
+                hud.EnergyPoints = () => 15;
 
                 // Home with the first chapter's chest earned and waiting.
                 hud.BestStars = id => 3;

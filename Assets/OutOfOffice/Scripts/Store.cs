@@ -19,7 +19,7 @@ namespace OutOfOffice
     {
         public static readonly Product Pass = new Product
         {
-            Id = "ooo.pass.monthly", Title = "OFFICE PASS", Blurb = "25 gems and a chest every day. No ad videos. Gold tie.",
+            Id = "ooo.pass.monthly", Title = "OFFICE PASS", Blurb = "Unlimited energy. 25 gems and a chest a day. No ad videos.",
             FallbackPrice = "$4.99/mo", Kind = ProductKind.Subscription, PassDays = 30,
         };
         public static readonly Product Starter = new Product
@@ -43,10 +43,14 @@ namespace OutOfOffice
 
         public const string PassTie = "c.gold";  // the exclusive look that comes with the pass
 
-        // What gems buy in the game.
-        public const int ContinueCost = 30;   // +shots when out of shots
+        // What gems buy in the game (OUT-48). Each price sits below the thing it saves: an undo (10) and a continue
+        // (15) keep a play going, so they cost less than a new play (20); a full bar of six plays comes at a discount.
+        public const int ContinueCost = 15;   // +shots when out of shots: the same play goes on
+        public const int PlayGems = 20;       // +5 energy: one play
+        public const int RefillGems = 90;     // a full bar: six plays
         public const int ChestCost = 60;      // one chest
         public const int AdGems = 10;         // a rewarded ad in the shop
+        public const int AdEnergy = Energy.PlayCost;  // a rewarded ad on the energy card: one play
 
         public static Product Find(string id) => Array.Find(All, p => p.Id == id);
     }

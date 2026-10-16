@@ -1,8 +1,9 @@
 namespace OutOfOffice
 {
-    // Undos on one attempt (OUT-41): three free, then each one costs gems or a rewarded ad. Restart is always free and
-    // starts a new attempt with three again (OUT-13). The first rooms, before any ads or continues are offered, keep
-    // undos unlimited, so nobody meets a price while learning the game.
+    // Undos on one attempt (OUT-41): three free, then each one costs gems or a rewarded ad. Restarting gives three again,
+    // but once a shot is taken it ends the play and the next one costs energy (OUT-48), so a paid undo is the cheaper
+    // fix. The first rooms, before any ads or continues are offered, keep undos unlimited, so nobody meets a price
+    // while learning the game.
     public class UndoAllowance
     {
         public const int Free = 3, GemCost = 10;

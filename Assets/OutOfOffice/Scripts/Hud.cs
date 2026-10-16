@@ -10,7 +10,7 @@ namespace OutOfOffice
     // All Out of Office UI: title, in-game HUD, pause and settings, level select, skins, and the completion card.
     // Built in code with uGUI and TextMeshPro (SDF text with real outlines and drop shadows).
     // The canvas matches width on tall screens and height on wide ones, so every control stays on screen.
-    public class Hud : MonoBehaviour
+    public partial class Hud : MonoBehaviour
     {
         // Game actions. OutOfOfficeGame wires these up.
         public System.Action Play, Pause, Resume, Restart, Undo, Next, Replay, Home, OpenLab, ToggleDebug;
@@ -43,6 +43,7 @@ namespace OutOfOffice
         CanvasScaler scaler;
         RectTransform safe, hudRoot, title, titleArea, dim, banner, levelsContent, devRow, sunburst;
         Card pauseCard, levelsCard, skinsCard, completeCard, settingsCard;
+        TextMeshProUGUI pauseNote;
         TextMeshProUGUI chapterText, levelText, shotsText, starText, hintText, bannerText, debugText, totalStars;
         TextMeshProUGUI completeLevel, completeShots, completePar, completeExtra, completeNextLabel;
         Image completeNextIcon;
@@ -147,6 +148,7 @@ namespace OutOfOffice
             BuildUndoOffer();
             BuildHire();
             BuildShop();
+            BuildEnergyCard();
         }
 
         // Editor review shots: draw through a camera, laid out for a portrait phone with the given safe insets
@@ -227,6 +229,7 @@ namespace OutOfOffice
             hudBlockers.Add(undoButton);
             var restart = IconButton(hudRoot, "Restart", new Vector2(1f, 0f), new Vector2(-100f, 96f), 160f, Palette.UiRed, "restart", Color.white);
             restart.Clicked = () => Restart?.Invoke();
+            BuildRestartChip(restart.transform as RectTransform);  // what starting over takes, once it takes a play (OUT-48)
             hudBlockers.Add(restart.transform as RectTransform);
 
             hintPill = Capsule(hudRoot, "Hint", new Vector2(0.5f, 0f), new Vector2(0f, 92f), new Vector2(560f, 80f), Shade);
@@ -277,43 +280,41 @@ namespace OutOfOffice
         Card failCard;
         TextMeshProUGUI failLine;
 
-        // Continue options on the out-of-shots card (OUT-31, OUT-32). Retrying stays free and always there.
+        // Continue options on the out-of-shots card (OUT-31, OUT-32). A continue keeps the play going; a retry starts a
+        // new one, and its button says what that takes (OUT-48).
         public System.Action ContinueWithAd, ContinueWithGems;
-        RectTransform continueAd, continueGems;
-        TextMeshProUGUI continueAdLabel, continueGemsLabel;
+        Offer continueAd, continueGems, retryOffer;
 
         void BuildFail()
         {
-            failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 1000f), true);
+            failCard = MakeCard("Out Of Shots", "OUT OF SHOTS", new Vector2(860f, 1080f), true);
             var c = failCard.Root;
-            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 250f), new Vector2(760f, 120f)),
+            failLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(760f, 140f)),
                 "", 44f, Ink, Ink, 0f, false);
             failLine.textWrappingMode = TextWrappingModes.Normal;
-            var ad = TextButton(c, "+3 · AD", Palette.UiBlue, new Vector2(-190f, 40f), new Vector2(340f, 150f), 52f, "play");
-            ad.Clicked = () => ContinueWithAd?.Invoke();
-            continueAd = ad.transform as RectTransform;
-            continueAdLabel = ad.GetComponentInChildren<TextMeshProUGUI>();
-            var gems = TextButton(c, "+3 · 30", Themes.Hex(0x8A5CF0), new Vector2(190f, 40f), new Vector2(340f, 150f), 52f, null);
-            gems.Clicked = () => ContinueWithGems?.Invoke();
-            continueGems = gems.transform as RectTransform;
-            continueGemsLabel = gems.GetComponentInChildren<TextMeshProUGUI>();
-            continueGemsLabel.rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem on the right
-            var gemIcon = UiArt.Icon3D("gem");
-            if (gemIcon != null)
-                Img(Rect("Gem", continueGems, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-62f, 8f), new Vector2(84f, 84f)), gemIcon, Color.white);
-            TextButton(c, "RETRY", Palette.UiGreen, new Vector2(80f, -230f), new Vector2(500f, 170f), 76f, "restart").Clicked = () => Restart?.Invoke();
-            IconButton(c, "Home", new Vector2(0.5f, 0.5f), new Vector2(-275f, -222f), 160f, Palette.UiBlue, "home", Color.white).Clicked = () => Home?.Invoke();
+            continueAd = OfferButton(c, "+3 SHOTS", Palette.UiBlue, Vector2.zero, new Vector2(720f, 150f), 60f);
+            continueAd.Press.Clicked = () => ContinueWithAd?.Invoke();
+            continueGems = OfferButton(c, "+3 SHOTS", GemPurple, Vector2.zero, new Vector2(720f, 150f), 60f);
+            continueGems.Press.Clicked = () => ContinueWithGems?.Invoke();
+            retryOffer = OfferButton(c, "RETRY", Palette.UiGreen, new Vector2(90f, -310f), new Vector2(520f, 160f), 72f);
+            retryOffer.Press.Clicked = () => Restart?.Invoke();
+            IconButton(c, "Home", new Vector2(0.5f, 0.5f), new Vector2(-270f, -302f), 160f, Palette.UiBlue, "home", Color.white).Clicked = () => Home?.Invoke();
         }
 
         // shots: what a continue gives. adOk / gemsOk: whether each offer may be shown (caps, first-time experience).
-        public void ShowOutOfShots(int max, string line, int shots = 3, bool adOk = false, bool gemsOk = false, int gemCost = 30)
+        // adFree: the ad's reward comes without the video. retryEnergy: what a retry takes (0: nothing).
+        public void ShowOutOfShots(int max, string line, int shots = 3, bool adOk = false, bool gemsOk = false, int gemCost = Catalog.ContinueCost,
+            bool adFree = false, int retryEnergy = 0)
         {
             HideAll();
             failLine.text = $"All {max} shots used.\n{line}";
-            continueAd.gameObject.SetActive(adOk);
-            continueGems.gameObject.SetActive(gemsOk);
-            continueAdLabel.text = $"+{shots} · AD";
-            continueGemsLabel.text = $"+{shots} · {gemCost}";
+            continueAd.Root.gameObject.SetActive(adOk);
+            continueGems.Root.gameObject.SetActive(gemsOk);
+            continueAd.Label.text = continueGems.Label.text = $"+{shots} SHOTS";
+            SetPrice(continueAd, adFree ? Price.Free : Price.Ad);
+            SetPrice(continueGems, Price.Gems, gemCost);
+            SetPrice(retryOffer, retryEnergy > 0 ? Price.Energy : Price.None, retryEnergy);
+            StackOffers(adOk && gemsOk ? 205f : 130f, 24f, continueAd, continueGems);
             ShowCard(failCard);
         }
 
@@ -321,41 +322,39 @@ namespace OutOfOffice
 
         public System.Action UndoWithAd, UndoWithGems, UndoDeclined;
         Card undoCard;
-        RectTransform undoAd, undoGems, undoBadge;
-        TextMeshProUGUI undoGemsLabel;
+        Offer undoAd, undoGems, undoRestart;
+        TextMeshProUGUI undoLine;
+        RectTransform undoBadge;
         TextMeshProUGUI undoBadgeText;
         GameObject undoBadgeGem;
         int undoBadgeShown = -1;
 
         void BuildUndoOffer()
         {
-            undoCard = MakeCard("Undo Offer", "NO FREE UNDOS", new Vector2(860f, 800f), true);
+            undoCard = MakeCard("Undo Offer", "NO FREE UNDOS", new Vector2(860f, 1000f), true);
             var c = undoCard.Root;
-            var line = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 170f), new Vector2(760f, 150f)),
-                $"{UndoAllowance.Free} free undos a try. All used.\nTime travel costs extra.", 42f, Ink, Ink, 0f, false);
-            line.textWrappingMode = TextWrappingModes.Normal;
-            var ad = TextButton(c, "UNDO · AD", Palette.UiBlue, new Vector2(-190f, -30f), new Vector2(340f, 150f), 48f, "play");
-            ad.Clicked = () => UndoWithAd?.Invoke();
-            undoAd = ad.transform as RectTransform;
-            var gems = TextButton(c, $"UNDO · {UndoAllowance.GemCost}", Themes.Hex(0x8A5CF0), new Vector2(190f, -30f), new Vector2(340f, 150f), 48f, null);
-            gems.Clicked = () => UndoWithGems?.Invoke();
-            undoGems = gems.transform as RectTransform;
-            undoGemsLabel = gems.GetComponentInChildren<TextMeshProUGUI>();
-            undoGemsLabel.rectTransform.offsetMax = new Vector2(-80f, 0f);  // room for the gem
-            var gemIcon = UiArt.Icon3D("gem");
-            if (gemIcon != null)
-                Img(Rect("Gem", undoGems, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-62f, 8f), new Vector2(84f, 84f)), gemIcon, Color.white);
-            // Retrying is always free (OUT-13), and the card says so.
-            TextButton(c, "RESTART · FREE", Palette.UiGreen, new Vector2(0f, -230f), new Vector2(560f, 150f), 56f, "restart").Clicked = () => Restart?.Invoke();
+            undoLine = Txt(Rect("Line", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 290f), new Vector2(760f, 150f)), "", 42f, Ink, Ink, 0f, false);
+            undoLine.textWrappingMode = TextWrappingModes.Normal;
+            undoAd = OfferButton(c, "UNDO", Palette.UiBlue, Vector2.zero, new Vector2(720f, 150f), 60f);
+            undoAd.Press.Clicked = () => UndoWithAd?.Invoke();
+            undoGems = OfferButton(c, "UNDO", GemPurple, Vector2.zero, new Vector2(720f, 150f), 60f);
+            undoGems.Press.Clicked = () => UndoWithGems?.Invoke();
+            undoRestart = OfferButton(c, "RESTART", Palette.UiGreen, new Vector2(0f, -300f), new Vector2(560f, 140f), 58f);
+            undoRestart.Press.Clicked = () => Restart?.Invoke();
             CloseButton(undoCard, () => UndoDeclined?.Invoke());
         }
 
-        public void ShowUndoOffer(bool adOk, int gemCost = UndoAllowance.GemCost)
+        // restartEnergy: what starting over takes (OUT-48). When it takes a play, an undo is the cheaper way back, and
+        // the card says so.
+        public void ShowUndoOffer(bool adOk, int gemCost = UndoAllowance.GemCost, bool adFree = false, int restartEnergy = 0)
         {
             HideAll();
-            undoGemsLabel.text = $"UNDO · {gemCost}";  // perks can make it cheaper (OUT-45)
-            undoAd.gameObject.SetActive(adOk);
-            undoGems.anchoredPosition = new Vector2(adOk ? 190f : 0f, -30f);
+            undoLine.text = restartEnergy > 0 ? "Your free undos are used.\nAn undo keeps this play going." : "Your free undos are used.\nTime travel costs extra.";
+            undoAd.Root.gameObject.SetActive(adOk);
+            SetPrice(undoAd, adFree ? Price.Free : Price.Ad);
+            SetPrice(undoGems, Price.Gems, gemCost);  // perks can make it cheaper (OUT-45)
+            SetPrice(undoRestart, restartEnergy > 0 ? Price.Energy : Price.None, restartEnergy);
+            StackOffers(adOk ? 190f : 115f, 24f, undoAd, undoGems);
             ShowCard(undoCard);
         }
 
@@ -446,7 +445,7 @@ namespace OutOfOffice
 
         Card OpenCard()
         {
-            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, skinsCard, shopCard, levelsCard, questsCard, settingsCard })
+            foreach (var c in new[] { pauseCard, failCard, undoCard, hireCard, skinsCard, shopCard, energyCard, levelsCard, questsCard, settingsCard })
                 if (c != null && c.Root.gameObject.activeSelf) return c;
             return null;
         }
@@ -532,11 +531,24 @@ namespace OutOfOffice
                 ShopRow(r, "chest", Catalog.Starter.Title, Catalog.Starter.Blurb, can ? PriceOf?.Invoke(Catalog.Starter) ?? "" : "OWNED", can && store, Palette.UiGreen,
                     () => BuyProduct?.Invoke(Catalog.Starter));
             });
+            // Energy (OUT-48): a play, a full bar, or a play for a video. With the pass there's nothing to buy.
+            bool unlimited = EnergyUnlimited?.Invoke() ?? false;
+            int gemsNow = GemBalance?.Invoke() ?? 0, points = EnergyPoints?.Invoke() ?? Energy.Max;
+            rows.Add(r => ShopRow(r, "bolt", $"+{Energy.PlayCost} ENERGY", unlimited ? "Unlimited with your Office Pass." : "One more play, right now.",
+                unlimited ? "ACTIVE" : $"{Catalog.PlayGems} GEMS", !unlimited && gemsNow >= Catalog.PlayGems, GemPurple, () => EnergyWithGems?.Invoke(false)));
+            rows.Add(r => ShopRow(r, "bolt", "FULL ENERGY", points >= Energy.Max ? "Your bar is full." : "Fill the bar: six plays.",
+                unlimited ? "ACTIVE" : $"{Catalog.RefillGems} GEMS", !unlimited && points < Energy.Max && gemsNow >= Catalog.RefillGems, GemPurple, () => EnergyWithGems?.Invoke(true)));
+            rows.Add(r =>
+            {
+                bool ready = AdOfferReady?.Invoke() ?? false, free = AdFree?.Invoke() ?? false;
+                ShopRow(r, "tv", "FREE ENERGY", free ? $"+{Catalog.AdEnergy} energy, no video needed." : $"Watch a short video: +{Catalog.AdEnergy} energy.",
+                    unlimited ? "ACTIVE" : ready ? (free ? "TAKE" : "WATCH") : "LATER", ready && !unlimited, Palette.UiBlue, () => EnergyWithAd?.Invoke());
+            });
             if (!passFirst) GemRows();
             rows.Add(r =>
             {
                 bool ready = AdOfferReady?.Invoke() ?? false, free = AdFree?.Invoke() ?? false;
-                ShopRow(r, "gift", $"FREE {Catalog.AdGems} GEMS", free ? "Ad-free: yours without the video." : "Watch a short video.", ready ? (free ? "TAKE" : "WATCH") : "LATER",
+                ShopRow(r, "tv", $"FREE {Catalog.AdGems} GEMS", free ? "Ad-free: yours without the video." : "Watch a short video.", ready ? (free ? "TAKE" : "WATCH") : "LATER",
                     ready, Palette.UiBlue, () => WatchAdForGems?.Invoke());
             });
             rows.Add(r =>
@@ -547,7 +559,7 @@ namespace OutOfOffice
             rows.Add(r =>
             {
                 bool can = CanBuyProduct?.Invoke(Catalog.NoAds) ?? false;
-                ShopRow(r, "gift", Catalog.NoAds.Title, Catalog.NoAds.Blurb, can ? PriceOf?.Invoke(Catalog.NoAds) ?? "" : "OWNED", can && store, Palette.UiGreen,
+                ShopRow(r, "tv", Catalog.NoAds.Title, Catalog.NoAds.Blurb, can ? PriceOf?.Invoke(Catalog.NoAds) ?? "" : "OWNED", can && store, Palette.UiGreen,
                     () => BuyProduct?.Invoke(Catalog.NoAds));
             });
             if (passFirst) GemRows();
@@ -596,25 +608,37 @@ namespace OutOfOffice
             shopPlateImage.color = claim ? Palette.UiGreen : FrameDark;
         }
 
-        // ---------- Test ad (development builds without a real ad network) ----------
+        // ---------- Test ad (the editor, and builds without a real ad network) ----------
 
-        RectTransform testAd;
-        TextMeshProUGUI testAdCount;
+        RectTransform testAd, testAdFill;
+        TextMeshProUGUI testAdCount, testAdReward;
 
-        // A full-screen stand-in for a rewarded video: a 3 s countdown, then the reward. SKIP gives nothing.
-        public void ShowTestAd(System.Action<bool> done)
+        // A full-screen stand-in for a rewarded video: what it pays, a 3 s progress bar, then the reward (OUT-48).
+        // SKIP gives nothing.
+        public void ShowTestAd(string reward, System.Action<bool> done)
         {
             if (testAd == null)
             {
+                var c = new Vector2(0.5f, 0.5f);
                 testAd = Rect("Test Ad", transform as RectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-                Img(testAd, Shapes.Square, new Color(0.05f, 0.04f, 0.1f, 0.96f)).raycastTarget = true;
-                Txt(Rect("Title", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 260f), new Vector2(900f, 140f)), "TEST AD", 120f, Color.white, Ink, 0.4f, true);
-                Body(Rect("Sub", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(900f, 120f)),
-                    "A rewarded video plays here once an ad network (AdMob or LevelPlay) is connected.", 34f, new Color(0.8f, 0.78f, 0.9f), Ink).textWrappingMode = TextWrappingModes.Normal;
-                testAdCount = Txt(Rect("Count", testAd, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -80f), new Vector2(400f, 260f)), "3", 220f, Palette.Gold, Ink, 0.4f, true);
+                Img(testAd, Shapes.Square, new Color(0.05f, 0.04f, 0.12f, 0.97f)).raycastTarget = true;
+                var rays = Rect("Rays", testAd, c, c, new Vector2(0f, 340f), new Vector2(820f, 820f));
+                Img(rays, UiArt.Sunburst, new Color(0.35f, 0.55f, 1f, 0.35f));
+                rays.gameObject.AddComponent<Spin>().Speed = 10f;
+                Img(Rect("TV", testAd, c, c, new Vector2(0f, 340f), new Vector2(380f, 380f)), UiArt.Icon3D("tv") ?? UiArt.Icon("play"), Color.white);
+                Txt(Rect("Kind", testAd, c, c, new Vector2(0f, 100f), new Vector2(900f, 60f)), "REWARDED VIDEO · TEST", 40f, Trim, Ink, 0.3f, false);
+                testAdReward = Txt(Rect("Reward", testAd, c, c, new Vector2(0f, -10f), new Vector2(940f, 130f)), "", 96f, Color.white, Ink, 0.45f, true);
+                testAdReward.enableAutoSizing = true;
+                testAdReward.fontSizeMin = 50f;
+                testAdReward.fontSizeMax = 96f;
+                var track = Rect("Track", testAd, c, c, new Vector2(0f, -170f), new Vector2(720f, 46f));
+                Sliced(Img(track, UiArt.Pill, new Color(1f, 1f, 1f, 0.14f)), 46f, 0.5f);
+                testAdFill = Rect("Fill", track, Vector2.zero, new Vector2(0.06f, 1f), Vector2.zero, Vector2.zero);
+                Sliced(Img(testAdFill, UiArt.Pill, Palette.Gold), 46f, 0.5f);
+                testAdCount = Body(Rect("Count", testAd, c, c, new Vector2(0f, -250f), new Vector2(720f, 60f)), "", 34f, new Color(0.8f, 0.78f, 0.92f), Ink);
             }
             foreach (Transform child in testAd) if (child.name == "Skip") Destroy(child.gameObject);
-            var skip = TextButton(testAd, "SKIP", Themes.Hex(0x6E6488), new Vector2(0f, -420f), new Vector2(300f, 120f), 48f, null);
+            var skip = TextButton(testAd, "SKIP: NO REWARD", Themes.Hex(0x6E6488), new Vector2(0f, -430f), new Vector2(460f, 120f), 44f, null);
             skip.name = "Skip";
             bool finished = false;
             void End(bool watched)
@@ -626,9 +650,14 @@ namespace OutOfOffice
                 done?.Invoke(watched);
             }
             skip.Clicked = () => End(false);
+            testAdReward.text = reward;
             testAd.gameObject.SetActive(true);
             testAd.SetAsLastSibling();
-            Tweens.Run(3f, k => testAdCount.text = Mathf.CeilToInt(3f * (1f - k) + 0.001f).ToString(), Tweens.Linear, 0f, () => End(true), testAd);
+            Tweens.Run(3f, k =>
+            {
+                testAdFill.anchorMax = new Vector2(Mathf.Max(0.06f, k), 1f);
+                testAdCount.text = $"Your reward in {Mathf.Max(1, Mathf.CeilToInt(3f * (1f - k) - 0.001f))}...";
+            }, Tweens.Linear, 0f, () => End(true), testAd);
         }
 
         public void SetStars(int collected, int total, bool animate)
@@ -841,6 +870,7 @@ namespace OutOfOffice
             play.Clicked = () => Play?.Invoke();
             playLabel = pr.Find("Label").GetComponentInChildren<TextMeshProUGUI>();
             Breathe(pr);
+            BuildPlayChip(pr);
 
             BuildTabs(area);
         }
@@ -901,18 +931,19 @@ namespace OutOfOffice
             Img(Rect("Trim", header, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 4f), new Vector2(0f, 8f)), Shapes.Square, Trim);
             const float row = 75f;  // content centre, up from the header's bottom edge
 
-            var stars = Rect("Stars", header, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(215f, row), new Vector2(300f, 92f));
-            Sliced(Img(stars, UiArt.Pill, FrameDark), 92f, 0.5f);
+            // Stars: the count, which opens the rooms. It gave its + to the energy meter beside it (OUT-48).
+            var stars = Rect("Stars", header, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(165f, row), new Vector2(210f, 92f));
+            var starsImage = Img(stars, UiArt.Pill, FrameDark);
+            Sliced(starsImage, 92f, 0.5f);
+            starsImage.raycastTarget = true;
+            stars.gameObject.AddComponent<UiPress>().Clicked = () => ShowLevels();
             Img(Rect("Icon", stars, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(18f, 4f), new Vector2(124f, 124f)), UiArt.Star, Color.white);
-            totalStars = Txt(Rect("Count", stars, Vector2.zero, Vector2.one, new Vector2(10f, 2f), new Vector2(-80f, 0f)), "0", 58f, Color.white, FrameDark, 0.3f, true);
-            var plus = Rect("Plus", stars, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-46f, 0f), new Vector2(78f, 78f));
-            var plusImage = Img(plus, UiArt.Button, Palette.UiGreen);
-            Sliced(plusImage, 78f, 0.3f);
-            plusImage.raycastTarget = true;
-            Txt(Rect("Label", plus, Vector2.zero, Vector2.one, new Vector2(0f, 6f), Vector2.zero), "+", 64f, Color.white, Themes.Hex(0x1F7A33), 0.3f, false);
-            plus.gameObject.AddComponent<UiPress>().Clicked = () => ShowLevels();
+            totalStars = Txt(Rect("Count", stars, Vector2.zero, Vector2.one, new Vector2(30f, 2f), new Vector2(-88f, 0f)), "0", 58f, Color.white, FrameDark, 0.3f, true);
 
-            var bar = Rect("Chapter", header, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-330f, row), new Vector2(520f, 92f));
+            // Energy (OUT-48) between the stars and the chapter: what plays are left, and when the next point comes.
+            BuildEnergyMeter(header, new Vector2(440f, row), 230f);
+
+            var bar = Rect("Chapter", header, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-290f, row), new Vector2(440f, 92f));
             bar.gameObject.AddComponent<UiPress>().Clicked = () => ShowLevels();
             var barImage = Img(bar, UiArt.Pill, FrameDark);
             Sliced(barImage, 92f, 0.5f);
@@ -941,7 +972,7 @@ namespace OutOfOffice
             chapterChestBadge = Badge(chest, "!");
             chapterChestShake = chest.gameObject.AddComponent<Rattle>();
             chapterChestShake.enabled = false;
-            var plate = Rect("Name", header, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-340f, -34f), new Vector2(400f, 64f));
+            var plate = Rect("Name", header, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-300f, -34f), new Vector2(380f, 64f));
             Sliced(Img(plate, UiArt.Pill, FrameDark), 64f, 0.5f);
             chapterName = Txt(Rect("Text", plate, Vector2.zero, Vector2.one, new Vector2(0f, 2f), new Vector2(-30f, 0f)), "", 32f, Trim, FrameDark, 0.2f, false);
             chapterName.enableAutoSizing = true;
@@ -1155,6 +1186,7 @@ namespace OutOfOffice
             RefreshChapterChest();
             RefreshCoffeeCard();
             RefreshShopButton();
+            RefreshEnergyMeter();
 
             bool ready = DailyChestReady?.Invoke() ?? false;
             var left = UntilQuestReset?.Invoke() ?? System.TimeSpan.Zero;
@@ -1301,6 +1333,9 @@ namespace OutOfOffice
             RoundAction(c, "RESTART", "restart", Palette.UiRed, new Vector2(-230f, 170f), Ink).Clicked = () => Restart?.Invoke();
             RoundAction(c, "HOME", "home", Palette.UiBlue, new Vector2(0f, 170f), Ink).Clicked = () => Home?.Invoke();
             RoundAction(c, "ROOMS", "grid", Palette.UiWood, new Vector2(230f, 170f), Ink).Clicked = () => ShowLevels();
+            pauseNote = Body(Rect("Note", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 282f), new Vector2(760f, 50f)),
+                $"Restarting or leaving ends this play: {Energy.PlayCost} energy to start again.", 26f, Themes.Hex(0x8A6A9E), Ink);
+            pauseNote.gameObject.SetActive(false);
             SettingRows(c, -60f);
             devRow = Rect("Dev", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -520f), new Vector2(700f, 110f));
             TextButton(devRow, "LAB", Palette.UiPurple, new Vector2(-160f, 0f), new Vector2(280f, 100f), 44f, null).Clicked = () => OpenLab?.Invoke();
@@ -1388,9 +1423,11 @@ namespace OutOfOffice
             SetSwitch("motion", reduced);
         }
 
-        public void ShowPause()
+        // playAtStake: a shot has been taken in a play, so restarting or leaving now ends it (OUT-48).
+        public void ShowPause(bool playAtStake = false)
         {
             HideAll();
+            pauseNote.gameObject.SetActive(playAtStake);
             ShowCard(pauseCard);
         }
 
@@ -2116,7 +2153,7 @@ namespace OutOfOffice
         {
             IconStudio.WardrobeOpen = false;
             foreach (var s in completeStars) Tweens.Kill(s);
-            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard })
+            foreach (var c in new[] { pauseCard, levelsCard, skinsCard, completeCard, settingsCard, questsCard, failCard, shopCard, undoCard, hireCard, energyCard })
             {
                 Tweens.Kill(c.Root);
                 c.Root.gameObject.SetActive(false);
@@ -2159,6 +2196,7 @@ namespace OutOfOffice
             if (Screen.safeArea != lastSafe) ApplySafeArea();
             BuildPendingTiles();
             if (Screen.width != lastScreen.x || Screen.height != lastScreen.y) FitScaler();
+            TickEnergy();
             if (title.gameObject.activeSelf && !ReducedMotion)
             {
                 // Idle wave on the logo.

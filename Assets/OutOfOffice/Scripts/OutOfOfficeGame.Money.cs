@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace OutOfOffice
 {
-    // The game's money and data plumbing (OUT-31..35): the server-corrected clock, analytics sessions and the local
+    // The game's money and data plumbing (OUT-31..35, energy OUT-48): the server-corrected clock, analytics sessions and the local
     // event log, A/B buckets, the save backup, the shop, rewarded ads and continues. Real ad, store and backend
     // providers drop in behind Ads.Provider, Store.Provider and ICloudSave; development builds use test stand-ins.
     public partial class OutOfOfficeGame
@@ -61,7 +61,7 @@ namespace OutOfOffice
 
         void WireShop()
         {
-            TestAds.Present = done => hud.ShowTestAd(done);
+            TestAds.Present = (placement, done) => hud.ShowTestAd(Hud.RewardFor(placement), done);
 
             hud.GemBalance = () => progress.Gems;
             hud.StoreAvailable = () => Store.Provider.Available;
@@ -82,7 +82,12 @@ namespace OutOfOffice
                 sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
                 Haptics.Play(Haptics.Style.Success);
                 hud.RefreshShop();
+                hud.RefreshEnergy();
+                // The reward moment (OUT-48); a pack with a chest opens it instead.
                 if (product.Chest) OpenChest(product.Title + "!");
+                else if (product.PassDays > 0) hud.Celebrate("bolt", "UNLIMITED ENERGY", Palette.Gold);
+                else if (product.Gems > 0) hud.Celebrate("gem", $"+{product.Gems:N0} GEMS", Themes.Hex(0xB990FF));
+                else if (product == Catalog.NoAds) hud.Celebrate("tv", "NO MORE AD VIDEOS", Palette.UiBlue);
             });
             hud.ClaimPass = () =>
             {
@@ -96,6 +101,7 @@ namespace OutOfOffice
                 {
                     progress.AddGems(Catalog.AdGems, "ad");
                     sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                    hud.Celebrate("gem", $"+{Catalog.AdGems} GEMS", Themes.Hex(0xB990FF));
                 }
                 hud.RefreshShop();
             });
@@ -146,7 +152,7 @@ namespace OutOfOffice
             bool ad = afterFirstRooms && Ads.CanOffer(progress, Ads.Now);
             int shots = Experiments.ContinueShots;
             Analytics.Event("continue_offer", ("level", Def.Id), ("ad", ad), ("gems", afterFirstRooms), ("balance", progress.Gems), ("shots", shots));
-            hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots(), shots, ad, afterFirstRooms, ContinueGemCost);
+            hud.ShowOutOfShots(ShotLimit, Quips.OutOfShots(), shots, ad, afterFirstRooms, ContinueGemCost, progress.AdFree, StartOverCost);
         }
 
         // Back into the same attempt with more shots.
@@ -155,11 +161,14 @@ namespace OutOfOffice
             if (state != State.Failed) return;
             int shots = Experiments.ContinueShots;
             extraShots += shots;
+            if (progress.PlaysCost(levelIndex) && !energy.Unlimited) energy.Revive();  // the same play goes on (OUT-48)
             Analytics.Event("continue", ("level", Def.Id), ("how", how), ("shots", shots), ("limit", ShotLimit));
             hud.HideAll();
             hud.SetShots(this.shots, Def.Par, ShotLimit);
             sound.Play(Sfx.Reward, 0.6f, 1.2f, 0.8f);
             mascot.Express(Eyes.Happy, Mouth.Grin, 0.8f, 2f);
+            hud.Banner($"+{shots} SHOTS!", Palette.Gold, 0.5f);
+            hud.SetRestartCost(StartOverCost);
             state = State.Ready;
         }
     }

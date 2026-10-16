@@ -142,7 +142,7 @@ namespace OutOfOffice
         static readonly Dictionary<string, string> Icon3DNames = new Dictionary<string, string>
         {
             { "chest", "chest" }, { "gift", "gift" }, { "shirt", "shirt" }, { "grid", "rooms" }, { "gear", "gear" }, { "home", "home" }, { "coffee", "coffee" }, { "gem", "gem" },
-            { "restart", "restart" }, { "undo", "undo" },
+            { "restart", "restart" }, { "undo", "undo" }, { "bolt", "bolt" }, { "tv", "tv" },
         };
 
         public static Sprite Icon3D(string name)
@@ -174,6 +174,9 @@ namespace OutOfOffice
                 case "speaker":
                     poly = new List<Vector2> { new Vector2(30, 76), new Vector2(62, 76), new Vector2(100, 44), new Vector2(100, 148), new Vector2(62, 116), new Vector2(30, 116) };
                     break;
+                case "bolt":  // energy (OUT-48), when the 3D render is missing
+                    poly = new List<Vector2> { new Vector2(120, 170), new Vector2(57, 90), new Vector2(95, 90), new Vector2(72, 22), new Vector2(137, 106), new Vector2(99, 106) };
+                    break;
             }
             return Make(S, S, (x, y) =>
             {
@@ -186,6 +189,9 @@ namespace OutOfOffice
                         break;
                     case "play":
                         d = SignedDistance(p, poly) - 12f;
+                        break;
+                    case "bolt":
+                        d = SignedDistance(p, poly) - 6f;
                         break;
                     case "restart":
                         d = ArcArrow(p, c, 48f, 13f, 100f, 370f, true);  // three quarters of a turn: the gap keeps the head clear (OUT-39)

@@ -15,13 +15,13 @@ namespace OutOfOffice
     // Development builds only: a full-screen "TEST AD" with a countdown, shown by the HUD.
     public class TestAds : IAdProvider
     {
-        public static Action<Action<bool>> Present;  // set by the game: shows the overlay, reports finished or skipped
+        public static Action<string, Action<bool>> Present;  // set by the game: shows the overlay for a placement, reports finished or skipped
         public bool IsTest => true;
         public bool RewardedReady => Present != null;
         public void ShowRewarded(string placement, Action<bool> done)
         {
             if (Present == null) done?.Invoke(false);
-            else Present(done);
+            else Present(placement, done);
         }
     }
 
@@ -36,7 +36,7 @@ namespace OutOfOffice
     // is offered before the player has reached the sixth room (the first-time experience stays clean, OUT-11).
     public static class Ads
     {
-        public const int DailyCap = 6;
+        public const int DailyCap = 10;  // energy (OUT-48) added a reason to watch; still a handful a day
         public const float Cooldown = 30f;
         public const int FirstRoom = 6;  // offers start once this many rooms are open
 

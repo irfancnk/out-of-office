@@ -89,7 +89,14 @@ namespace OutOfOffice
             Migrate();
             MigrateCard();
             MigrateHires();
+            Energy = new Energy(prefs, () => UtcNow, () => PassActive);
         }
+
+        // Energy for plays (OUT-48), on the same guarded clock as the daily rewards. Unlimited with the Office Pass.
+        public Energy Energy { get; }
+
+        // Whether plays in a room cost energy: not the lab, and not while the first rooms are being learned.
+        public bool PlaysCost(int index) => index >= 0 && Unlocked >= Energy.FirstRoom;
 
         // Staff who unlocked with stars before they became gem hires (OUT-45): a save that had earned them keeps them.
         void MigrateHires()

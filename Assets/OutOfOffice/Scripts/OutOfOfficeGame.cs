@@ -197,14 +197,23 @@ namespace OutOfOffice
                 Haptics.Play(spin ? Haptics.Style.Success : Haptics.Style.Light, 0.7f);
             };
             WireShop();
+            WireEnergy();
             WireReceptionist();
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
 
-            hud.Play = () => { Tap(); hud.HideTitle(); state = State.Ready; hud.SetHint(shots == 0); quipAt = Time.unscaledTime + 0.4f; };
+            hud.Play = () =>
+            {
+                Tap();
+                if (!PayForStart(levelIndex, () => hud.Play?.Invoke())) return;  // a play takes energy (OUT-48)
+                hud.HideTitle();
+                state = State.Ready;
+                hud.SetHint(shots == 0);
+                quipAt = Time.unscaledTime + 0.4f;
+            };
             hud.Pause = PauseGame;
             hud.Resume = ResumeGame;
-            hud.Restart = () => { sound.Play(Sfx.Restart, 0.7f); StartLevel(levelIndex); };
+            hud.Restart = () => { if (StartLevel(levelIndex)) sound.Play(Sfx.Restart, 0.7f); };
             hud.Undo = UndoShot;
             hud.Next = () =>
             {
@@ -213,7 +222,7 @@ namespace OutOfOffice
                 Tap();
                 StartLevel(levelIndex < 0 ? -1 : levelIndex + 1);
             };
-            hud.Replay = () => { sound.Play(Sfx.Restart, 0.7f); StartLevel(levelIndex); };
+            hud.Replay = () => { if (StartLevel(levelIndex)) sound.Play(Sfx.Restart, 0.7f); };
             hud.Home = GoHome;
             hud.SelectLevel = i => { Tap(); StartLevel(i); };
             hud.SetSfx = on => { progress.Sfx = on; sound.SetEnabled(on, progress.Music); Tap(); hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion); };
@@ -304,19 +313,24 @@ namespace OutOfOffice
         int openedLevel = int.MinValue;  // the room that has had its opener; restarts and replays don't repeat it
         const float OpenerSeconds = 1f;
 
-        void StartLevel(int index)
+        // False when the room could not start for want of energy: the energy card is open instead (OUT-48).
+        bool StartLevel(int index)
         {
+            if (!PayForStart(index, () => StartLevel(index))) return false;
             LoadLevel(index);
             quipAt = Time.unscaledTime + 1.6f;  // after the camera has shown the hole and come back to Puffy
             hud.HideAll();
             hud.HideTitle();
             Time.timeScale = 1f;
             state = State.Ready;
+            return true;
         }
 
         void LoadLevel(int index)
         {
             FrameWatch.Note("load");
+            // A room left after a shot (home, another room, the app closed mid-room) ends its play (OUT-48).
+            if (energy.AttemptOpen) energy.EndPlay(level == null ? "closed" : "left", level == null ? "" : Def.Id);
             StopAllCoroutines();
             KillLevelFx();
             celebrating = false;
@@ -363,6 +377,7 @@ namespace OutOfOffice
             hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
             hud.SetUndoAvailable(false);
             hud.SetHint(true);
+            hud.SetRestartCost(StartOverCost);
             state = State.Ready;
         }
 
@@ -522,6 +537,8 @@ namespace OutOfOffice
         {
             history.Push(level.Capture(restPos, shots, levelTime));
             shots++;
+            energy.MarkAttempt();  // from here, leaving the room ends the play (OUT-48)
+            hud.SetRestartCost(StartOverCost);
             shotBounces = 0;
             TrackQuest(QuestKind.Shots);
             hud.HideSpeech();
@@ -897,6 +914,7 @@ namespace OutOfOffice
 
             if (levelIndex >= 0)
             {
+                energy.FinishAttempt();  // a win carries the play on to the next room (OUT-48)
                 int before = progress.Best(Def.Id);
                 progress.Record(levelIndex, earned, shots);
                 // A perk that pays for new stars (OUT-45): only new ones, so replays can't farm it.
@@ -1040,6 +1058,7 @@ namespace OutOfOffice
             mascot.Express(Eyes.Dizzy, Mouth.Wavy, 2f, 3f);
             Analytics.Event("level_fail", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("limit", ShotLimit), ("par", Def.Par),
                 ("coffees", level.StarsCollected), ("seconds", Mathf.RoundToInt(levelTime)));
+            energy.EndPlay("fail", Def.Id);  // a continue picks it up again (OUT-48)
             StartCoroutine(ShowOutOfShotsSoon());
         }
 
@@ -1082,7 +1101,7 @@ namespace OutOfOffice
             sound.StopContinuous();
             bool ad = Ads.CanOffer(progress, Ads.Now);
             Analytics.Event("undo_offer", ("level", Def.Id), ("ad", ad), ("balance", progress.Gems));
-            hud.ShowUndoOffer(ad, UndoGemCost);
+            hud.ShowUndoOffer(ad, UndoGemCost, progress.AdFree, StartOverCost);
             if (undoAllowance.Check(progress.Gems, ad, UndoGemCost) == UndoAllowance.Next.Shop)
             {
                 Analytics.Event("undo_blocked", ("level", Def.Id), ("balance", progress.Gems));
@@ -1132,7 +1151,7 @@ namespace OutOfOffice
             Time.timeScale = 0f;
             sound.StopContinuous();
             Tap();
-            hud.ShowPause();
+            hud.ShowPause(energy.AttemptOpen && StartOverCost > 0);
         }
 
         void ResumeGame()

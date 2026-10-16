@@ -362,6 +362,67 @@ def arc_arrow(a0, a1, head_at_start, radius=0.9, tube=0.2):
     pivot.location = (0, 0, 0.35)
 
 
+def slab(points, depth, mat, bevel=0.06, segments=4, name="Slab"):
+    # A flat outline (x, z pairs in the picture plane) pushed `depth` deep along +Y, with rounded edges.
+    front = [Vector((x, -depth / 2, z)) for x, z in points]
+    back = [Vector((x, depth / 2, z)) for x, z in points]
+    n = len(points)
+    faces = [tuple(range(n)), tuple(range(2 * n - 1, n - 1, -1))]
+    faces += [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([tuple(v) for v in front + back], [], faces)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return finish(obj, mat, bevel=bevel, segments=segments)
+
+
+def face_camera(objects, tilt=-22, turn=26):
+    # Turn props built in the picture plane toward the camera, a little sideways so their depth shows.
+    pivot = bpy.data.objects.new("Pivot", None)
+    bpy.context.scene.collection.objects.link(pivot)
+    for o in objects:
+        o.parent = pivot
+    pivot.rotation_euler = (math.radians(tilt), 0, math.radians(turn))
+    pivot.location = (0, 0, 0.35)
+
+
+def bolt():
+    # Energy (OUT-48): a chunky lightning bolt, warm gold with an orange core, the cost of one play.
+    gold = material("Bolt", hexc("#FFB62E"), 0.25, coat=0.7, emit=0.05)
+    core = material("Core", hexc("#E8700F"), 0.32, coat=0.5)
+    outline = [(0.34, 1.06), (-0.56, -0.08), (-0.02, -0.08), (-0.34, -1.06), (0.58, 0.14), (0.04, 0.14)]
+    body = slab(outline, 0.42, gold, bevel=0.08, segments=5, name="Bolt")
+    # A thin darker slab behind, so the side reads as depth rather than a flat cut-out.
+    shade = slab([(x * 0.97, z * 0.97) for x, z in outline], 0.5, core, bevel=0.05, segments=3, name="Core")
+    shade.location = (0.0, 0.12, -0.02)
+    face_camera([body, shade], tilt=-26, turn=42)
+
+
+def tv():
+    # Rewarded videos: a little retro TV with a big play button on its screen.
+    shell = material("Shell", hexc("#4F8DFF"), 0.35, coat=0.4)
+    rim = material("Rim", hexc("#2D4FB8"), 0.4)
+    glass = material("Glass", hexc("#1E2448"), 0.15, coat=1.0)
+    white = material("Play", hexc("#FFFFFF"), 0.3, emit=0.5)
+    tip = material("Tip", hexc("#FF5A5A"), 0.35)
+    parts = [box((1.7, 0.8, 1.3), (0, 0, 0), shell, 0.2)]
+    parts.append(box((1.32, 0.12, 0.94), (0, -0.4, 0.02), rim, 0.1))
+    parts.append(box((1.18, 0.12, 0.82), (0, -0.45, 0.02), glass, 0.12))
+    parts.append(slab([(-0.2, 0.27), (0.3, 0.0), (-0.2, -0.27)], 0.1, white, bevel=0.04, segments=3, name="Play"))
+    parts[-1].location = (0.04, -0.53, 0.02)
+    for side in (-1, 1):
+        stick = cyl(0.035, 0.75, (side * 0.26, 0, 0.95), rim, rot=(0, side * 0.5, 0), verts=16, bevel=0.0)
+        ball = sphere(0.09, (side * 0.44, 0, 1.28), tip)
+        leg = box((0.16, 0.3, 0.22), (side * 0.55, 0, -0.74), rim, 0.06)
+        parts += [stick, ball, leg]
+    face_camera(parts, tilt=-12, turn=24)
+
+
 def restart():
     arc_arrow(100, 370, True)      # ↻: three quarters of a turn, the head on top pointing right, the gap at the top right
 
@@ -371,7 +432,7 @@ def undo():
 
 
 PROPS = {"gem": gem, "chest": chest, "gift": gift, "shirt": shirt, "rooms": door, "gear": gear, "home": home, "coffee": coffee,
-         "restart": restart, "undo": undo}
+         "restart": restart, "undo": undo, "bolt": bolt, "tv": tv}
 
 
 def render(name):
