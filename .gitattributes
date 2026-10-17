@@ -1,0 +1,2 @@
+# Level files (OUT-12) are always written with LF; keep them that way on every platform.
+Assets/OutOfOffice/Resources/Levels/*.json text eol=lf

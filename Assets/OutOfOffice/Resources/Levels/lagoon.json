@@ -1,0 +1,17 @@
+{
+  "id": "lagoon",
+  "name": "Not My Spill",
+  "hint": "BOUNCE OVER THE SPINNER",
+  "par": 2,
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Hazard", "shape": "Post", "at": [-3.5, 2], "radius": 0.4 },
+    { "kind": "Hazard", "shape": "Post", "at": [3.5, 2], "radius": 0.4 }
+  ],
+  "zones": [
+    { "kind": "Vortex", "at": [0, 2], "size": [4.8, 4.8] },
+    { "kind": "Jump", "at": [0, -2.6], "size": [1.6, 1.6] }
+  ],
+  "stars": [[-2.6, -1.4], [0, 2], [2.6, 5.2]]
+}

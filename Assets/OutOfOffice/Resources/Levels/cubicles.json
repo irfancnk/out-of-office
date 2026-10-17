@@ -1,0 +1,17 @@
+{
+  "id": "cubicles",
+  "name": "Cubicle Farm Animal",
+  "hint": "BANK OFF THE PARTITIONS",
+  "par": 2,
+  "hole": [2.8, 6.2],
+  "start": [-2.8, -6.4],
+  "blocks": [
+    { "kind": "Wall", "at": [-2.3, -2.2], "size": [4.4, 0.4] },
+    { "kind": "Wall", "at": [1.2, -0.4], "size": [0.4, 3.6] },
+    { "kind": "Wall", "at": [2.3, 2.6], "size": [4.4, 0.4] },
+    { "kind": "Wall", "at": [-1.2, 4.4], "size": [0.4, 3.2] },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, 1.2], "radius": 0.45 },
+    { "kind": "Bouncer", "shape": "Post", "at": [3, -4], "radius": 0.45 }
+  ],
+  "stars": [[0, -3.6], [-0.2, 1.4], [1.2, 5.6]]
+}

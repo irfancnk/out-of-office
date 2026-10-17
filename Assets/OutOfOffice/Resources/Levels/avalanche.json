@@ -1,0 +1,19 @@
+{
+  "id": "avalanche",
+  "name": "Shiny Floor, Dull Soul",
+  "hint": "SLIDE PAST THE STANDING DESKS",
+  "par": 2,
+  "hole": [0, 6],
+  "start": [0, -13],
+  "shape": { "kind": "Rect", "args": [9, 22, 0.7], "offset": [0, -3] },
+  "blocks": [
+    { "kind": "PopWall", "at": [-2.5, -6], "size": [4, 0.5], "blink": 2.2 },
+    { "kind": "PopWall", "at": [2.5, -3], "size": [4, 0.5], "blink": 2.2, "blinkPhase": 0.5 },
+    { "kind": "Wall", "at": [0, 0.5], "size": [5, 0.6] }
+  ],
+  "zones": [
+    { "kind": "Ice", "at": [0, -8], "size": [9, 6] },
+    { "kind": "Spikes", "at": [0, 3], "size": [9, 0.9], "period": 2, "phase": 0.25 }
+  ],
+  "stars": [[3, -8], [-3.2, -1.4], [0, 4.6]]
+}

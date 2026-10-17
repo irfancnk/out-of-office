@@ -1,0 +1,16 @@
+{
+  "id": "window",
+  "name": "View of Another Office",
+  "hint": "ROUND THE DESK, UP THE FAST LANE",
+  "par": 2,
+  "hole": [0, 5.2],
+  "start": [0, -5],
+  "shape": { "kind": "Circle", "args": [6.8] },
+  "blocks": [
+    { "kind": "Wall", "shape": "Post", "at": [0, 0], "radius": 1.7 },
+    { "kind": "Bouncer", "shape": "Post", "at": [4.4, 1.6], "radius": 0.45 }
+  ],
+  "zones": [{ "kind": "Boost", "at": [-4.6, 0], "size": [1.6, 2.4] }],
+  "rails": [{ "kind": "Wall", "arc": [0, 0, 3.4, 20, 160] }],
+  "stars": [[-4.6, 2.4], [4.6, -0.6], [0, -2.6]]
+}

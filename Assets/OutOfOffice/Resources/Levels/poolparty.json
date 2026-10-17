@@ -1,0 +1,19 @@
+{
+  "id": "poolparty",
+  "name": "Pool Party, No Pool",
+  "hint": "WET DECK: GO GENTLE",
+  "par": 2,
+  "tags": ["remix:ice"],
+  "hole": [-2.8, 6.3],
+  "start": [2.8, -6.5],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "blocks": [
+    { "kind": "Hazard", "shape": "Post", "at": [1.8, -1.2], "radius": 0.45 },
+    { "kind": "Hazard", "shape": "Post", "at": [-1.6, 0.8], "radius": 0.45 },
+    { "kind": "Hazard", "shape": "Post", "at": [0.6, 3], "radius": 0.45 },
+    { "kind": "Sticky", "at": [-2.8, 7.55], "size": [2.4, 0.4] },
+    { "kind": "Wall", "at": [2.5, 5.6], "size": [4, 0.5] }
+  ],
+  "zones": [{ "kind": "Ice", "at": [0, 0.3], "size": [9, 8.6], "turn": -1 }],
+  "stars": [[-0.3, -0.9], [3.4, 2], [-2.8, 3.8]]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "feedback",
+  "name": "Dodge the Feedback",
+  "hint": "DODGE THE PACING MANAGER",
+  "par": 2,
+  "hole": [0, 6.4],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Hazard", "shape": "Post", "at": [0, 0], "radius": 0.42, "move": [3.2, 0], "period": 2.4 },
+    { "kind": "Wall", "at": [0, 3.6], "size": [3.6, 0.6] },
+    { "kind": "Kicker", "shape": "Post", "at": [-3.6, 3.6], "radius": 0.45 },
+    { "kind": "Kicker", "shape": "Post", "at": [3.6, 3.6], "radius": 0.45 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, -3.4], "radius": 0.45 },
+    { "kind": "Bouncer", "shape": "Post", "at": [3, -3.4], "radius": 0.45 },
+    { "kind": "Wall", "at": [-3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": -1 }
+  ],
+  "stars": [[-3.6, 0], [3.6, 0], [0, 5]]
+}

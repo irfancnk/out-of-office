@@ -1,0 +1,17 @@
+{
+  "id": "fountain",
+  "name": "The Indoor Fountain",
+  "hint": "RIDE ONE, THEN THE OTHER",
+  "par": 2,
+  "tags": ["remix:tidepool"],
+  "hole": [3, 6.8],
+  "start": [-2.6, -6.5],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "blocks": [{ "kind": "Hazard", "shape": "Post", "at": [0, -3.6], "radius": 0.4, "move": [-2, 0], "period": 3 }],
+  "zones": [
+    { "kind": "Vortex", "at": [2, -1], "size": [4, 4] },
+    { "kind": "Vortex", "at": [-2, 2.4], "size": [4, 4], "turn": -1 },
+    { "kind": "Conveyor", "at": [0, 5], "size": [2, 9], "angle": -90, "turn": -1 }
+  ],
+  "stars": [[-3.3, -3.8], [-2, 2.4], [0, 5]]
+}

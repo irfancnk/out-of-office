@@ -1,0 +1,18 @@
+{
+  "id": "kicker",
+  "name": "The Boss Will See You Now",
+  "hint": "RED CHAIRS KICK YOU AWAY",
+  "par": 2,
+  "teaches": "kicker",
+  "hole": [-2.8, 6.2],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [-0.9, 3.2], "size": [7.2, 0.6] },
+    { "kind": "Kicker", "shape": "Post", "at": [3.4, 7], "radius": 0.45 },
+    { "kind": "Kicker", "shape": "Post", "at": [-3.4, -1.2], "radius": 0.5 },
+    { "kind": "Bouncer", "shape": "Post", "at": [0.8, 0.6], "radius": 0.5 },
+    { "kind": "Hazard", "shape": "Post", "at": [-0.6, 5.8], "radius": 0.4 },
+    { "kind": "Bouncer", "shape": "Post", "at": [2.8, -3.6], "radius": 0.45 }
+  ],
+  "stars": [[3.6, 1.4], [3.6, 4.6], [0.8, 6.6]]
+}

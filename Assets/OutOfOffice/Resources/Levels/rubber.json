@@ -1,0 +1,17 @@
+{
+  "id": "rubber",
+  "name": "Musical Chairs, No Music",
+  "hint": "CHAIRS BOUNCE YOU AROUND",
+  "par": 2,
+  "hole": [-3, 6.3],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Bouncer", "shape": "Post", "at": [3.3, 6.6], "radius": 0.6 },
+    { "kind": "Bouncer", "shape": "Post", "at": [1.3, 2], "radius": 0.55 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-2.9, 0.8], "radius": 0.5 },
+    { "kind": "Hazard", "at": [2.6, -2], "size": [3.8, 0.5] },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, -3.9], "radius": 0.45 }
+  ],
+  "rails": [{ "kind": "Wall", "bend": 0.3, "points": [[-4.6, 4], [-0.9, 4], [-0.9, 5.6]] }],
+  "stars": [[0, -0.8], [3.6, 3.8], [1.2, 6.8]]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "thorns",
+  "name": "Only the Cacti Survive",
+  "hint": "CACTI SEND YOU BACK",
+  "par": 3,
+  "hole": [2.8, 5.8],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [-1.5, -2.5], "size": [6, 0.6] },
+    { "kind": "Wall", "at": [1.5, 1.5], "size": [6, 0.6] },
+    { "kind": "Hazard", "shape": "Post", "at": [3, -2.5], "radius": 0.35 },
+    { "kind": "Hazard", "shape": "Post", "at": [0, -0.5], "radius": 0.45, "move": [2.6, 0], "period": 3 },
+    { "kind": "Hazard", "shape": "Post", "at": [-3, 1.5], "radius": 0.35 },
+    { "kind": "Hazard", "shape": "Post", "at": [0.2, 4.6], "radius": 0.45, "move": [0, 1.2], "period": 2.4 }
+  ],
+  "stars": [[2.1, -2.5], [-2.1, 1.5], [0.6, 3.2]]
+}

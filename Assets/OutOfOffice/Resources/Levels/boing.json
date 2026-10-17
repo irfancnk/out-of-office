@@ -1,0 +1,17 @@
+{
+  "id": "boing",
+  "name": "Launched Into Management",
+  "hint": "BOUNCE MATS LAUNCH YOU OVER",
+  "par": 2,
+  "teaches": "jump",
+  "hole": [0, 5],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [0, 1], "size": [9, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3.4, 6.6], "radius": 0.5 },
+    { "kind": "Bouncer", "shape": "Post", "at": [3.4, 6.6], "radius": 0.5 },
+    { "kind": "Hazard", "shape": "Post", "at": [-3, -2], "radius": 0.4, "move": [0.8, 0], "period": 3.6 }
+  ],
+  "zones": [{ "kind": "Jump", "at": [0, -2], "size": [1.6, 1.6] }],
+  "stars": [[0, -3.6], [0, 2.6], [2.6, 4.2]]
+}

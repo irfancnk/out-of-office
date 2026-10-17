@@ -1,0 +1,25 @@
+{
+  "id": "twofactor",
+  "name": "Two-Factor Authentication",
+  "hint": "SCAN YOUR BADGE FIRST",
+  "par": 3,
+  "tags": ["remix:switch"],
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "blocks": [
+    { "kind": "Gate", "at": [0, 3.6], "size": [3.9, 0.5], "group": 0 },
+    { "kind": "Bouncer", "shape": "Post", "at": [0, -0.8], "radius": 0.6 },
+    { "kind": "Hazard", "shape": "Post", "at": [3.3, 1.2], "radius": 0.45, "move": [0, 1.8], "period": 3.2 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, -3.4], "radius": 0.45 }
+  ],
+  "zones": [
+    { "kind": "Switch", "at": [-3.4, 6.6], "size": [1.1, 1.1], "group": 0, "turn": -1 },
+    { "kind": "Ice", "at": [2.8, -3.6], "size": [2.4, 1.6], "turn": -1 }
+  ],
+  "rails": [
+    { "kind": "Wall", "points": [[-2.2, 8.1], [-2.2, 3.6]], "flipped": true },
+    { "kind": "Wall", "points": [[2.2, 8.1], [2.2, 3.6]], "flipped": true }
+  ],
+  "stars": [[-3.4, 3], [3.35, 6.4], [0, 2.2]]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "deliveries",
+  "name": "Deliveries, Not for You",
+  "hint": "PUSH THE BOXES ASIDE",
+  "par": 4,
+  "tags": ["remix:crate"],
+  "hole": [2.6, 6.4],
+  "start": [0, -6],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "blocks": [
+    { "kind": "Crate", "at": [0, 0], "size": [1.3, 1.3] },
+    { "kind": "Crate", "at": [-3.2, 4], "size": [1.4, 1.4] },
+    { "kind": "Crate", "at": [2.8, -3.4], "size": [1, 1] },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, -3.6], "radius": 0.45 }
+  ],
+  "rails": [
+    { "kind": "Wall", "points": [[-4.6, 0], [-1.45, 0]], "flipped": true },
+    { "kind": "Wall", "points": [[1.45, 0], [4.6, 0]], "flipped": true },
+    { "kind": "Wall", "points": [[-4.6, 4], [1.7, 4]], "flipped": true }
+  ],
+  "stars": [[-1.4, -0.2], [-2.6, 2], [0.4, 5.6]]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "rows",
+  "name": "Open Plan, Closed Hearts",
+  "hint": "SLALOM THROUGH THE DESKS",
+  "par": 3,
+  "hole": [0, 6.4],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [-1.2, -2.6], "size": [6.6, 0.6] },
+    { "kind": "Wall", "at": [1.2, 0.6], "size": [6.6, 0.6] },
+    { "kind": "Wall", "at": [-1.2, 3.8], "size": [6.6, 0.6] },
+    { "kind": "Hazard", "shape": "Post", "at": [0, -1], "radius": 0.36, "move": [2.4, 0], "period": 4.4 }
+  ],
+  "stars": [[3.4, -2.6], [-3.4, 0.6], [3.4, 3.8]]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "sunset",
+  "name": "Racing the Sunset",
+  "hint": "SPEED STRIPS BEAT THE TURF",
+  "par": 2,
+  "tags": ["remix:speedpad"],
+  "hole": [0, 6.2],
+  "start": [0, -6.5],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "blocks": [
+    { "kind": "Hazard", "shape": "Post", "at": [1.7, 5], "radius": 0.4 },
+    { "kind": "Hazard", "shape": "Post", "at": [-1.7, 5], "radius": 0.4 }
+  ],
+  "zones": [
+    { "kind": "Boost", "at": [0, -3], "size": [2, 2.6], "turn": -1 },
+    { "kind": "Boost", "at": [3.3, -1.4], "size": [1.6, 2], "angle": -20, "turn": -1 },
+    { "kind": "Mud", "at": [0, 1.6], "size": [9, 3], "turn": -1 }
+  ],
+  "stars": [[0, -1.2], [3, 2.2], [-3.1, 4.6]]
+}

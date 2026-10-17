@@ -1,0 +1,20 @@
+{
+  "id": "vpn",
+  "name": "The VPN Tunnel",
+  "hint": "IN ONE PORT, OUT THE OTHER",
+  "par": 2,
+  "tags": ["remix:portal"],
+  "hole": [-1.6, 5.4],
+  "start": [0, -6],
+  "shape": { "kind": "Rect", "args": [9, 16, 1.4], "flipped": true },
+  "blocks": [
+    { "kind": "Hazard", "at": [-3.3, -3.4], "size": [2.2, 0.45], "move": [-1, 0], "period": 2.6 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3.6, 6.9], "radius": 0.45 }
+  ],
+  "zones": [
+    { "kind": "Portal", "at": [-3.3, -1.2], "size": [1.1, 1.1], "link": 1, "turn": -1 },
+    { "kind": "Portal", "at": [3.3, 5.4], "size": [1.1, 1.1], "angle": 90, "link": 0, "turn": -1 }
+  ],
+  "rails": [{ "kind": "Wall", "points": [[-4.6, 3], [4.6, 3]], "flipped": true }],
+  "stars": [[-1, -4.6], [-3.3, -2.4], [1, 5.4]]
+}

@@ -20,9 +20,9 @@ namespace OutOfOffice.EditorTools
             EditorApplication.Exit(failures == 0 ? 0 : 4);
         }
 
-        // Physics and save rules, every level solvable, and the cosmetic rig and face placement.
+        // The level files, physics and save rules, every level solvable, and the cosmetic rig and face placement.
         // A suite that throws counts as one failure, and the rest still run.
-        static int RunAll() => Safe(PhysicsTests.Run) + Safe(() => LevelCheck.Run(Levels.All)) + Safe(() => LevelCheck.Run(new[] { Levels.Tutorial }))
+        static int RunAll() => Safe(LevelDataCheck.Run) + Safe(PhysicsTests.Run) + Safe(() => LevelCheck.Run(Levels.All)) + Safe(() => LevelCheck.Run(new[] { Levels.Tutorial }))
             + Safe(PresentationChecks.Run);
 
         static int Safe(System.Func<int> suite)

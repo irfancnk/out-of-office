@@ -1,0 +1,22 @@
+{
+  "id": "oneway",
+  "name": "Career Path: One Way",
+  "hint": "GREEN GATES: ONE WAY ONLY",
+  "par": 2,
+  "teaches": "oneway",
+  "hole": [3, 5.6],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [0, 1], "size": [3, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [0, 4.4], "radius": 0.55 },
+    { "kind": "Hazard", "shape": "Post", "at": [3, 3.2], "radius": 0.4, "move": [1, 0], "period": 2.6 },
+    { "kind": "Wall", "at": [2.9, -3.4], "size": [2.4, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3.1, -3.8], "radius": 0.45 },
+    { "kind": "Wall", "at": [-3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": -1 }
+  ],
+  "zones": [
+    { "kind": "OneWay", "at": [-3, 1], "size": [3, 0.7] },
+    { "kind": "OneWay", "at": [3, 1], "size": [3, 0.7], "angle": 180 }
+  ],
+  "stars": [[-3, -1], [-3, 4], [1.4, 6.6]]
+}

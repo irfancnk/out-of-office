@@ -1,0 +1,21 @@
+{
+  "id": "boardvote",
+  "name": "The Board Votes No",
+  "hint": "CHAIRS EVERYWHERE",
+  "par": 2,
+  "tags": ["remix:pinball"],
+  "hole": [2.6, 6.3],
+  "start": [0, -6],
+  "shape": { "kind": "Chamfered", "args": [9, 16, 1.6, 0.5], "flipped": true },
+  "blocks": [
+    { "kind": "Hazard", "at": [0, -1.6], "size": [2.4, 0.45], "move": [-2.2, 0], "period": 2.8 },
+    { "kind": "Bouncer", "shape": "Post", "at": [1.8, 1.8], "radius": 0.55 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-1.8, 1.8], "radius": 0.55 },
+    { "kind": "Bouncer", "shape": "Post", "at": [0, 3.6], "radius": 0.55 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3.2, 5.2], "radius": 0.5 },
+    { "kind": "Bouncer", "shape": "Post", "at": [3, -4], "radius": 0.45 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3, -4], "radius": 0.45 }
+  ],
+  "rails": [{ "kind": "Wall", "bend": 0.3, "points": [[-4.6, 4.6], [-1.2, 4.6], [-1.2, 6]], "flipped": true }],
+  "stars": [[-3.2, 0.2], [0, 5.6], [0.4, 7.2]]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "fireescape",
+  "name": "The Fire Escape Plan",
+  "hint": "FIND THE BADGE READER",
+  "par": 4,
+  "tags": ["remix:maze"],
+  "hole": [-2.6, 6.4],
+  "start": [0, -13],
+  "shape": { "kind": "Rect", "args": [9, 22, 0.7], "flipped": true, "offset": [0, -3] },
+  "blocks": [
+    { "kind": "Wall", "at": [2.7, -8.6], "size": [3.6, 0.6] },
+    { "kind": "Wall", "at": [-2.7, -8.6], "size": [3.6, 0.6] },
+    { "kind": "Wall", "at": [1.2, -2.6], "size": [6.6, 0.6] },
+    { "kind": "Wall", "at": [-1.2, 0.8], "size": [6.6, 0.6] },
+    { "kind": "Gate", "at": [3.3, 4.2], "size": [2.4, 0.6], "group": 0 },
+    { "kind": "Wall", "at": [-1.2, 4.2], "size": [6.6, 0.6] },
+    { "kind": "Kicker", "shape": "Post", "at": [3.4, 2.5], "radius": 0.45 },
+    { "kind": "Hazard", "shape": "Post", "at": [-0.4, -1], "radius": 0.4, "move": [-2.2, 0], "period": 2.8 }
+  ],
+  "zones": [
+    { "kind": "Spikes", "at": [0, -11.2], "size": [9, 0.9], "turn": -1, "period": 2.2 },
+    { "kind": "Switch", "at": [-3.4, 2.5], "size": [1.1, 1.1], "group": 0, "turn": -1 }
+  ],
+  "stars": [[0, -9.6], [0.4, 2.5], [1, 6.4]]
+}

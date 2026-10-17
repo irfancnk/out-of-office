@@ -1,0 +1,16 @@
+{
+  "id": "retirement",
+  "name": "The Retirement Party",
+  "hint": "ONE LAST NAP",
+  "par": 3,
+  "hole": [0, 6.6],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Hazard", "shape": "Post", "at": [0, -1.2], "radius": 0.4, "move": [2.6, 0], "period": 2.2 },
+    { "kind": "Kicker", "shape": "Post", "at": [-3.2, 1.4], "radius": 0.45 },
+    { "kind": "Kicker", "shape": "Post", "at": [3.2, 1.4], "radius": 0.45 },
+    { "kind": "PopWall", "at": [0, 3.4], "size": [9, 0.5], "blink": 2.4, "blinkPhase": 0.5 },
+    { "kind": "Bouncer", "shape": "Post", "at": [2.8, -3.6], "radius": 0.45 }
+  ],
+  "stars": [[-3.4, -2.6], [3.4, -0.4], [-2.2, 5]]
+}

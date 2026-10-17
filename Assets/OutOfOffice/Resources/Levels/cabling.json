@@ -1,0 +1,14 @@
+{
+  "id": "cabling",
+  "name": "Cable Management (Lol)",
+  "hint": "THE BELT KNOWS THE WAY",
+  "par": 2,
+  "hole": [2.6, 6],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [-1.8, 3.6], "size": [5.4, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [2.8, -3.6], "radius": 0.45 }
+  ],
+  "zones": [{ "kind": "Conveyor", "at": [0, 0.4], "size": [2.4, 9], "angle": -90 }],
+  "stars": [[-3.4, -1.8], [3.4, 2.4], [-3.2, 5.4]]
+}

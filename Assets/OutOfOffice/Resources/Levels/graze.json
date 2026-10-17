@@ -1,0 +1,14 @@
+{
+  "id": "graze",
+  "name": "Cutting Corners, Legally",
+  "hint": "GRAZE THE ROUND CORNERS",
+  "par": 2,
+  "hole": [2.7, 6.2],
+  "start": [-2.8, -6.2],
+  "blocks": [
+    { "kind": "Wall", "at": [1.7, -1.6], "size": [5.6, 2.4], "corner": 1.1 },
+    { "kind": "Wall", "at": [-1.7, 3.4], "size": [5.6, 2.4], "corner": 1.1 },
+    { "kind": "Hazard", "shape": "Post", "at": [3, 0.9], "radius": 0.4 }
+  ],
+  "stars": [[-2.9, -2], [0, 0.9], [2.9, 3.4]]
+}

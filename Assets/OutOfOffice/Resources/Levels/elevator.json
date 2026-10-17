@@ -1,0 +1,19 @@
+{
+  "id": "elevator",
+  "name": "Elevator Pitch Gone Wrong",
+  "hint": "TAKE THE ELEVATOR UP",
+  "par": 2,
+  "hole": [0, 6],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [0, 0.8], "size": [9, 0.6] },
+    { "kind": "Hazard", "shape": "Post", "at": [0, 3.4], "radius": 0.4, "move": [2.4, 0], "period": 2.8 },
+    { "kind": "Wall", "at": [3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": 1 }
+  ],
+  "zones": [
+    { "kind": "Portal", "at": [3.2, -3], "size": [1.1, 1.1], "link": 1 },
+    { "kind": "Portal", "at": [-3.2, 3.6], "size": [1.1, 1.1], "link": 0 },
+    { "kind": "Ice", "at": [0, -3], "size": [9, 2] }
+  ],
+  "stars": [[-3.2, -3], [3.2, 4.2], [-1.7, 5.4]]
+}

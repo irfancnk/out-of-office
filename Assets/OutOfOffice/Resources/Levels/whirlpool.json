@@ -1,0 +1,18 @@
+{
+  "id": "whirlpool",
+  "name": "Spiralling Since Monday",
+  "hint": "THE PLATFORM SWINGS YOU ROUND",
+  "par": 2,
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [-3.2, 4.4], "size": [2.6, 0.6] },
+    { "kind": "Wall", "at": [3.2, 4.4], "size": [2.6, 0.6] },
+    { "kind": "Hazard", "shape": "Post", "at": [-3.5, 1], "radius": 0.4 },
+    { "kind": "Hazard", "shape": "Post", "at": [3.5, 1], "radius": 0.4 },
+    { "kind": "Hazard", "shape": "Post", "at": [-3.2, -3.6], "radius": 0.35 },
+    { "kind": "Bouncer", "shape": "Post", "at": [3.2, -3.8], "radius": 0.45 }
+  ],
+  "zones": [{ "kind": "Vortex", "at": [0, 1], "size": [5.2, 5.2] }],
+  "stars": [[-1.6, -1], [0, 1], [1.2, 3.6]]
+}

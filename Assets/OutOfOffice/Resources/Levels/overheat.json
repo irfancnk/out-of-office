@@ -1,0 +1,19 @@
+{
+  "id": "overheat",
+  "name": "Servers Running Hot",
+  "hint": "RIDE THE COOLING FANS",
+  "par": 2,
+  "tags": ["remix:fan"],
+  "hole": [-3, 6.2],
+  "start": [3, -6.5],
+  "shape": { "kind": "Rect", "args": [9, 16, 0.7], "flipped": true },
+  "zones": [
+    { "kind": "Wind", "at": [0, 0], "size": [2.5, 8], "angle": -180, "turn": -1 },
+    { "kind": "Wind", "at": [-3, -1], "size": [2.5, 6], "turn": -1 }
+  ],
+  "rails": [
+    { "kind": "Wall", "points": [[-1.5, -8.1], [-1.5, 4.2]], "flipped": true },
+    { "kind": "Wall", "points": [[1.5, -4.4], [1.5, 8.1]], "flipped": true }
+  ],
+  "stars": [[3, 2], [0, 6.4], [0, -6.2]]
+}

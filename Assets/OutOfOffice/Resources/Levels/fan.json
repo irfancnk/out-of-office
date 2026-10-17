@@ -1,0 +1,17 @@
+{
+  "id": "fan",
+  "name": "The AC Has a Grudge",
+  "hint": "RIDE THE AIR CON",
+  "par": 2,
+  "hole": [3, 6.2],
+  "start": [-3, -6.5],
+  "zones": [
+    { "kind": "Wind", "at": [0, 0], "size": [2.5, 8], "angle": 180 },
+    { "kind": "Wind", "at": [3, -1], "size": [2.5, 6] }
+  ],
+  "rails": [
+    { "kind": "Wall", "points": [[-1.5, -8.1], [-1.5, 4.2]] },
+    { "kind": "Wall", "points": [[1.5, -4.4], [1.5, 8.1]] }
+  ],
+  "stars": [[-3, 2], [0, 6.4], [0, -6.2]]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "breeze",
+  "name": "Can You Turn Off the AC?",
+  "hint": "THE VENT PUSHES YOU SIDEWAYS",
+  "par": 2,
+  "teaches": "wind",
+  "hole": [-2.8, 6.2],
+  "start": [3, -12.8],
+  "shape": { "kind": "Rect", "args": [9, 22, 0.7], "offset": [0, -3] },
+  "blocks": [
+    { "kind": "Wall", "at": [-1.4, -10.6], "size": [6.2, 0.6] },
+    { "kind": "Kicker", "shape": "Post", "at": [-3.6, -12.8], "radius": 0.45 },
+    { "kind": "Wall", "at": [1.3, 3.8], "size": [6.4, 0.6] },
+    { "kind": "Hazard", "shape": "Post", "at": [3.5, 6.3], "radius": 0.4 },
+    { "kind": "Bouncer", "shape": "Post", "at": [-3.3, -3.4], "radius": 0.5 }
+  ],
+  "zones": [{ "kind": "Wind", "at": [0, 0.6], "size": [3.2, 9], "angle": -90 }],
+  "stars": [[3.4, -9], [-0.8, 0.6], [-3.4, 4.6]]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "sunscreen",
+  "name": "Mandatory Sunscreen",
+  "hint": "THE WIND PUSHES LEFT",
+  "par": 2,
+  "hole": [-2.4, 6],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [1.8, 3.8], "size": [5.4, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [3, -2.8], "radius": 0.45 }
+  ],
+  "zones": [{ "kind": "Wind", "at": [0, 1], "size": [3, 9], "angle": 90 }],
+  "stars": [[3.4, 0.4], [-3.4, -1.8], [2.8, 5.4]]
+}

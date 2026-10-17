@@ -1,0 +1,17 @@
+{
+  "id": "easy",
+  "name": "Avoid Eye Contact",
+  "hint": "GO AROUND THE DESK",
+  "par": 2,
+  "teaches": "hazard",
+  "hole": [0, 5.3],
+  "start": [0, -6],
+  "blocks": [
+    { "kind": "Wall", "at": [0, 1.2], "size": [5.4, 2.6], "corner": 0.6 },
+    { "kind": "Hazard", "shape": "Post", "at": [3.9, 3.5], "radius": 0.36 },
+    { "kind": "Wall", "at": [-2.9, -3.8], "size": [2.2, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [3, -3.4], "radius": 0.45 },
+    { "kind": "Wall", "at": [-3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": -1 }
+  ],
+  "stars": [[-3.5, -1.4], [-3.5, 2.8], [-1.4, 4.4]]
+}

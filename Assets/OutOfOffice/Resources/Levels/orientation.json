@@ -1,0 +1,14 @@
+{
+  "id": "orientation",
+  "name": "Orientation Day",
+  "hint": "DRAG BACK, AIM, RELEASE",
+  "par": 3,
+  "teaches": "bouncer",
+  "hole": [-2.2, 5.2],
+  "start": [0, -5.6],
+  "blocks": [
+    { "kind": "Wall", "at": [-1.1, 1.4], "size": [6.8, 0.6] },
+    { "kind": "Bouncer", "shape": "Post", "at": [3.3, 5.4], "radius": 0.45 }
+  ],
+  "stars": [[0, -2.4], [3.2, 1.4], [0.6, 4.4]]
+}

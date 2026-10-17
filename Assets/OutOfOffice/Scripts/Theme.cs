@@ -161,9 +161,9 @@ namespace OutOfOffice
             },
         };
 
-        // First level index of each chapter, plus the level count at the end. Levels.cs marks each chapter with a
-        // matching comment; LevelCheck fails if this table and the level list disagree.
-        public static readonly int[] ChapterStart = { 0, 11, 20, 29, 37, 45, 54, 64, 76, 88, 100 };
+        // First level index of each chapter, plus the level count at the end. Chapters are data now (chapters.json,
+        // OUT-12); chapter i uses theme i, and LevelCheck fails if the two lists disagree.
+        public static int[] ChapterStart => Levels.ChapterStart;
 
         // The theme LevelBuilder uses. The game sets it before it builds a level.
         public static Theme Current = All[0];
@@ -171,7 +171,7 @@ namespace OutOfOffice
         public static int ChapterOf(int levelIndex)
         {
             if (levelIndex < 0) return 0;
-            for (int c = All.Length - 1; c >= 0; c--)
+            for (int c = Mathf.Min(All.Length, ChapterStart.Length - 1) - 1; c >= 0; c--)
                 if (levelIndex >= ChapterStart[c]) return c;
             return 0;
         }

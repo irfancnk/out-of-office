@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "tutorial": "orientation",
+  "chapters": [
+    {
+      "theme": "OPEN-PLAN OFFICE",
+      "levels": ["first", "easy", "bank", "ring", "graze", "curve", "kicker", "figure8", "boing", "rows", "cubicles"]
+    },
+    {
+      "theme": "OFFICE KITCHEN",
+      "levels": ["rubber", "breeze", "oneway", "switch", "spinner", "popwalls", "hairpin", "microwave", "fridge"]
+    },
+    {
+      "theme": "MEETING ROOM",
+      "levels": ["portal", "ramp", "popspikes", "magnet", "ice", "fan", "crossroads", "boardroom", "standup"]
+    },
+    {
+      "theme": "MANAGER'S OFFICE",
+      "levels": ["hopscotch", "thorns", "maze", "crate", "speedpad", "whirlpool", "feedback", "window"]
+    },
+    {
+      "theme": "HR & ADMIN",
+      "levels": ["lagoon", "corner", "timing", "turnstile", "soft", "tidepool", "filing", "paperwork"]
+    },
+    {
+      "theme": "EXECUTIVE FLOOR",
+      "levels": [
+        "conveyor",
+        "tidegate",
+        "icebreak",
+        "avalanche",
+        "door",
+        "blizzard",
+        "curveswitch",
+        "elevator",
+        "green"
+      ]
+    },
+    {
+      "theme": "AFTER HOURS",
+      "levels": [
+        "rampbumper",
+        "skijump",
+        "spikeway",
+        "pinball",
+        "track",
+        "summit",
+        "nightshift",
+        "cleaner",
+        "deadline",
+        "finale"
+      ]
+    },
+    {
+      "theme": "SERVER ROOM",
+      "levels": [
+        "reboot",
+        "pingtimeout",
+        "twofactor",
+        "firewall",
+        "hotfix",
+        "coolant",
+        "coldaisle",
+        "legacycode",
+        "vpn",
+        "cabling",
+        "uptime",
+        "overheat"
+      ]
+    },
+    {
+      "theme": "ROOFTOP TERRACE",
+      "levels": [
+        "sunscreen",
+        "poolparty",
+        "yoga",
+        "deckchairs",
+        "planters",
+        "fireescape",
+        "skylight",
+        "deliveries",
+        "sunset",
+        "barbecue",
+        "hottub",
+        "puddle"
+      ]
+    },
+    {
+      "theme": "THE CORNER OFFICE",
+      "levels": [
+        "goldenchair",
+        "privatelift",
+        "fountain",
+        "bonuspool",
+        "redcarpet",
+        "marble",
+        "awards",
+        "keycard",
+        "stockoptions",
+        "boardvote",
+        "quarterly",
+        "retirement"
+      ]
+    }
+  ]
+}
