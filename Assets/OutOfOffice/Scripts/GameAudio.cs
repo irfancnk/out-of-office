@@ -3,8 +3,12 @@ using UnityEngine;
 
 namespace OutOfOffice
 {
-    // Plays one-shots through a small voice pool with per-clip cooldowns and instance limits,
-    // and drives the continuous loops (sliding, rubbing, charging, magnet hum, music) every frame.
+    // The mix buses (OUT-17). Effects, UI and the employees' voices follow the sound slider, each with its own trim;
+    // music has its own slider, ducks under stingers and voices, and has its own player (MusicPlayer).
+    public enum Bus { Sfx, Ui, Voice }
+
+    // Plays one-shots through a small voice pool with per-clip cooldowns and instance limits, drives the continuous
+    // loops (sliding, rubbing, charging, magnet hum) every frame, and runs the adaptive music.
     public class GameAudio : MonoBehaviour
     {
         const int VoiceCount = 14;
@@ -26,9 +30,15 @@ namespace OutOfOffice
 
         readonly List<Voice> voices = new List<Voice>();
         readonly Dictionary<AudioClip, float> lastPlay = new Dictionary<AudioClip, float>();
-        LoopChannel slideWood, slideIce, rub, charge, magnet, music;
+        readonly Dictionary<AudioClip[], int> lastVariant = new Dictionary<AudioClip[], int>();
+        readonly Dictionary<AudioClip, Bus> buses = new Dictionary<AudioClip, Bus>();
+        LoopChannel slideWood, slideIce, rub, charge, magnet;
         LoopChannel[] loops;
-        bool sfxOn = true, musicOn = true;
+        bool sfxOn = true;
+        public MusicPlayer Music { get; private set; }
+
+        // Bus trims: UI clicks sit under the game.
+        static float Trim(Bus bus) => bus == Bus.Ui ? 0.85f : 1f;
 
         public static GameAudio Create()
         {
@@ -46,8 +56,13 @@ namespace OutOfOffice
             a.rub = a.MakeLoop(Sfx.RubLoop, 0.05f);
             a.charge = a.MakeLoop(Sfx.ChargeLoop, 0.06f);
             a.magnet = a.MakeLoop(Sfx.MagnetLoop, 0.12f);
-            a.music = a.MakeLoop(Sfx.MusicLoop, 0.8f);
-            a.loops = new[] { a.slideWood, a.slideIce, a.rub, a.charge, a.magnet, a.music };
+            a.loops = new[] { a.slideWood, a.slideIce, a.rub, a.charge, a.magnet };
+            foreach (var c in new[] { Sfx.Select, Sfx.Cancel, Sfx.UiTap, Sfx.UiBoing }) a.buses[c] = Bus.Ui;
+            foreach (var c in Sfx.Taps) a.buses[c] = Bus.Ui;
+            foreach (var c in Sfx.CoinTicks) a.buses[c] = Bus.Ui;
+            foreach (var c in new[] { Sfx.Squeak, Sfx.Whee, Sfx.Yay, Sfx.Giggle, Sfx.Boing, Sfx.Yawn, Sfx.Oops }) a.buses[c] = Bus.Voice;
+            a.Music = new MusicPlayer(go.transform) { KeepMenuLoaded = Quality.Detected != Tier.Low };
+            a.Music.Prepare(Songs.Menu);  // the title's song renders while the boot screen is up
             return a;
         }
 
@@ -65,11 +80,14 @@ namespace OutOfOffice
         public void SetEnabled(bool sfx, bool musicEnabled)
         {
             sfxOn = sfx;
-            musicOn = musicEnabled;
+            Music.Enabled = musicEnabled;
         }
 
         // Volume levels from the settings sliders (OUT-16), on top of the on/off switches.
-        public float SfxVolume = 1f, MusicVolume = 1f;
+        public float SfxVolume = 1f;
+        public float MusicVolume { get => Music.Volume; set => Music.Volume = value; }
+
+        public Bus BusOf(AudioClip clip) => clip != null && buses.TryGetValue(clip, out var b) ? b : Bus.Sfx;
 
         // Plays a one-shot. Skips it if the same clip played within `cooldown` or already has `maxInstances` playing.
         // When all voices are busy, the lowest-priority voice that is closest to finishing gets replaced.
@@ -101,14 +119,37 @@ namespace OutOfOffice
             pick.Source.Stop();
             pick.Source.clip = clip;
             pick.Source.pitch = pitch;
-            pick.Source.volume = Mathf.Clamp01(volume) * SfxVolume;
+            var bus = BusOf(clip);
+            pick.Source.volume = Mathf.Clamp01(volume) * SfxVolume * Trim(bus);
             pick.Source.Play();
+            if (bus == Bus.Voice) Music.Duck(0.8f, clip.length * 0.8f);  // a voice line pulls the music back a little
         }
 
+        // Plays one of a set of takes, never the same one twice running, a few percent louder or softer each time.
         public void Play(AudioClip[] variants, float volume, float pitch = 1f, float priority = 0.5f, float cooldown = 0.03f)
         {
             if (variants == null || variants.Length == 0) return;
-            Play(variants[Random.Range(0, variants.Length)], volume, pitch, priority, cooldown);
+            int pick = PickVariant(variants.Length, lastVariant.TryGetValue(variants, out int last) ? last : -1, Random.value);
+            lastVariant[variants] = pick;
+            Play(variants[pick], volume * Random.Range(0.92f, 1f), pitch, priority, cooldown);
+        }
+
+        // Which take to play: uniform over the others, so a take never repeats. Pure, for the checks.
+        public static int PickVariant(int count, int last, float roll)
+        {
+            if (count <= 1) return 0;
+            roll = Mathf.Clamp01(roll);
+            if (last < 0 || last >= count) return Mathf.Min(count - 1, (int)(roll * count));
+            int k = Mathf.Min(count - 2, (int)(roll * (count - 1)));
+            return k >= last ? k + 1 : k;
+        }
+
+        // A musical moment over the music (a stinger, a fanfare): the music ducks under it for its length.
+        public void Stinger(AudioClip clip, float volume, float duckTo = 0.3f)
+        {
+            if (clip == null) return;
+            if (sfxOn) Music.Duck(duckTo, clip.length * 0.85f);
+            Play(clip, volume, 1f, 1f, 0f);
         }
 
         // Sliding follows speed and surface. Silent in the air or at rest.
@@ -153,16 +194,15 @@ namespace OutOfOffice
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
-            music.TargetVolume = musicOn ? 0.13f : 0f;
             foreach (var ch in loops)
             {
                 float a = 1f - Mathf.Exp(-dt / Mathf.Max(0.01f, ch.Response));
-                bool allowed = ch == music || sfxOn;
-                ch.Volume = Mathf.Lerp(ch.Volume, allowed ? ch.TargetVolume : 0f, a);
+                ch.Volume = Mathf.Lerp(ch.Volume, sfxOn ? ch.TargetVolume : 0f, a);
                 ch.Pitch = Mathf.Lerp(ch.Pitch, ch.TargetPitch, a);
-                ch.Source.volume = ch.Volume * (ch == music ? MusicVolume : SfxVolume);
+                ch.Source.volume = ch.Volume * SfxVolume;
                 ch.Source.pitch = ch.Pitch;
             }
+            Music.Tick(Mathf.Min(dt, 0.1f));
         }
 
         // Fade everything when the app loses focus; resume when it returns.

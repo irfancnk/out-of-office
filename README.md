@@ -22,3 +22,14 @@ Run every automated check from the **Out of Office > Run All Checks** menu, or i
 ```
 Unity -batchmode -projectPath . -executeMethod OutOfOffice.EditorTools.AllChecks.Run
 ```
+
+## Audio
+
+Every sound is synthesized in code, so the game ships with no audio files. `Sfx.cs` builds the effects at startup. The soundtrack is written as data in `Songs.cs` (a menu theme and one song per chapter) and rendered by `Composer.cs` on a worker thread into three looping stems (bed, groove, lead) plus win and lose stingers. `MusicPlayer.cs` crossfades between songs and mixes the stems by the mood of play.
+
+- **Out of Office > Export Soundtrack** writes every song, stem, stinger and fanfare to `Builds/Soundtrack/` as WAV files for listening.
+- The audio checks run with Run All Checks. A Play-mode smoke test of the live music (song switch, stems in lockstep, no frame hitch) runs with:
+
+```
+Unity -batchmode -projectPath . -executeMethod OutOfOffice.EditorTools.AudioSmoke.RunBatch
+```

@@ -135,7 +135,7 @@ namespace OutOfOffice
             lid.localRotation = Quaternion.Euler(118f, 0f, 0f);
 
             // The prize rises out of the box: the employee, wearing exactly what was won.
-            Play(Sfx.Reward, 0.8f);
+            Play(Sfx.Fanfare[(int)item.Rarity], 0.85f);  // louder and longer the rarer it is (OUT-17)
             Haptics.Play(Haptics.Style.Success);
             if (!reduced) for (int i = 0; i < 10; i++) SpawnSpark(rarity);
             var m = reveal.GetComponent<Mascot>();

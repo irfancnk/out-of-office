@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace OutOfOffice
 {
-    // Procedural sound set, so the game ships with no audio files. Generated once at startup.
+    // Procedural sound set, so the game ships with no audio files. Generated once at startup. The music is the
+    // Composer's (OUT-17), rendered off the main thread per chapter.
     // Loops are built to repeat seamlessly; one-shots fade out to avoid clicks.
     public static class Sfx
     {
@@ -21,7 +22,13 @@ namespace OutOfOffice
         public static AudioClip Squeak, Whee, Yay, Giggle, Boing, Yawn, Oops, Crack, Pop;
         // Office palette: a pillow landing, a blanket swish, a paper rustle, a printer chirp.
         public static AudioClip Pillow, Swish, Paper, Chirp, Ring;
-        public static AudioClip SlideWoodLoop, SlideIceLoop, RubLoop, ChargeLoop, MagnetLoop, MusicLoop;
+        public static AudioClip SlideWoodLoop, SlideIceLoop, RubLoop, ChargeLoop, MagnetLoop;
+        // OUT-17: variations of the busiest sounds, so no two knocks in a row are the same recording.
+        public static AudioClip[] Crates, Softs, Lands, Taps, Metal, Glass;
+        // OUT-17: moments. A fanfare per chest rarity, the store, and the shot's big finishes.
+        public static AudioClip[] Fanfare;      // by Rarity: common, rare, epic, legendary
+        public static AudioClip KaChing, GemShimmer, Riser, Flourish;
+        public static AudioClip[] CoinTicks;    // rising ticks for currency flying into the counter
 
         static System.Random rng;
 
@@ -52,9 +59,9 @@ namespace OutOfOffice
             }
 
             // Wood knocks: a few damped partials and a short click. Variants differ in pitch.
-            Wood = new AudioClip[3];
-            float[] woodBase = { 380f, 430f, 470f };
-            for (int i = 0; i < 3; i++)
+            Wood = new AudioClip[4];
+            float[] woodBase = { 380f, 430f, 470f, 410f };
+            for (int i = 0; i < Wood.Length; i++)
             {
                 float f = woodBase[i];
                 Wood[i] = Make("wood" + i, 0.16f, t =>
@@ -64,10 +71,10 @@ namespace OutOfOffice
             }
 
             // Rubber: a soft round thump with a little wobble.
-            Rubber = new AudioClip[2];
-            for (int i = 0; i < 2; i++)
+            Rubber = new AudioClip[4];
+            for (int i = 0; i < Rubber.Length; i++)
             {
-                float f = 170f + 25f * i;
+                float f = 170f + 18f * i;
                 Rubber[i] = Make("rubber" + i, 0.3f, t =>
                     Mathf.Sin(TwoPi * Sweep(t, f * 1.6f, f, 0.12f)) * (1f + 0.25f * Mathf.Sin(TwoPi * 22f * t)) * Env(t, 0.002f, 14f) * 0.6f);
             }
@@ -164,154 +171,125 @@ namespace OutOfOffice
             // Aiming: a faint, soft stretching sound (filtered air), with no tone to hum.
             ChargeLoop = Loop("charge", 1f, t => Lowpass(Noise(), 0.03f) * (0.8f + 0.2f * Mathf.Sin(TwoPi * 3f * t)) * 1.2f);
             MagnetLoop = Loop("magnet", 1f, t => (Mathf.Sin(TwoPi * 110f * t) + 0.4f * Mathf.Sin(TwoPi * 220f * t)) * (0.7f + 0.3f * Mathf.Sin(TwoPi * 8f * t)) * 0.25f);
-            MusicLoop = MakeMusic();
+            MakeVariants();
+            MakeMoments();
         }
 
-        // Background music: a bouncy 16-bar loop at 104 bpm. Kalimba melody, soft bass, ukulele-like offbeat plucks,
-        // a light kick/snap/shaker groove, and a few glockenspiel sparkles. Notes that ring past the end wrap to the
-        // start, so the loop is seamless.
-        static AudioClip MakeMusic()
+        // Three takes of each busy sound: the same gesture at slightly different sizes, picked in turn by GameAudio.
+        static void MakeVariants()
         {
-            const float bpm = 104f;
-            float beat = 60f / bpm;
-            const int bars = 16;
-            int n = Mathf.RoundToInt(Rate * bars * 4 * beat);
-            var data = new float[n];
-            var noise = new System.Random(5);
-
-            // Chord voicings (MIDI) and bass roots per bar: C Am F G | C Am F G | F G Em Am | F G C C
-            int[] C = { 60, 64, 67 }, Am = { 57, 60, 64 }, F = { 57, 60, 65 }, G = { 55, 59, 62 }, Em = { 55, 59, 64 };
-            int[][] chords = { C, Am, F, G, C, Am, F, G, F, G, Em, Am, F, G, C, C };
-            int[] roots = { 48, 45, 41, 43, 48, 45, 41, 43, 41, 43, 40, 45, 41, 43, 48, 48 };
-            string[] melody =
+            Crates = new AudioClip[3];
+            Softs = new AudioClip[3];
+            Lands = new AudioClip[3];
+            Taps = new AudioClip[3];
+            Metal = new AudioClip[3];
+            Glass = new AudioClip[3];
+            for (int i = 0; i < 3; i++)
             {
-                "E5:2 G5:2 A5:1 G5:1 E5:2", "C5:2 E5:2 D5:1 C5:1 A4:2", "C5:2 D5:2 E5:1 F5:1 A5:2", "G5:3 F5:1 E5:2 D5:2",
-                "E5:2 G5:2 C6:1 B5:1 G5:2", "A5:2 G5:1 E5:1 C5:2 E5:2", "F5:1 E5:1 D5:1 C5:1 A4:2 C5:2", "D5:3 B4:1 G4:2 R:2",
-                "A5:3 G5:1 F5:2 A5:2", "G5:3 F5:1 E5:2 D5:2", "E5:2 G5:2 B5:2 G5:2", "A5:4 E5:2 R:2",
-                "F5:2 A5:2 C6:2 A5:2", "G5:2 B5:2 D6:2 B5:1 A5:1", "C6:4 G5:2 E5:2", "C5:3 D5:1 E5:2 G4:2",
-            };
-
-            for (int bar = 0; bar < bars; bar++)
-            {
-                float t0 = bar * 4 * beat;
-                // Melody, in eighths.
-                float at = 0f;
-                foreach (var token in melody[bar].Split(' '))
-                {
-                    var parts = token.Split(':');
-                    int eighths = int.Parse(parts[1]);
-                    if (parts[0] != "R")
-                        Partials(data, t0 + at * beat * 0.5f, Hz(Midi(parts[0])), 1.4f, 0.15f, 0.003f,
-                            (1f, 1f, 3.2f), (2f, 0.3f, 9f), (5.4f, 0.12f, 30f));
-                    at += eighths;
-                }
-                // Bass: root, a little bounce, fifth, octave.
-                float root = Hz(roots[bar]);
-                Partials(data, t0, root, 1.3f, 0.2f, 0.006f, (1f, 1f, 2.8f), (2f, 0.45f, 4f), (3f, 0.15f, 6f));
-                Partials(data, t0 + 1.5f * beat, root, 0.45f, 0.13f, 0.006f, (1f, 1f, 5f), (2f, 0.45f, 7f));
-                Partials(data, t0 + 2f * beat, root * 1.5f, 0.9f, 0.16f, 0.006f, (1f, 1f, 3.5f), (2f, 0.4f, 5f));
-                Partials(data, t0 + 3f * beat, root * 2f, 0.9f, 0.13f, 0.006f, (1f, 1f, 3.5f), (2f, 0.35f, 5f));
-                // Offbeat plucks of the chord, slightly strummed.
-                for (int k = 0; k < 4; k++)
-                {
-                    float on = t0 + (k + 0.5f) * beat;
-                    for (int v = 0; v < 3; v++)
-                        Partials(data, on + v * 0.012f, Hz(chords[bar][v]), 0.5f, 0.045f, 0.002f, (1f, 1f, 9f), (2f, 0.4f, 14f), (3f, 0.15f, 20f));
-                }
-                // Groove: kick on 1 and 3, snap on 2 and 4, shaker on eighths.
-                for (int k = 0; k < 4; k++)
-                {
-                    float on = t0 + k * beat;
-                    if (k % 2 == 0) Drum(data, on, 0.25f, 0.3f, tt => Mathf.Sin(TwoPi * Sweep(tt, 150f, 55f, 0.08f)) * Mathf.Exp(-tt * 14f));
-                    else
-                    {
-                        float bl = 0f, bh = 0f;
-                        Drum(data, on, 0.18f, 0.11f, tt =>
-                        {
-                            float x = (float)noise.NextDouble() * 2f - 1f;
-                            bl += (x - bl) * 0.45f;
-                            bh += (bl - bh) * 0.12f;
-                            return ((bl - bh) * 1.6f + 0.3f * Mathf.Sin(TwoPi * 1750f * tt)) * Mathf.Exp(-tt * 30f);
-                        });
-                    }
-                    for (int h = 0; h < 2; h++)
-                    {
-                        float lpf = 0f;
-                        Drum(data, on + h * beat * 0.5f, 0.07f, h == 1 ? 0.045f : 0.028f, tt =>
-                        {
-                            float x = (float)noise.NextDouble() * 2f - 1f;
-                            lpf += (x - lpf) * 0.3f;
-                            return (x - lpf) * Mathf.Exp(-tt * 55f);
-                        });
-                    }
-                }
-            }
-            // Glockenspiel answers where the melody rests.
-            foreach (var (bar, notes) in new[] { (7, new[] { 79, 83, 86 }), (11, new[] { 76, 81, 84 }), (15, new[] { 79, 84, 88 }) })
-                for (int i = 0; i < notes.Length; i++)
-                    Partials(data, bar * 4 * beat + (2f + i * 0.5f) * beat, Hz(notes[i]), 1f, 0.05f, 0.002f, (1f, 1f, 4f), (2.76f, 0.3f, 9f));
-
-            float peak = 0f;
-            foreach (var v in data) peak = Mathf.Max(peak, Mathf.Abs(v));
-            float gain = peak > 0f ? 0.8f / peak : 1f;
-            for (int i = 0; i < n; i++) data[i] *= gain;
-            var clip = AudioClip.Create("music", n, 1, Rate, false);
-            clip.SetData(data, 0);
-            return clip;
-        }
-
-        static readonly float[] sine = BuildSine();
-
-        static float[] BuildSine()
-        {
-            var table = new float[4097];
-            for (int i = 0; i <= 4096; i++) table[i] = Mathf.Sin(TwoPi * i / 4096f);
-            return table;
-        }
-
-        static float FastSin(double cycles)
-        {
-            double f = cycles - System.Math.Floor(cycles);
-            float x = (float)(f * 4096.0);
-            int i = (int)x;
-            return sine[i] + (sine[i + 1] - sine[i]) * (x - i);
-        }
-
-        static float Hz(int midi) => 440f * Mathf.Pow(2f, (midi - 69) / 12f);
-
-        static int Midi(string name)
-        {
-            int[] steps = { 9, 11, 0, 2, 4, 5, 7 };  // A B C D E F G
-            int note = steps[name[0] - 'A'];
-            int i = 1;
-            if (name[i] == '#') { note++; i++; }
-            else if (name[i] == 'b') { note--; i++; }
-            int octave = int.Parse(name.Substring(i));
-            return 12 * (octave + 1) + note;
-        }
-
-        // Adds a note made of decaying partials (frequency ratio, amplitude, decay per second), wrapping past the end.
-        static void Partials(float[] data, float start, float f, float seconds, float gain, float attack, params (float ratio, float amp, float decay)[] partials)
-        {
-            int s0 = Mathf.RoundToInt(start * Rate), len = Mathf.RoundToInt(seconds * Rate), n = data.Length;
-            int attackN = Mathf.Max(1, Mathf.RoundToInt(attack * Rate)), fadeN = Rate / 50;
-            foreach (var (ratio, amp, decay) in partials)
-            {
-                double step = f * ratio / Rate;
-                float env = amp * gain, k = Mathf.Exp(-decay / Rate);
-                for (int i = 0; i < len; i++)
-                {
-                    float shape = Mathf.Min(1f, i / (float)attackN) * Mathf.Min(1f, (len - i) / (float)fadeN);
-                    data[(s0 + i) % n] += FastSin(step * i) * env * shape;
-                    env *= k;
-                }
+                float k = 1f + 0.06f * (i - 1);
+                Crates[i] = i == 1 ? Crate : Make("crate" + i, 0.25f, t =>
+                    (Mathf.Sin(TwoPi * 210f * k * t) * Mathf.Exp(-t * 28f) + 0.6f * Mathf.Sin(TwoPi * 520f * k * t) * Mathf.Exp(-t * 50f)) * 0.5f
+                    + Noise() * Mathf.Exp(-t * 300f) * 0.35f);
+                Softs[i] = i == 1 ? Soft : Make("soft" + i, 0.25f, t => (Lowpass(Noise(), 0.06f * k) * 2.5f + Mathf.Sin(TwoPi * 95f * k * t)) * Env(t, 0.003f, 18f) * 0.45f);
+                Lands[i] = i == 1 ? Land : Make("land" + i, 0.3f, t =>
+                    Mathf.Sin(TwoPi * Sweep(t, 150f * k, 85f * k, 0.12f)) * Env(t, 0.001f, 16f) * 0.75f + Lowpass(Noise(), 0.15f) * Env(t, 0.001f, 30f) * 0.6f);
+                Taps[i] = i == 1 ? UiTap : Make("tap" + i, 0.05f, t => Bandnoise(0.6f) * Mathf.Exp(-t * 260f) * 0.35f + Mathf.Sin(TwoPi * 2400f * k * t) * Mathf.Exp(-t * 320f) * 0.06f);
+                // A metal gate or rail: a clank of inharmonic partials over a short click.
+                float m = 520f + 45f * i;
+                Metal[i] = Make("metal" + i, 0.45f, t =>
+                    (Mathf.Sin(TwoPi * m * t) * Mathf.Exp(-t * 18f) + 0.55f * Mathf.Sin(TwoPi * m * 2.76f * t) * Mathf.Exp(-t * 26f)
+                     + 0.3f * Mathf.Sin(TwoPi * m * 5.4f * t) * Mathf.Exp(-t * 40f) + 0.15f * Mathf.Sin(TwoPi * m * 8.93f * t) * Mathf.Exp(-t * 60f)) * 0.3f
+                    + Noise() * Mathf.Exp(-t * 450f) * 0.3f);
+                // Glass and crystal: high, clear partials that ring a moment.
+                float g = 1900f + 160f * i;
+                Glass[i] = Make("glass" + i, 0.5f, t =>
+                    (Mathf.Sin(TwoPi * g * t) * Mathf.Exp(-t * 10f) + 0.5f * Mathf.Sin(TwoPi * g * 2.32f * t) * Mathf.Exp(-t * 14f)
+                     + 0.25f * Mathf.Sin(TwoPi * g * 4.25f * t) * Mathf.Exp(-t * 22f)) * 0.16f
+                    + Noise() * Mathf.Exp(-t * 600f) * 0.15f);
             }
         }
 
-        static void Drum(float[] data, float start, float seconds, float gain, Func<float, float> wave)
+        static void MakeMoments()
         {
-            int s0 = Mathf.RoundToInt(start * Rate), len = Mathf.RoundToInt(seconds * Rate);
-            for (int i = 0; i < len; i++) data[(s0 + i) % data.Length] += wave(i / (float)Rate) * gain * Mathf.Min(1f, (len - i) / 200f);
+            // Chest fanfares rise with rarity: a chime, a run, a cascade, then brass and a drum roll for a legend.
+            float[] cMaj = { 523.25f, 659.25f, 783.99f, 1046.5f, 1318.5f, 1568f, 2093f, 2637f };
+            Fanfare = new AudioClip[4];
+            Fanfare[0] = Make("fanfare_common", 0.8f, t => Arpeggio(t, new[] { cMaj[0], cMaj[1], cMaj[2] }, 0.07f, 6f) * 0.3f);
+            Fanfare[1] = Make("fanfare_rare", 1.2f, t =>
+                Arpeggio(t, new[] { cMaj[0], cMaj[1], cMaj[2], cMaj[3] }, 0.07f, 5f) * 0.3f + Chord(t, new[] { cMaj[0], cMaj[1], cMaj[2] }, 0.3f) * 0.12f
+                + Bell(Mathf.Max(0f, t - 0.38f), 2093f) * 0.1f);
+            Fanfare[2] = Make("fanfare_epic", 1.8f, t =>
+                Arpeggio(t, cMaj, 0.055f, 4.5f) * 0.26f + Chord(t, new[] { 261.63f, 329.63f, 392f, 523.25f }, 0.42f) * 0.2f
+                + Sparkle(t - 0.5f, 6, 2400f) * 0.08f);
+            Fanfare[3] = Make("fanfare_legendary", 2.8f, t =>
+            {
+                // "Da-da-da DAAA" on G G G C, a third on top of the long note, timpani under the pickups.
+                float brass = Brass(t, 0f, 0.12f, 392f) + Brass(t, 0.15f, 0.12f, 392f) + Brass(t, 0.3f, 0.12f, 392f)
+                    + Brass(t, 0.45f, 1.5f, 523.25f) + 0.7f * Brass(t, 0.45f, 1.5f, 659.25f) + 0.5f * Brass(t, 0.45f, 1.5f, 392f);
+                float roll = t < 0.5f ? Lowpass(Noise(), 0.03f) * 2f * (0.6f + 0.4f * Mathf.Sin(TwoPi * 22f * t)) * (t / 0.5f) : 0f;
+                float boom = t > 0.45f ? Mathf.Sin(TwoPi * 98f * (t - 0.45f)) * Mathf.Exp(-(t - 0.45f) * 5f) * 0.6f : 0f;
+                return brass * 0.16f + roll * 0.3f + boom * 0.4f + Sparkle(t - 0.6f, 10, 2600f) * 0.08f;
+            });
+
+            // The store: a register "ka" and a bright "ching", with a few coins settling.
+            KaChing = Make("kaching", 0.8f, t =>
+            {
+                float ka = Noise() * Mathf.Exp(-t * 180f) * 0.35f + Mathf.Sin(TwoPi * 180f * t) * Mathf.Exp(-t * 40f) * 0.3f;
+                float lt = t - 0.06f;
+                float ching = lt > 0f ? (Mathf.Sin(TwoPi * 2637f * lt) + 0.6f * Mathf.Sin(TwoPi * 3951f * lt) + 0.3f * Mathf.Sin(TwoPi * 5327f * lt))
+                    * Mathf.Min(1f, lt * 400f) * Mathf.Exp(-lt * 5f) * 0.14f : 0f;
+                float coins = 0f;
+                for (int c = 0; c < 4; c++)
+                {
+                    float ct = t - 0.16f - c * 0.07f;
+                    if (ct > 0f) coins += Mathf.Sin(TwoPi * (3200f + 380f * c) * ct) * Mathf.Exp(-ct * 70f) * 0.07f;
+                }
+                return ka + ching + coins;
+            });
+            CoinTicks = new AudioClip[4];
+            for (int i = 0; i < CoinTicks.Length; i++)
+            {
+                float f = 2600f * Mathf.Pow(1.12f, i);
+                CoinTicks[i] = Make("coin" + i, 0.07f, t => (Mathf.Sin(TwoPi * f * t) + 0.3f * Mathf.Sin(TwoPi * f * 2f * t)) * Env(t, 0.001f, 60f) * 0.18f);
+            }
+            GemShimmer = Make("gems", 1f, t => Sparkle(t, 7, 2300f) * 0.12f + Chord(t, new[] { 1174.7f, 1568f, 1864.7f }, 0.02f) * 0.06f);
+
+            // Rolling up to the bed: air rising in pitch and level, cut off by the landing.
+            Riser = Make("riser", 1.1f, t =>
+            {
+                float k = Mathf.Clamp01(t / 1.1f);
+                return (Bandnoise(0.05f + 0.4f * k) * 0.6f + Mathf.Sin(TwoPi * Sweep(t, 300f, 1300f, 1.1f)) * 0.12f) * k * k * 0.5f;
+            });
+            // A hole in one: a glissando up two octaves of the scale and a bright chord.
+            float[] gliss = { 523.25f, 587.33f, 659.25f, 698.46f, 783.99f, 880f, 987.77f, 1046.5f, 1174.7f, 1318.5f, 1396.9f, 1568f, 1760f, 1975.5f, 2093f };
+            Flourish = Make("flourish", 1.5f, t =>
+                Arpeggio(t, gliss, 0.032f, 7f) * 0.2f + Chord(t, new[] { 1046.5f, 1318.5f, 1568f }, 0.5f) * 0.14f + Bell(Mathf.Max(0f, t - 0.52f), 2093f) * 0.12f);
+        }
+
+        // A brassy note: a few harmonics with a soft attack and a little vibrato, inside a longer clip.
+        static float Brass(float t, float start, float length, float f)
+        {
+            float lt = t - start;
+            if (lt <= 0f || lt >= length + 0.15f) return 0f;
+            float env = Mathf.Min(1f, lt / 0.035f) * (lt < length ? 1f - 0.25f * lt / Mathf.Max(0.2f, length) : Mathf.Max(0f, 1f - (lt - length) / 0.15f));
+            float vib = 1f + 0.006f * Mathf.Clamp01(lt * 3f - 0.3f) * Mathf.Sin(TwoPi * 5.5f * lt);
+            float sum = 0f;
+            for (int h = 1; h <= 6; h++) sum += Mathf.Sin(TwoPi * f * h * vib * lt) / h * Mathf.Exp(-h * 0.15f);
+            return sum * env;
+        }
+
+        // Scattered bells up high: `count` of them over half a second, at fixed pseudo-random pitches.
+        static float Sparkle(float t, int count, float baseHz)
+        {
+            if (t <= 0f) return 0f;
+            float sum = 0f;
+            for (int i = 0; i < count; i++)
+            {
+                float at = i * 0.5f / count;
+                float f = baseHz * (1f + 0.37f * ((i * 7) % 5) / 4f);
+                if (t > at) sum += Bell(t - at, f) * (1f - 0.06f * i);
+            }
+            return sum;
         }
 
         // ---------- building blocks ----------

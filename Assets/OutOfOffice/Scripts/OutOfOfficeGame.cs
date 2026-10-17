@@ -164,7 +164,7 @@ namespace OutOfOffice
         {
             var item = progress.OpenChest(tier, new System.Random(), out bool duplicate, out int clips);
             string note = duplicate ? $"ALREADY YOURS: +{clips} CLIPS" : null;
-            ChestStage.Open(item, duplicate, Cosmetics.Compose(progress.Outfit.With(item)), heading, (clip, volume) => sound.Play(clip, volume, 1f, 0.9f), equip =>
+            ChestStage.Open(item, duplicate, Cosmetics.Compose(progress.Outfit.With(item)), heading, PlayChestSound, equip =>
             {
                 if (equip)
                 {
@@ -234,6 +234,7 @@ namespace OutOfOffice
             WireBoosters();
             WireAchievements();
             WireReceptionist();
+            hud.Celebrated = OnCelebrated;  // gems and clips fly in with a shimmer and coin ticks (OUT-17)
             UiPress.Pressed = () => sound.Play(Sfx.UiBoing, 0.3f, Random.Range(0.94f, 1.08f), 0.3f, 0.06f);
             RefreshSettings();
 
@@ -282,7 +283,7 @@ namespace OutOfOffice
             hud.ToggleDebug = () => { DebugView.Enabled = !DebugView.Enabled; Tap(); };
         }
 
-        void Tap() => sound.Play(Sfx.UiTap, 0.5f, Random.Range(0.95f, 1.05f));
+        void Tap() => sound.Play(Sfx.Taps, 0.5f, Random.Range(0.95f, 1.05f));
 
         void SetUpCamera()
         {
@@ -480,6 +481,7 @@ namespace OutOfOffice
             TickDetails();  // the bed perks up as the employee rolls close (OUT-55)
             TickDevice();
             TickTutorial();
+            TickMusic();  // the song and mood of the moment (OUT-17)
             // Nothing of the room shows under the home screen, so the camera draws none of it there (OUT-36): the menu
             // runs at the full frame rate instead of paying for a hidden 3D board with shadows.
             int visible = hud.CoversBoard ? 0 : ~0;
@@ -721,9 +723,10 @@ namespace OutOfOffice
                 {
                     case BlockKind.Bouncer: sound.Play(Sfx.Rubber, volume, pitch, 0.7f); chip = Palette.RubberCap; break;
                     case BlockKind.Kicker: sound.Play(Sfx.Rubber, 0.9f, pitch * 1.25f, 0.8f); chip = Palette.Gold; break;
-                    case BlockKind.Sticky: sound.Play(Sfx.Soft, volume, pitch, 0.6f); chip = Palette.Sticky; break;
-                    case BlockKind.Crate: sound.Play(Sfx.Crate, volume, pitch, 0.6f); chip = new Color(0.85f, 0.62f, 0.38f); break;
-                    case BlockKind.Breakable: sound.Play(Sfx.RimTouch, 0.3f + volume * 0.5f, pitch * 0.8f, 0.6f); chip = Themes.Hex(0xE6DCFF); break;
+                    case BlockKind.Sticky: sound.Play(Sfx.Softs, volume, pitch, 0.6f); chip = Palette.Sticky; break;
+                    case BlockKind.Crate: sound.Play(Sfx.Crates, volume, pitch, 0.6f); chip = new Color(0.85f, 0.62f, 0.38f); break;
+                    case BlockKind.Breakable: sound.Play(Sfx.Glass, 0.3f + volume * 0.6f, pitch, 0.6f); chip = Themes.Hex(0xE6DCFF); break;
+                    case BlockKind.Gate: sound.Play(Sfx.Metal, volume * 0.8f, pitch, 0.6f); chip = Themes.Hex(0xC8CDD6); break;
                     default:
                         sound.Play(Sfx.Wood, volume, pitch, 0.6f);
                         chip = new Color(0.95f, 0.8f, 0.58f);
@@ -826,7 +829,7 @@ namespace OutOfOffice
             }
             if (info.Landed)
             {
-                sound.Play(Sfx.Land, 0.9f, Random.Range(0.95f, 1.05f), 0.8f);
+                sound.Play(Sfx.Lands, 0.9f, Random.Range(0.95f, 1.05f), 0.8f);
                 mascot.OnJoy(0.5f);
                 puck.JiggleVertical(5f);
                 Fx.Ring(pos, new Color(1f, 1f, 1f, 0.8f), 0.5f, 2f, 0.35f);
@@ -975,6 +978,7 @@ namespace OutOfOffice
             }
             Haptics.Play(Haptics.Style.Success);
             sound.Play(Sfx.Reward, 0.55f, 1f, 1f);
+            if (shots == 1 && doOvers == 0) PlayHoleInOne();
             hud.Say(shots == 1 && doOvers == 0 ? Quips.HoleInOne() : Quips.Rested(), 2.2f);  // a hole-in-one gets its own line (OUT-26)
             var head = mascot.transform.position + new Vector3(0f, 0.38f, -0.5f);
             for (int i = 0; i < (reduced ? 1 : 2); i++)
@@ -1010,7 +1014,7 @@ namespace OutOfOffice
             if (InTutorial) FinishTutorial();
             yield return new WaitForSeconds(reduced ? 0.3f : 0.6f);
             state = State.Complete;
-            sound.Play(Sfx.Complete, 0.6f, 1f, 1f);
+            PlayCompleteStinger();  // in the key of the song (OUT-17)
             hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel, newStamps,
                 InTutorial ? "ORIENTATION DONE" : null, InTutorial ? "YOU'RE HIRED! ROOM 1 IS NEXT" : null);
             if (newBest) hud.StampNewBest();
@@ -1137,6 +1141,7 @@ namespace OutOfOffice
             state = State.Failed;
             CancelAim(false);
             sound.Play(Sfx.Oops, 0.7f, 1f, 0.8f);
+            PlayLoseStinger();
             Haptics.Play(Haptics.Style.Error);
             mascot.Express(Eyes.Dizzy, Mouth.Wavy, 2f, 3f);
             Analytics.Event("level_fail", ("level", Def.Id), ("index", levelIndex), ("shots", shots), ("limit", ShotLimit), ("par", Def.Par),

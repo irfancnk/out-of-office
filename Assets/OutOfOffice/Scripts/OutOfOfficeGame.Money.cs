@@ -80,7 +80,7 @@ namespace OutOfOffice
             hud.BuyProduct = product => Store.Buy(progress, product, ok =>
             {
                 if (!ok) { sound.Play(Sfx.Cancel, 0.4f); return; }
-                sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                PlayPurchase();  // ka-ching (OUT-17)
                 Haptics.Play(Haptics.Style.Success);
                 hud.RefreshShop();
                 hud.RefreshEnergy();
@@ -134,7 +134,7 @@ namespace OutOfOffice
                     return;
                 }
                 progress.BumpStat(Achievements.ClipBuys);
-                sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                PlayPurchase();  // ka-ching (OUT-17)
                 Haptics.Play(Haptics.Style.Success);
                 hud.RefreshClipShop();
                 hud.Celebrate("clip", item.Name + "!", Cosmetics.RarityColor(item.Rarity));
@@ -152,7 +152,7 @@ namespace OutOfOffice
                 progress.Grant(item);
                 Analytics.Event("hire", ("item", item.Id), ("gems", item.GemCost), ("balance", progress.Gems));
                 CheckAchievements();
-                sound.Play(Sfx.Reward, 0.6f, 1.1f, 0.8f);
+                PlayPurchase();  // ka-ching (OUT-17)
                 Haptics.Play(Haptics.Style.Success);
                 return true;
             };

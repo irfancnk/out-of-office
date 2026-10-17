@@ -265,8 +265,11 @@ namespace OutOfOffice
         // An ad watched or a purchase made: the prize pops up big over spinning rays and a burst of sparkles, says what
         // it is, then floats off as the counters update. Taps wait for the moment, so it can't be skipped into a
         // second purchase by accident.
+        public System.Action<string> Celebrated;  // the sound of the moment, by icon (OUT-17)
+
         public void Celebrate(string icon, string text, Color glow, System.Action done = null)
         {
+            Celebrated?.Invoke(icon);
             var layer = Rect("Reward", transform as RectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             OwnCanvas(layer, true);  // it animates every frame for a second and a half
             layer.SetAsLastSibling();
