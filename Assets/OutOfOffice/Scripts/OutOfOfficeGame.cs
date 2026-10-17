@@ -112,14 +112,16 @@ namespace OutOfOffice
             boot.Progress(0.7f);
             yield return null;
 
-            bool tutorial = NeedsTutorial;  // a brand-new player goes straight into the orientation room (OUT-52)
-            LoadLevel(tutorial ? TutorialIndex : progress.CurrentIndex);
+            bool playtest = StartPlaytest();  // the level editor's "Play this room" (OUT-12)
+            bool tutorial = !playtest && NeedsTutorial;  // a brand-new player goes straight into the orientation room (OUT-52)
+            if (!playtest) LoadLevel(tutorial ? TutorialIndex : progress.CurrentIndex);
             boot.Progress(0.85f);
             yield return null;
 
             IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);
-            if (tutorial) BeginTutorial();
+            if (playtest) { }
+            else if (tutorial) BeginTutorial();
             else ShowTitle();
             ready = true;
             boot.Finish();

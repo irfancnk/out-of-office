@@ -72,9 +72,75 @@ namespace OutOfOffice.EditorTools
                 }
             Line("lint", errors == 0, $"{errors} errors, {warnings} warnings{lint}");
 
+            Line("format", FormatRules(out string formatNote), formatNote);
+            Line("broken-file", BrokenFileIsSkipped(out string brokenNote), brokenNote);
+            // The editor's Check button: one room on its own, with a solution whose replayed path ends in the bed.
+            var bank = LevelCheck.CheckOne(Levels.All[Levels.IndexOf("bank")]);
+            var lastShot = bank.Solution.Count > 0 ? bank.Solution[bank.Solution.Count - 1].Path : null;
+            bool traced = bank.Solved && bank.Solution.Count == bank.MinShots && lastShot != null && lastShot.Count > 1
+                          && (lastShot[lastShot.Count - 1] - Levels.All[Levels.IndexOf("bank")].Hole).magnitude < Rules.HoleRadius + 0.2f;
+            Line("solver-trace", traced, $"bank: {bank.Solution.Count} shot solution, min {bank.MinShots}, path ends {(lastShot == null || lastShot.Count == 0 ? "nowhere" : LevelFiles.Describe(lastShot[lastShot.Count - 1]))}");
+            var editor = LevelEditorWindow.SelfTest();
+            Line("editor", editor.Count == 0, editor.Count == 0 ? "edit, copy, paste, undo to the start, redo, duplicate, mirror, new room" : string.Join("; ", editor));
+            Levels.Reload();
+
             report.AppendLine($"HSLEVELDATA done, failures: {bad}");
             Debug.Log(report.ToString());
             return bad;
+        }
+
+        // The reader refuses what it should, and keeps what it must.
+        static bool FormatRules(out string note)
+        {
+            var fails = new List<string>();
+            void Rejects(string what, string json)
+            {
+                try { LevelData.FromJson(json); fails.Add("accepted " + what); }
+                catch (LevelData.FormatException) { }
+            }
+            const string ok = "{ \"id\": \"t\", \"name\": \"T\", \"par\": 1, \"hole\": [0, 5] }";
+            Rejects("a typo'd field", ok.Replace("\"par\"", "\"pra\""));
+            Rejects("a missing bed", "{ \"id\": \"t\", \"name\": \"T\" }");
+            Rejects("an unknown block kind", ok.Replace("}", ", \"blocks\": [{ \"kind\": \"Trampoline\", \"at\": [0, 0], \"size\": [1, 1] }] }"));
+            Rejects("a number as a kind", ok.Replace("}", ", \"blocks\": [{ \"kind\": \"3\", \"at\": [0, 0], \"size\": [1, 1] }] }"));
+            Rejects("a point with three numbers", ok.Replace("[0, 5]", "[0, 5, 1]"));
+            Rejects("broken JSON", ok.Replace("}", ""));
+            Rejects("a 2-corner polygon", ok.Replace("}", ", \"shape\": { \"kind\": \"Polygon\", \"points\": [[0, 0], [1, 1]] } }"));
+
+            // Text and numbers that must survive a save untouched.
+            var def = new LevelDef("t", "Quotes \"and\" \\ back, slash / tab\t", 0.1f, 1f / 3f) { Hint = "ÜNICODE ☕" }.WithPar(2);
+            def.Stars.Add(new Vector2(float.Epsilon, -123456.7f));
+            def.Blocks.Add(new BlockDef(BlockKind.Wall, new Vector2(1e-7f, 3.4028235e38f), new Vector2(0.3f, 0.6f)) { Angle = -0f });
+            var back = LevelData.FromJson(LevelData.ToJson(def));
+            var diff = LevelDiff.Compare(def, back);
+            if (diff.Count > 0) fails.Add("lost on a save: " + diff[0]);
+            if (LevelData.ToJson(back) != LevelData.ToJson(def)) fails.Add("saving twice changes the text");
+            note = fails.Count == 0 ? "rejects 7 bad files, keeps odd text and extreme numbers exactly" : string.Join("; ", fails);
+            return fails.Count == 0;
+        }
+
+        // One broken file must not take the game down: that room is left out and reported, and the rest load.
+        static bool BrokenFileIsSkipped(out string note)
+        {
+            var source = Levels.Source;
+            int count = Levels.All.Length;
+            string victim = Levels.All[1].Id;
+            try
+            {
+                Levels.Source = name => name == victim ? "{ \"id\": \"" + victim + "\", \"hole\": [0, 5], \"oops\" " : source(name);
+                Levels.Reload(false);
+                bool ok = Levels.All.Length == count - 1 && Levels.Errors.Count == 1 && Levels.IndexOf(victim) < 0 && Levels.All[0].Id != victim;
+                Levels.Source = name => null;  // a build with no level files at all still has a room to show
+                Levels.Reload(false);
+                ok &= Levels.All.Length == 1 && Levels.All[0] == Levels.Lab && Levels.Tutorial != null && Levels.ChapterStart.Length == 2;
+                note = ok ? $"a corrupt {victim}.json leaves {count - 1} rooms and one error; no files at all falls back to the lab" : "a broken file broke more than its own room";
+                return ok;
+            }
+            finally
+            {
+                Levels.Source = source;
+                Levels.Reload();
+            }
         }
 
         static int FirstDifferentLine(string a, string b)
