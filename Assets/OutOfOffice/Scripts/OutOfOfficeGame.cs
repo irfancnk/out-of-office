@@ -75,11 +75,24 @@ namespace OutOfOffice
             Screen.orientation = ScreenOrientation.Portrait;
             Time.fixedDeltaTime = Rules.Dt;
             Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
+            boot = BootScreen.Show();
+            boot.StartCoroutine(BuildGame());  // runs on the boot screen: LoadLevel stops every coroutine on this object
+        }
 
+        BootScreen boot;
+        bool ready;  // false while BuildGame is still building the game; the frame callbacks wait for it
+
+        // Builds the game a step at a time behind the boot screen, so the game's own logo shows on the first frame
+        // instead of a blank screen while everything loads (it replaced Unity's splash).
+        IEnumerator BuildGame()
+        {
+            yield return null;
             SetUpServices();  // progress on the server-corrected clock, analytics, A/B buckets, backup (OUT-31..35)
             SetUpQuality();   // the device tier, its render settings and frame rate (OUT-19)
             SetUpCamera();
             SetUpLighting();
+            boot.Progress(0.2f);
+            yield return null;
 
             sound = GameAudio.Create();
             sound.SetEnabled(progress.Sfx, progress.Music);
@@ -90,15 +103,24 @@ namespace OutOfOffice
             ApplyMotionSetting(progress.ReducedMotion);
             debugView = gameObject.AddComponent<DebugView>();
             debugView.PreviewPath = preview;
+            boot.Progress(0.35f);
+            yield return null;
 
             hud = Hud.Create();
             WireHud();
             BuildAimVisuals();
+            boot.Progress(0.7f);
+            yield return null;
 
             LoadLevel(progress.CurrentIndex);
-            ShowTitle();
+            boot.Progress(0.85f);
+            yield return null;
+
             IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);
+            ShowTitle();
+            ready = true;
+            boot.Finish();
         }
 
         void ShowTitle()
@@ -449,6 +471,7 @@ namespace OutOfOffice
 
         void Update()
         {
+            if (!ready) return;
             PaceFrames();
             TickDevice();
             TickTutorial();
@@ -548,7 +571,7 @@ namespace OutOfOffice
 
         void OnApplicationFocus(bool focus)
         {
-            if (focus) return;
+            if (focus || !ready) return;
             CancelAim(false);
             if (state == State.Ready || state == State.Moving) PauseGame();
         }
@@ -556,6 +579,7 @@ namespace OutOfOffice
         // A backgrounded app can be killed by the OS with no further callback, so this is the last safe moment to save.
         void OnApplicationPause(bool paused)
         {
+            if (!ready) return;
             if (paused) { progress?.Flush(); BackUpSave(); Analytics.Flush(); }
             else if (serverClock != null) StartCoroutine(ServerTime.Sync(serverClock));  // the clock may have changed while away
         }
@@ -614,7 +638,7 @@ namespace OutOfOffice
 
         void FixedUpdate()
         {
-            if (level == null || state == State.Paused) return;
+            if (!ready || level == null || state == State.Paused) return;
             levelTime += Time.fixedDeltaTime;
             level.TickMovers(levelTime, false, MoverClock);  // a Coffee Break holds the movers (OUT-13)
 
@@ -1389,6 +1413,7 @@ namespace OutOfOffice
 
         void LateUpdate()
         {
+            if (!ready) return;
             var key = new Vector3Int(Screen.width, Screen.height, levelIndex + 2);
             if (key != fittedFor)
             {
