@@ -1,0 +1,21 @@
+{
+  "id": "boardroom",
+  "name": "Bored Room",
+  "hint": "BANK OFF THE CHAIRS",
+  "par": 2,
+  "hole": [0, 6.4],
+  "start": [0, -6.2],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [0, 0.8], "size": [3, 6], "corner": 1.2 },
+    { "kind": "Bouncer", "post": true, "at": [-2.6, -1.4], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [-2.6, 3], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [2.6, -1.4], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [2.6, 3], "size": [0.9, 0.9] },
+    { "kind": "Wall", "at": [3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": 1 }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-3.7, 0.8], [3.7, 0.8], [0, -2.8]],
+  "bridges": []
+}

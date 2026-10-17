@@ -1,0 +1,20 @@
+{
+  "id": "ramp",
+  "name": "Leap of Faith, No Raise",
+  "hint": "JUMP IT, OR TAKE THE BRIDGE",
+  "par": 2,
+  "teaches": "gap",
+  "hole": [-2.4, 5.6],
+  "start": [-2.4, -6.5],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [1.6, 4.2], "size": [0.6, 3.2] }
+  ],
+  "zones": [
+    { "kind": "Ramp", "at": [-2.4, -2.4], "size": [3, 2.4] },
+    { "kind": "Gap", "at": [-0.95, 0.9], "size": [7.3, 1.8] }
+  ],
+  "rails": [],
+  "stars": [[-2.4, 0.9], [3.6, 0.9], [-0.5, 3.8]],
+  "bridges": []
+}

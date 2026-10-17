@@ -1,0 +1,22 @@
+{
+  "id": "summit",
+  "name": "Almost Out of Office",
+  "hint": "EVERY GADGET YOU KNOW",
+  "par": 2,
+  "hole": [3.2, 6.3],
+  "start": [0, -13],
+  "shape": { "kind": "rect", "args": [9, 22, 0.7], "shift": [0, -3] },
+  "blocks": [
+    { "kind": "Wall", "at": [0, -7.5], "size": [9, 0.6] },
+    { "kind": "PopWall", "at": [0, -2], "size": [9, 0.5], "blink": [2.4, 0] },
+    { "kind": "Kicker", "post": true, "at": [-3.3, 0.5], "size": [1, 1] },
+    { "kind": "Wall", "at": [-1.5, 4.6], "size": [6, 0.6] }
+  ],
+  "zones": [
+    { "kind": "Jump", "at": [0, -10], "size": [1.6, 1.6] },
+    { "kind": "Vortex", "at": [2, 2.8], "size": [3.6, 3.6] }
+  ],
+  "rails": [],
+  "stars": [[0, -8.6], [-3, -0.8], [2, 2.8]],
+  "bridges": []
+}

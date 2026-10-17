@@ -1,0 +1,21 @@
+{
+  "id": "crossroads",
+  "name": "Every Hallway Leads Here",
+  "hint": "PICK THE RIGHT HALLWAY",
+  "par": 2,
+  "hole": [9.3, 0],
+  "start": [0, -9.3],
+  "shape": { "kind": "polygon", "args": [1, -2.5, -11, 2.5, -11, 2.5, -2.5, 11, -2.5, 11, 2.5, 2.5, 2.5, 2.5, 11, -2.5, 11, -2.5, 2.5, -11, 2.5, -11, -2.5, -2.5, -2.5] },
+  "blocks": [
+    { "kind": "Kicker", "post": true, "at": [0, 0], "size": [1.2, 1.2] },
+    { "kind": "Bouncer", "post": true, "at": [0, 9.4], "size": [1.1, 1.1] },
+    { "kind": "Bouncer", "post": true, "at": [-9.4, 0], "size": [1.1, 1.1] },
+    { "kind": "Hazard", "post": true, "at": [5.6, 0], "size": [0.8, 0.8], "move": [0, 1.6], "period": 2.8 },
+    { "kind": "Bouncer", "post": true, "at": [-1.6, -6.2], "size": [0.8, 0.8] },
+    { "kind": "Bouncer", "post": true, "at": [1.6, -4.4], "size": [0.8, 0.8] }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-7.6, 0], [0, 7.6], [3.6, -1.4]],
+  "bridges": []
+}

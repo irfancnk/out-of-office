@@ -1,0 +1,20 @@
+{
+  "id": "awards",
+  "name": "Glass Awards, Fragile Egos",
+  "hint": "SMASH THE TROPHY WALL",
+  "par": 2,
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Breakable", "at": [-2.25, 2.4], "size": [4.5, 0.6] },
+    { "kind": "Breakable", "at": [2.25, 2.4], "size": [4.5, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [-3, -2.8], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [3, -0.4], "size": [0.9, 0.9] },
+    { "kind": "Wall", "at": [-3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": -1 }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-3.4, 0.2], [3.4, 1.4], [1.6, 4.8]],
+  "bridges": []
+}

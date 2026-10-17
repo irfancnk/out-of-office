@@ -1,0 +1,22 @@
+{
+  "id": "marble",
+  "name": "Marble Floors, Cold Hearts",
+  "hint": "SLIDE PAST THE DESKS",
+  "par": 2,
+  "tags": ["remix:avalanche"],
+  "hole": [0, 6],
+  "start": [0, -13],
+  "shape": { "kind": "rect", "args": [9, 22, 0.7], "shift": [0, -3], "mirror": true },
+  "blocks": [
+    { "kind": "PopWall", "at": [2.5, -6], "size": [4, 0.5], "blink": [2.2, 0] },
+    { "kind": "PopWall", "at": [-2.5, -3], "size": [4, 0.5], "blink": [2.2, 0.5] },
+    { "kind": "Wall", "at": [0, 0.5], "size": [5, 0.6] }
+  ],
+  "zones": [
+    { "kind": "Ice", "at": [0, -8], "size": [9, 6], "turn": -1 },
+    { "kind": "Spikes", "at": [0, 3], "size": [9, 0.9], "turn": -1, "period": 2, "phase": 0.25 }
+  ],
+  "rails": [],
+  "stars": [[-3, -8], [3.2, -1.4], [0, 4.6]],
+  "bridges": []
+}

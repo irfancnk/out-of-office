@@ -1,0 +1,21 @@
+{
+  "id": "fridge",
+  "name": "Not Your Yogurt",
+  "hint": "DOWN THE GALLEY, ROUND THE SPINNER",
+  "par": 2,
+  "teaches": "spin",
+  "hole": [0, 6.6],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [-3.25, 0.2], "size": [2.5, 9.4] },
+    { "kind": "Wall", "at": [3.25, 0.2], "size": [2.5, 9.4] },
+    { "kind": "Bouncer", "post": true, "at": [0, 5.2], "size": [0.9, 0.9] }
+  ],
+  "zones": [
+    { "kind": "Vortex", "at": [0, 0.4], "size": [2.8, 2.8] }
+  ],
+  "rails": [],
+  "stars": [[0, -2.8], [-1.3, 2.6], [1.3, 2.6]],
+  "bridges": []
+}

@@ -12,6 +12,7 @@ namespace OutOfOffice
     // Mechanic colors (rubber, hazard, boost, portal, gates) stay the same in every zone, so they read the same.
     public class Theme
     {
+        public string Key;                // stable id the level catalog refers to (OUT-12); never rename once shipped
         public string Name;
         public string Sign;               // the room's one joke, shown on its sign
         public Setting Setting;
@@ -40,7 +41,7 @@ namespace OutOfOffice
         {
             new Theme
             {
-                Name = "OPEN-PLAN OFFICE", Sign = "Everyone is very busy appearing busy.",
+                Key = "open-plan", Name = "OPEN-PLAN OFFICE", Sign = "Everyone is very busy appearing busy.",
                 Setting = Setting.OpenPlan, Walls = WallStyle.Partition,
                 Sky = Hex(0xC9D3DF), Ground = Hex(0xC9D3DF),
                 WallColors = new[] { Hex(0x6F8CB5), Hex(0x7B97BE) },
@@ -52,7 +53,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "OFFICE KITCHEN", Sign = "The coffee machine is the real department head.",
+                Key = "kitchen", Name = "OFFICE KITCHEN", Sign = "The coffee machine is the real department head.",
                 Setting = Setting.Kitchen, Walls = WallStyle.Counter,
                 Sky = Hex(0xE6D8C2), Ground = Hex(0xE6D8C2),
                 WallColors = new[] { Hex(0x3E9E8A), Hex(0x48A895) },
@@ -64,7 +65,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "MEETING ROOM", Sign = "A meeting to discuss why there are too many meetings.",
+                Key = "meeting-room", Name = "MEETING ROOM", Sign = "A meeting to discuss why there are too many meetings.",
                 Setting = Setting.Meeting, Walls = WallStyle.Wood,
                 Sky = Hex(0xCFCBE0), Ground = Hex(0xCFCBE0),
                 WallColors = new[] { Hex(0xA97852), Hex(0xB88660) },
@@ -76,7 +77,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "MANAGER'S OFFICE", Sign = "Urgent feedback that clarifies nothing.",
+                Key = "manager", Name = "MANAGER'S OFFICE", Sign = "Urgent feedback that clarifies nothing.",
                 Setting = Setting.Manager, Walls = WallStyle.Wood,
                 Sky = Hex(0xE2D2BF), Ground = Hex(0xE2D2BF),
                 WallColors = new[] { Hex(0x7E4E32), Hex(0x8A5A3C) },
@@ -88,7 +89,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "HR & ADMIN", Sign = "Submit the form requesting permission to submit the form.",
+                Key = "hr", Name = "HR & ADMIN", Sign = "Submit the form requesting permission to submit the form.",
                 Setting = Setting.HR, Walls = WallStyle.Cabinet,
                 Sky = Hex(0xD3DCCB), Ground = Hex(0xD3DCCB),
                 WallColors = new[] { Hex(0x8E9DA6), Hex(0x9AA8B0) },
@@ -100,7 +101,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "EXECUTIVE FLOOR", Sign = "\"We are all in this together.\" Printed on a very expensive wall.",
+                Key = "executive", Name = "EXECUTIVE FLOOR", Sign = "\"We are all in this together.\" Printed on a very expensive wall.",
                 Setting = Setting.Executive, Walls = WallStyle.Painted,
                 Sky = Hex(0xDCD5CB), Ground = Hex(0xDCD5CB),
                 WallColors = new[] { Hex(0x2F3A56), Hex(0x384565) },
@@ -112,7 +113,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "AFTER HOURS", Sign = "The building has finally stopped asking questions.",
+                Key = "after-hours", Name = "AFTER HOURS", Sign = "The building has finally stopped asking questions.",
                 Setting = Setting.AfterHours, Walls = WallStyle.Partition,
                 Sky = Hex(0x262B45), Ground = Hex(0x262B45),
                 WallColors = new[] { Hex(0x56638A), Hex(0x4D5980) },
@@ -125,7 +126,7 @@ namespace OutOfOffice
             // Rooms 65-100 (OUT-46): three more floors, built from the office's own materials.
             new Theme
             {
-                Name = "SERVER ROOM", Sign = "It works on my machine. The machine is on fire.",
+                Key = "server-room", Name = "SERVER ROOM", Sign = "It works on my machine. The machine is on fire.",
                 Setting = Setting.AfterHours, Walls = WallStyle.Cabinet,
                 Sky = Hex(0x15303A), Ground = Hex(0x15303A),
                 WallColors = new[] { Hex(0x3E5B66), Hex(0x466572) },
@@ -137,7 +138,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "ROOFTOP TERRACE", Sign = "Team building, outdoors. Attendance is voluntary and mandatory.",
+                Key = "rooftop", Name = "ROOFTOP TERRACE", Sign = "Team building, outdoors. Attendance is voluntary and mandatory.",
                 Setting = Setting.Kitchen, Walls = WallStyle.Counter,
                 Sky = Hex(0xBFE3F5), Ground = Hex(0xBFE3F5),
                 WallColors = new[] { Hex(0xE07A3F), Hex(0xE88A50) },
@@ -149,7 +150,7 @@ namespace OutOfOffice
             },
             new Theme
             {
-                Name = "THE CORNER OFFICE", Sign = "The view is incredible. Nobody below this floor has seen it.",
+                Key = "corner-office", Name = "THE CORNER OFFICE", Sign = "The view is incredible. Nobody below this floor has seen it.",
                 Setting = Setting.Executive, Walls = WallStyle.Painted,
                 Sky = Hex(0x2B1A2E), Ground = Hex(0x2B1A2E),
                 WallColors = new[] { Hex(0x5A1E2E), Hex(0x682538) },
@@ -161,9 +162,10 @@ namespace OutOfOffice
             },
         };
 
-        // First level index of each chapter, plus the level count at the end. Levels.cs marks each chapter with a
-        // matching comment; LevelCheck fails if this table and the level list disagree.
-        public static readonly int[] ChapterStart = { 0, 11, 20, 29, 37, 45, 54, 64, 76, 88, 100 };
+        // Chapters come from the level catalog (OUT-12): each names its theme by Key and lists its rooms in order.
+        // ChapterStart holds the first level index of each chapter, plus the level count at the end.
+        public static int[] ChapterStart => Levels.ChapterStart;
+        public static int ChapterCount => Levels.Chapters.Count;
 
         // The theme LevelBuilder uses. The game sets it before it builds a level.
         public static Theme Current = All[0];
@@ -171,12 +173,18 @@ namespace OutOfOffice
         public static int ChapterOf(int levelIndex)
         {
             if (levelIndex < 0) return 0;
-            for (int c = All.Length - 1; c >= 0; c--)
-                if (levelIndex >= ChapterStart[c]) return c;
+            var starts = ChapterStart;
+            for (int c = starts.Length - 2; c >= 0; c--)
+                if (levelIndex >= starts[c]) return c;
             return 0;
         }
 
-        public static Theme ForLevel(int levelIndex) => All[ChapterOf(levelIndex)];
+        public static Theme ForChapter(int chapter) =>
+            chapter >= 0 && chapter < ChapterCount ? Levels.Chapters[chapter].Theme : All[0];
+
+        public static Theme ForLevel(int levelIndex) => ForChapter(ChapterOf(levelIndex));
+
+        public static Theme ByKey(string key) => System.Array.Find(All, t => t.Key == key);
 
         public static Color Hex(int rgb) =>
             new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f);

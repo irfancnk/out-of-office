@@ -1,0 +1,23 @@
+{
+  "id": "hairpin",
+  "name": "The Long Walk to HR",
+  "hint": "UP, AROUND, AND BACK DOWN",
+  "par": 4,
+  "teaches": "boost",
+  "hole": [4.25, -10.8],
+  "start": [-4.25, -11],
+  "shape": { "kind": "polygon", "args": [1.2, -7, -13, -1.5, -13, -1.5, 6, 1.5, 6, 1.5, -13, 7, -13, 7, 13, -7, 13] },
+  "blocks": [
+    { "kind": "Wall", "at": [-5.6, -5], "size": [2.8, 0.6] },
+    { "kind": "Wall", "at": [-2.9, 0.5], "size": [2.8, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [0, 9.6], "size": [1.1, 1.1] },
+    { "kind": "Hazard", "post": true, "at": [4.25, 1], "size": [0.8, 0.8], "move": [1.6, 0], "period": 3 },
+    { "kind": "Bouncer", "post": true, "at": [-6.1, -8.4], "size": [0.9, 0.9] }
+  ],
+  "zones": [
+    { "kind": "Boost", "at": [4.25, -4.5], "size": [2, 3], "angle": 180 }
+  ],
+  "rails": [],
+  "stars": [[-4.25, -2.2], [0, 11.2], [4.25, 4.6]],
+  "bridges": []
+}

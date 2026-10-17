@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "chapters": [
+    { "key": "open-plan", "theme": "open-plan", "levels": [
+      "first",
+      "easy",
+      "bank",
+      "ring",
+      "graze",
+      "curve",
+      "kicker",
+      "figure8",
+      "boing",
+      "rows",
+      "cubicles"
+    ] },
+    { "key": "kitchen", "theme": "kitchen", "levels": [
+      "rubber",
+      "breeze",
+      "oneway",
+      "switch",
+      "spinner",
+      "popwalls",
+      "hairpin",
+      "microwave",
+      "fridge"
+    ] },
+    { "key": "meeting-room", "theme": "meeting-room", "levels": [
+      "portal",
+      "ramp",
+      "popspikes",
+      "magnet",
+      "ice",
+      "fan",
+      "crossroads",
+      "boardroom",
+      "standup"
+    ] },
+    { "key": "manager", "theme": "manager", "levels": [
+      "hopscotch",
+      "thorns",
+      "maze",
+      "crate",
+      "speedpad",
+      "whirlpool",
+      "feedback",
+      "window"
+    ] },
+    { "key": "hr", "theme": "hr", "levels": [
+      "lagoon",
+      "corner",
+      "timing",
+      "turnstile",
+      "soft",
+      "tidepool",
+      "filing",
+      "paperwork"
+    ] },
+    { "key": "executive", "theme": "executive", "levels": [
+      "conveyor",
+      "tidegate",
+      "icebreak",
+      "avalanche",
+      "door",
+      "blizzard",
+      "curveswitch",
+      "elevator",
+      "green"
+    ] },
+    { "key": "after-hours", "theme": "after-hours", "levels": [
+      "rampbumper",
+      "skijump",
+      "spikeway",
+      "pinball",
+      "track",
+      "summit",
+      "nightshift",
+      "cleaner",
+      "deadline",
+      "finale"
+    ] },
+    { "key": "server-room", "theme": "server-room", "levels": [
+      "reboot",
+      "pingtimeout",
+      "twofactor",
+      "firewall",
+      "hotfix",
+      "coolant",
+      "coldaisle",
+      "legacycode",
+      "vpn",
+      "cabling",
+      "uptime",
+      "overheat"
+    ] },
+    { "key": "rooftop", "theme": "rooftop", "levels": [
+      "sunscreen",
+      "poolparty",
+      "yoga",
+      "deckchairs",
+      "planters",
+      "fireescape",
+      "skylight",
+      "deliveries",
+      "sunset",
+      "barbecue",
+      "hottub",
+      "puddle"
+    ] },
+    { "key": "corner-office", "theme": "corner-office", "levels": [
+      "goldenchair",
+      "privatelift",
+      "fountain",
+      "bonuspool",
+      "redcarpet",
+      "marble",
+      "awards",
+      "keycard",
+      "stockoptions",
+      "boardvote",
+      "quarterly",
+      "retirement"
+    ] }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "planters",
+  "name": "Succulents of Doom",
+  "hint": "CROSS WHEN THE SPIKES ARE DOWN",
+  "par": 2,
+  "tags": ["remix:popspikes"],
+  "hole": [0, 6.4],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7], "mirror": true },
+  "blocks": [],
+  "zones": [
+    { "kind": "Spikes", "at": [0, -1.8], "size": [9, 1.1], "turn": -1, "period": 2.4 },
+    { "kind": "Spikes", "at": [0, 1.2], "size": [9, 1.1], "turn": -1, "period": 2.4, "phase": 0.33 },
+    { "kind": "Spikes", "at": [0, 4], "size": [9, 1.1], "turn": -1, "period": 2.4, "phase": 0.66 }
+  ],
+  "rails": [],
+  "stars": [[3.2, -0.3], [-3.5, 2.6], [2.8, 5.5]],
+  "bridges": []
+}

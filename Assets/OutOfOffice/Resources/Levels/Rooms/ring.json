@@ -1,0 +1,19 @@
+{
+  "id": "ring",
+  "name": "Nobody Owns This Desk",
+  "hint": "GO ROUND THE BIG DESK",
+  "par": 2,
+  "teaches": "mover",
+  "hole": [0, 5.4],
+  "start": [0, -5.4],
+  "shape": { "kind": "circle", "args": [7.2] },
+  "blocks": [
+    { "kind": "Wall", "post": true, "at": [0, 0], "size": [6.6, 6.6] },
+    { "kind": "Bouncer", "post": true, "at": [-5.3, 0.4], "size": [1, 1] },
+    { "kind": "Hazard", "post": true, "at": [5.25, 0], "size": [0.8, 0.8], "move": [0, 1], "period": 5 }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-4.6, -3.9], [-4.4, 4.2], [4.6, 3.9]],
+  "bridges": []
+}

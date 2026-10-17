@@ -1,0 +1,21 @@
+{
+  "id": "deckchairs",
+  "name": "Deck Chair Diplomacy",
+  "hint": "CHAIRS EVERYWHERE, AGAIN",
+  "par": 2,
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Bouncer", "post": true, "at": [-2.4, -2.2], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [2.4, -2.2], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [0, 0.6], "size": [1.1, 1.1] },
+    { "kind": "Bouncer", "post": true, "at": [-2.6, 3], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [2.6, 3], "size": [1, 1] },
+    { "kind": "Wall", "at": [-3.55, 7.275], "size": [1.9, 1.45], "corner": 0.2, "reception": -1 }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-3.6, 0.6], [3.6, 0.6], [0, 3.4]],
+  "bridges": []
+}

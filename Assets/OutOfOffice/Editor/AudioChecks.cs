@@ -139,7 +139,7 @@ namespace OutOfOffice.EditorTools
             Check(GameAudio.PickVariant(3, 2, 1f) < 3 && GameAudio.PickVariant(3, -1, 1f) == 2 && GameAudio.PickVariant(1, 0, 0.5f) == 0, "variant pick edges");
         }
 
-        static int ChapterCount() => Themes.All.Length;
+        static int ChapterCount() => Themes.ChapterCount;
 
         static bool Finite(float[] a)
         {

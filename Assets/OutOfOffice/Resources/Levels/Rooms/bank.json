@@ -1,0 +1,18 @@
+{
+  "id": "bank",
+  "name": "Bounce Off the Walls",
+  "hint": "BOUNCE OFF THE WALL",
+  "par": 2,
+  "hole": [2.8, 5.8],
+  "start": [-2.6, -6.2],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [2.1, -1.6], "size": [4.8, 0.6] },
+    { "kind": "Wall", "at": [-1.1, 2.4], "size": [6.8, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [0.4, 6.4], "size": [1, 1] }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-2.6, -3.4], [0.9, 0.4], [3.5, 3.6]],
+  "bridges": []
+}

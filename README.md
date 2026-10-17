@@ -5,6 +5,7 @@ A one-thumb physics puzzle for iPhone and Android, built in Unity.
 ## Layout
 
 - `Assets/OutOfOffice/` - game code (`Scripts/`), editor tools and checks (`Editor/`), shaders, materials and fonts (`Resources/`), app icon (`Icon/`)
+- `Assets/OutOfOffice/Resources/Levels/` - the rooms as data: `catalog.json` orders the chapters and their rooms, and each room is `Rooms/<id>.json`
 - `Assets/Plugins/iOS/` - native iOS haptics
 - `deploy_ios.sh` - builds the game and installs it on a connected iPhone
 - `deploy_android.sh` - builds a development APK and installs it on a connected Android phone (USB debugging on); then `adb logcat -s Unity` shows the game log
@@ -22,6 +23,12 @@ Run every automated check from the **Out of Office > Run All Checks** menu, or i
 ```
 Unity -batchmode -projectPath . -executeMethod OutOfOffice.EditorTools.AllChecks.Run
 ```
+
+## Building levels
+
+Open **Out of Office > Level Editor** (Ctrl+Shift+L). Pick a room on the left, or press **+** on a chapter to start one from a template. Drag pieces on the board (they snap to the grid), resize with the yellow handle, press R to rotate, Ctrl+D to duplicate and Ctrl+Z to undo. Warnings on the right update as you build; click one to select the piece it is about. **Run LevelCheck** proves the room can be finished, suggests par and draws the solution on the board. **Play this room** saves it and starts Play mode straight in it. **Difficulty report (CSV)** runs LevelCheck on every room.
+
+Room ids are save keys. Once a room ships, add its id to `Assets/OutOfOffice/Editor/ShippedLevelIds.txt`, and never rename or remove it: Run All Checks fails if a shipped id goes missing.
 
 ## Audio
 

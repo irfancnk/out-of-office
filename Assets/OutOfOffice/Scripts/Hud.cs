@@ -1505,9 +1505,9 @@ namespace OutOfOffice
             foreach (Transform c in levelsContent) Destroy(c.gameObject);
             int unlocked = UnlockedCount?.Invoke() ?? 1;
             int current = CurrentLevel?.Invoke() ?? 0;
-            for (int w = 0; w < Themes.All.Length; w++)
+            for (int w = 0; w < Themes.ChapterCount; w++)
             {
-                var t = Themes.All[w];
+                var t = Themes.ForChapter(w);
                 int first = Themes.ChapterStart[w], end = Mathf.Min(Themes.ChapterStart[w + 1], Levels.All.Length);
                 int got = 0;
                 for (int i = first; i < end; i++) got += BestStars?.Invoke(Levels.All[i].Id) ?? 0;

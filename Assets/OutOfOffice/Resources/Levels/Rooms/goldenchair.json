@@ -1,0 +1,19 @@
+{
+  "id": "goldenchair",
+  "name": "The Chair of Destiny",
+  "hint": "THE BOSS CHAIR LAUNCHES",
+  "par": 2,
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Kicker", "post": true, "at": [0, -1.6], "size": [1, 1] },
+    { "kind": "Wall", "at": [0, 2.4], "size": [6, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [3, -3.6], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [-3.4, 4.6], "size": [0.9, 0.9] }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[-3.6, -1.6], [3.6, 1], [-1.8, 4.8]],
+  "bridges": []
+}

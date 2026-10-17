@@ -1,0 +1,22 @@
+{
+  "id": "magnet",
+  "name": "Caffeine Is a Leash",
+  "hint": "THE COFFEE MACHINE PULLS YOU",
+  "par": 2,
+  "hole": [2.8, 6],
+  "start": [2.8, -6.2],
+  "shape": { "kind": "rect", "args": [9, 16, 1.4] },
+  "blocks": [
+    { "kind": "Wall", "at": [-1.3, -0.8], "size": [6.4, 0.6] },
+    { "kind": "Wall", "at": [1.3, 3.2], "size": [6.4, 0.6] },
+    { "kind": "Hazard", "post": true, "at": [0.6, 6.2], "size": [0.8, 0.8] },
+    { "kind": "Bouncer", "post": true, "at": [0.4, -4.3], "size": [0.84, 0.84] }
+  ],
+  "zones": [
+    { "kind": "Magnet", "at": [-3.2, 1.2], "size": [4.8, 4.8] },
+    { "kind": "Ice", "at": [-2.4, -3.6], "size": [3.2, 2] }
+  ],
+  "rails": [],
+  "stars": [[3.2, -0.8], [0, 1.2], [-3.4, 4.6]],
+  "bridges": []
+}

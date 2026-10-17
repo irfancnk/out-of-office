@@ -1,0 +1,20 @@
+{
+  "id": "green",
+  "name": "The CEO Is Golfing Again",
+  "hint": "JUMP THE WATER FEATURE",
+  "par": 2,
+  "hole": [0, 4.6],
+  "start": [0, -5.2],
+  "shape": { "kind": "circle", "args": [7] },
+  "blocks": [
+    { "kind": "Bouncer", "post": true, "at": [-3, 3.6], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [3, 3.6], "size": [0.9, 0.9] }
+  ],
+  "zones": [
+    { "kind": "Ramp", "at": [0, -2.6], "size": [2.6, 2.2] },
+    { "kind": "Gap", "at": [0, 0.6], "size": [14, 1.6] }
+  ],
+  "rails": [],
+  "stars": [[0, 0.6], [-4.4, -1.2], [4.4, -1.2]],
+  "bridges": []
+}

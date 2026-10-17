@@ -1,0 +1,22 @@
+{
+  "id": "speedpad",
+  "name": "Fast Track to Burnout",
+  "hint": "SPEED STRIPS BEAT THE RUG",
+  "par": 2,
+  "teaches": "mud",
+  "hole": [0, 6.2],
+  "start": [0, -6.5],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Hazard", "post": true, "at": [-1.7, 5], "size": [0.8, 0.8] },
+    { "kind": "Hazard", "post": true, "at": [1.7, 5], "size": [0.8, 0.8] }
+  ],
+  "zones": [
+    { "kind": "Boost", "at": [0, -3], "size": [2, 2.6] },
+    { "kind": "Boost", "at": [-3.3, -1.4], "size": [1.6, 2], "angle": 20 },
+    { "kind": "Mud", "at": [0, 1.6], "size": [9, 3] }
+  ],
+  "rails": [],
+  "stars": [[0, -1.2], [-3, 2.2], [3.1, 4.6]],
+  "bridges": []
+}

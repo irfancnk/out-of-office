@@ -112,14 +112,16 @@ namespace OutOfOffice
             boot.Progress(0.7f);
             yield return null;
 
-            bool tutorial = NeedsTutorial;  // a brand-new player goes straight into the orientation room (OUT-52)
-            LoadLevel(tutorial ? TutorialIndex : progress.CurrentIndex);
+            int playtest = PlaytestIndex();  // the level editor's "Play this room" (OUT-12)
+            bool tutorial = playtest < 0 && NeedsTutorial;  // a brand-new player goes straight into the orientation room (OUT-52)
+            LoadLevel(tutorial ? TutorialIndex : playtest >= 0 ? playtest : progress.CurrentIndex);
             boot.Progress(0.85f);
             yield return null;
 
             IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);
             if (tutorial) BeginTutorial();
+            else if (playtest >= 0) EnterRoom();
             else ShowTitle();
             ready = true;
             boot.Finish();
@@ -363,13 +365,34 @@ namespace OutOfOffice
         {
             if (!PayForStart(index, () => StartLevel(index))) return false;
             LoadLevel(index);
+            EnterRoom();
+            return true;
+        }
+
+        // From the loaded room's camera intro to the first shot.
+        void EnterRoom()
+        {
             quipAt = Time.unscaledTime + 1.6f;  // after the camera has shown the hole and come back to Puffy
             hud.HideAll();
             hud.HideTitle();
             Time.timeScale = 1f;
             state = State.Ready;
             IntroduceGadgets();  // anything new in this room gets its card first (OUT-11)
-            return true;
+        }
+
+        // The level editor's "Play this room" (OUT-12): Play mode opens straight into that room, skipping the title,
+        // the tutorial and the energy cost. Editor only; a player build always returns -1.
+        public const string PlaytestKey = "ooo.playtest";
+
+        static int PlaytestIndex()
+        {
+#if UNITY_EDITOR
+            string id = UnityEditor.SessionState.GetString(PlaytestKey, "");
+            UnityEditor.SessionState.EraseString(PlaytestKey);
+            return id.Length == 0 ? -1 : Levels.IndexOf(id);
+#else
+            return -1;
+#endif
         }
 
         void LoadLevel(int index)

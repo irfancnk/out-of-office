@@ -1,0 +1,19 @@
+{
+  "id": "tidegate",
+  "name": "Escalated to Nobody",
+  "hint": "RIDE THE BELT, MIND THE DESK",
+  "par": 2,
+  "hole": [-3, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "PopWall", "at": [0, 3], "size": [9, 0.5], "blink": [2.6, 0] },
+    { "kind": "Bouncer", "post": true, "at": [2.8, 5.6], "size": [1, 1] }
+  ],
+  "zones": [
+    { "kind": "Conveyor", "at": [0, 0], "size": [2.2, 9], "angle": 90 }
+  ],
+  "rails": [],
+  "stars": [[2.5, 0], [-3.5, 1.6], [0, 5]],
+  "bridges": []
+}

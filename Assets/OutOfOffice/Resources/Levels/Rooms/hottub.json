@@ -1,0 +1,24 @@
+{
+  "id": "hottub",
+  "name": "The CEO's Hot Tub",
+  "hint": "IT SPINS YOU ROUND, THEN OUT",
+  "par": 2,
+  "tags": ["remix:whirlpool"],
+  "hole": [0, 6.2],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7], "mirror": true },
+  "blocks": [
+    { "kind": "Wall", "at": [3.2, 4.4], "size": [2.6, 0.6] },
+    { "kind": "Wall", "at": [-3.2, 4.4], "size": [2.6, 0.6] },
+    { "kind": "Hazard", "post": true, "at": [3.5, 1], "size": [0.8, 0.8] },
+    { "kind": "Hazard", "post": true, "at": [-3.5, 1], "size": [0.8, 0.8] },
+    { "kind": "Hazard", "post": true, "at": [3.2, -3.6], "size": [0.7, 0.7] },
+    { "kind": "Bouncer", "post": true, "at": [-3.2, -3.8], "size": [0.9, 0.9] }
+  ],
+  "zones": [
+    { "kind": "Vortex", "at": [0, 1], "size": [5.2, 5.2], "turn": -1 }
+  ],
+  "rails": [],
+  "stars": [[1.6, -1], [0, 1], [-1.2, 3.6]],
+  "bridges": []
+}

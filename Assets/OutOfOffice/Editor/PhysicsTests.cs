@@ -1026,7 +1026,7 @@ namespace OutOfOffice.EditorTools
             bool early = !p.ChapterMastered(0) && !p.ClaimChapterChest(0);
             prefs.SetInt("buca.best." + Levels.All[end - 1].Id, 3);
             bool once = p.ChapterMastered(0) && p.ClaimChapterChest(0) && !p.ClaimChapterChest(0) && p.ChapterChestClaimed(0);
-            bool others = !p.ChapterMastered(1) && !p.ChapterChestClaimed(1) && !p.ChapterMastered(-1) && !p.ChapterMastered(Themes.All.Length);
+            bool others = !p.ChapterMastered(1) && !p.ChapterChestClaimed(1) && !p.ChapterMastered(-1) && !p.ChapterMastered(Themes.ChapterCount);
             Report("chapter-chest", early && once && others, $"locked until all stars {early}, claim once {once}, other chapters untouched {others}");
         }
 

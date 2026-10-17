@@ -1,0 +1,19 @@
+{
+  "id": "curve",
+  "name": "Circling Back Forever",
+  "hint": "RIDE THE CURVE",
+  "par": 1,
+  "hole": [-3.4, 2.1],
+  "start": [2.6, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Hazard", "post": true, "at": [2.4, -1.8], "size": [0.8, 0.8], "move": [1, 0], "period": 4.2 }
+  ],
+  "zones": [],
+  "rails": [
+    { "kind": "Wall", "arc": [0, 3.4, 4.1, -2, 182] },
+    { "kind": "Wall", "bend": 0, "points": [[0, -8.1], [0, 0.6]] }
+  ],
+  "stars": [[3, 1.4], [0, 6.85], [-2.5, 5.9]],
+  "bridges": []
+}

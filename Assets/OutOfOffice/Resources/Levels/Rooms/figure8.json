@@ -1,0 +1,20 @@
+{
+  "id": "figure8",
+  "name": "This Meeting Has No End",
+  "hint": "CROSS THE BRIDGE IN THE MIDDLE",
+  "par": 3,
+  "hole": [0, 12.2],
+  "start": [0, -12.2],
+  "shape": { "kind": "figure8", "args": [6, 7.4, 3.2] },
+  "blocks": [
+    { "kind": "Wall", "post": true, "at": [0, -7.4], "size": [5, 5] },
+    { "kind": "Wall", "post": true, "at": [0, 7.4], "size": [5, 5] },
+    { "kind": "Bouncer", "post": true, "at": [-4.3, -7.4], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [4.3, 7.4], "size": [1, 1] },
+    { "kind": "Hazard", "post": true, "at": [0, 0], "size": [0.72, 0.72], "move": [0.95, 0], "period": 3.8 }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[4.2, -4.6], [0, 2.6], [-4.2, 9.8]],
+  "bridges": [[-1.6, -1.7, 3.2, 3.4]]
+}

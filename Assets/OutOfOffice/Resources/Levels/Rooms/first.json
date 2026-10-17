@@ -1,0 +1,22 @@
+{
+  "id": "first",
+  "name": "Day One, Already Tired",
+  "hint": "DRAG BACK, AIM, RELEASE",
+  "par": 1,
+  "teaches": "bouncer",
+  "hole": [0, 4.5],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [-2.95, 0.8], "size": [3.1, 0.6] },
+    { "kind": "Wall", "at": [2.95, 0.8], "size": [3.1, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [-2.9, 4.6], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [2.9, 4.6], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [-3.2, -3.8], "size": [0.9, 0.9] },
+    { "kind": "Bouncer", "post": true, "at": [3.2, -3.8], "size": [0.9, 0.9] }
+  ],
+  "zones": [],
+  "rails": [],
+  "stars": [[0, -2.4], [0, 0.8], [-2.5, 3.1]],
+  "bridges": []
+}

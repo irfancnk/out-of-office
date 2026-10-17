@@ -37,7 +37,7 @@ namespace OutOfOffice
             for (int i = 0; i < Quests.PerDay; i++) { yield return "buca.quest.p" + i; yield return "buca.quest.c" + i; }
             for (int i = 0; i < 20; i++) yield return "buca.stars." + i;  // version 1 saves
             foreach (var l in Levels.All) { yield return "buca.best." + l.Id; yield return "buca.shots." + l.Id; yield return "buca.coffee." + l.Id; }
-            for (int c = 0; c < Themes.All.Length; c++) yield return "buca.chapter.chest." + c;
+            for (int c = 0; c < Themes.ChapterCount; c++) yield return "buca.chapter.chest." + c;
             foreach (var item in Cosmetics.All) yield return "buca.own." + item.Id;
             foreach (var p in Catalog.All) yield return "buca.iap." + p.Id;
         }

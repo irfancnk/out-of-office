@@ -1,0 +1,22 @@
+{
+  "id": "icebreak",
+  "name": "Cut Through the Red Tape",
+  "hint": "HIT FOLDERS HARD TO BREAK THEM",
+  "par": 2,
+  "hole": [0, 6],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [0, 0.5], "size": [5, 0.6] },
+    { "kind": "Breakable", "at": [0, 4.2], "size": [3.4, 0.6] },
+    { "kind": "Breakable", "at": [-2, 5.8], "size": [0.6, 3.6] },
+    { "kind": "Breakable", "at": [2, 5.8], "size": [0.6, 3.6] }
+  ],
+  "zones": [
+    { "kind": "Ice", "at": [0, 2.3], "size": [9, 2] },
+    { "kind": "Boost", "at": [3.2, -4], "size": [1.4, 2.4] }
+  ],
+  "rails": [],
+  "stars": [[-3.4, -0.5], [0, 3], [-3.4, 6.8]],
+  "bridges": []
+}

@@ -570,7 +570,7 @@ namespace OutOfOffice
         // Every star in a chapter earns its chest, once.
         public bool ChapterMastered(int chapter)
         {
-            if (chapter < 0 || chapter >= Themes.All.Length) return false;
+            if (chapter < 0 || chapter >= Themes.ChapterCount) return false;
             int end = Mathf.Min(Themes.ChapterStart[chapter + 1], Levels.All.Length);
             for (int i = Themes.ChapterStart[chapter]; i < end; i++)
                 if (Best(Levels.All[i].Id) < 3) return false;

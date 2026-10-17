@@ -35,6 +35,19 @@ namespace OutOfOffice.EditorTools
             public int Stars;
         }
 
+        // One room's result: the report line, and the numbers the level editor shows (OUT-12).
+        public class Report
+        {
+            public LevelDef Def;
+            public bool Ok, Solved;
+            public string Line;
+            public int MinShots, SuggestedPar, StarsReached;
+            public float OneShotWin, Hazard;  // percent of the first-shot sweep
+            public double Seconds;
+            // The shots of the first solution found, each from the state it was played from.
+            public readonly List<(LevelSnapshot From, Vector2 Aim)> Solution = new List<(LevelSnapshot, Vector2)>();
+        }
+
         public static int Run(LevelDef[] levels)
         {
             var previousMode = Physics2D.simulationMode;
@@ -55,19 +68,9 @@ namespace OutOfOffice.EditorTools
             {
                 for (int i = 0; i < levels.Length; i++)
                 {
-                    var def = levels[i];
-                    var root = new GameObject("LevelCheck");
-                    try
-                    {
-                        var inst = LevelBuilder.Build(def, root.transform, false);
-                        string line = CheckLevel(inst, def, out bool ok);
-                        if (!ok) bad++;
-                        report.AppendLine($"HSLEVEL {i + 1,2} {def.Id,-12} {line}");
-                    }
-                    finally
-                    {
-                        Object.DestroyImmediate(root);
-                    }
+                    var r = CheckBuilt(levels[i]);
+                    if (!r.Ok) bad++;
+                    report.AppendLine($"HSLEVEL {i + 1,2} {r.Def.Id,-12} {r.Line}");
                 }
             }
             finally
@@ -79,17 +82,82 @@ namespace OutOfOffice.EditorTools
             return bad;
         }
 
-        // Themes.ChapterStart must give every theme a non-empty run of levels and end at the level count, or the
-        // home screen's chapter bar and the level banners point at the wrong chapter.
+        // Checks one room on its own: what the level editor's "Run LevelCheck" button calls.
+        public static Report Check(LevelDef def)
+        {
+            var previousMode = Physics2D.simulationMode;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+            try { return CheckBuilt(def); }
+            finally { Physics2D.simulationMode = previousMode; }
+        }
+
+        static Report CheckBuilt(LevelDef def)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var root = new GameObject("LevelCheck");
+            try
+            {
+                var inst = LevelBuilder.Build(def, root.transform, false);
+                var r = new Report { Def = def };
+                r.Line = CheckLevel(inst, def, r, out r.Ok);
+                r.Seconds = watch.Elapsed.TotalSeconds;
+                return r;
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        // Replays a report's solution and returns where the puck went on each shot, for the editor to draw.
+        public static List<List<Vector2>> Trace(LevelDef def, Report report)
+        {
+            var paths = new List<List<Vector2>>();
+            var previousMode = Physics2D.simulationMode;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+            var root = new GameObject("LevelCheck Trace");
+            try
+            {
+                var inst = LevelBuilder.Build(def, root.transform, false);
+                foreach (var (from, aim) in report.Solution)
+                {
+                    var path = new List<Vector2> { from.Puck };
+                    Shoot(inst, from, aim, path);
+                    paths.Add(path);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Physics2D.simulationMode = previousMode;
+            }
+            return paths;
+        }
+
+        // The catalog must give every chapter a known theme and a non-empty run of rooms, and every room it names must
+        // load, or the home screen's chapter bar and the level banners point at the wrong chapter (OUT-12).
         static string CheckChapters(out bool ok)
         {
             var starts = Themes.ChapterStart;
-            ok = starts.Length == Themes.All.Length + 1 && starts[0] == 0 && starts[starts.Length - 1] == Levels.All.Length;
+            var chapters = Levels.Chapters;
+            ok = chapters.Count > 0 && starts.Length == chapters.Count + 1 && starts[0] == 0 && starts[starts.Length - 1] == Levels.All.Length;
             for (int c = 1; c < starts.Length; c++) ok &= starts[c] > starts[c - 1];
-            return $"{Themes.All.Length} chapters, starts {string.Join(",", starts)}, {Levels.All.Length} levels";
+            var keys = new HashSet<string>();
+            var notes = new StringBuilder();
+            int named = 0;
+            foreach (var ch in chapters)
+            {
+                named += ch.LevelIds.Count;
+                if (!keys.Add(ch.Key)) { ok = false; notes.Append($" DUPLICATE CHAPTER {ch.Key}"); }
+                if (Themes.ByKey(ch.ThemeKey) == null) { ok = false; notes.Append($" UNKNOWN THEME {ch.ThemeKey}"); }
+            }
+            if (named != Levels.All.Length) { ok = false; notes.Append($" {named - Levels.All.Length} ROOMS MISSING OR REPEATED"); }
+            for (int i = 0; i < Levels.All.Length; i++)
+                if (Levels.IndexOf(Levels.All[i].Id) != i) { ok = false; notes.Append($" ROOM {Levels.All[i].Id} LISTED TWICE"); }
+            return $"{chapters.Count} chapters, starts {string.Join(",", starts)}, {Levels.All.Length} levels{notes}";
         }
 
-        static string CheckLevel(LevelInstance inst, LevelDef def, out bool ok)
+        static string CheckLevel(LevelInstance inst, LevelDef def, Report report, out bool ok)
         {
             var start = inst.Capture(def.Start, 0, 0f);
             bool timed = inst.Movers.Count > 0 || inst.PopWalls.Count > 0 || inst.Zones.Exists(z => z.Kind == ZoneKind.Spikes);
@@ -97,6 +165,8 @@ namespace OutOfOffice.EditorTools
             int shots = 0, wins = 0, hazards = 0, maxStars = 0;
             var touched = new bool[def.Stars.Count];  // coffees any explored shot collected, to name the unreachable ones
             var rests = new Dictionary<Vector3Int, LevelSnapshot>();
+            // How each remembered resting state was reached, so the first solution can be replayed and drawn.
+            var parents = new Dictionary<LevelSnapshot, (LevelSnapshot From, Vector2 Aim)>();
             string example = "-";
 
             foreach (float t0 in phases)
@@ -104,16 +174,21 @@ namespace OutOfOffice.EditorTools
             for (int p = 1; p <= 10; p++)
             {
                 start.Time = t0;
-                var o = Shoot(inst, start, Aim(angle, p / 10f));
+                var aim = Aim(angle, p / 10f);
+                var o = Shoot(inst, start, aim);
                 Touch(touched, o);
                 shots++;
                 maxStars = Mathf.Max(maxStars, o.Stars);
                 if (o.Result == ShotResult.Sunk)
                 {
-                    if (wins++ == 0) example = $"{angle} deg power {p / 10f:0.0}";
+                    if (wins++ == 0)
+                    {
+                        example = $"{angle} deg power {p / 10f:0.0}";
+                        report.Solution.Add((At(start, t0), aim));
+                    }
                 }
                 else if (o.Result == ShotResult.Hazard || o.Result == ShotResult.Fell) hazards++;
-                else if (o.Result == ShotResult.Rest) Remember(rests, o.After);
+                else if (o.Result == ShotResult.Rest && Remember(rests, o.After)) parents[o.After] = (At(start, t0), aim);
             }
 
             int minShots = wins > 0 ? 1 : 0;
@@ -129,11 +204,21 @@ namespace OutOfOffice.EditorTools
                     for (int angle = 0; angle < 360; angle += 5)
                     for (int p = 2; p <= 10; p += 2)
                     {
-                        var o = Shoot(inst, snap, Aim(angle, p / 10f));
+                        var aim = Aim(angle, p / 10f);
+                        var o = Shoot(inst, snap, aim);
                         Touch(touched, o);
                         maxStars = Mathf.Max(maxStars, o.Stars + Count(snap.Stars));
-                        if (o.Result == ShotResult.Sunk) { if (found++ == 0 && minShots == 0) example = $"{depth} shots, last {angle} deg power {p / 10f:0.0}"; }
-                        else if (o.Result == ShotResult.Rest) Remember(next, o.After);
+                        if (o.Result == ShotResult.Sunk)
+                        {
+                            if (found++ == 0 && minShots == 0)
+                            {
+                                example = $"{depth} shots, last {angle} deg power {p / 10f:0.0}";
+                                var chain = new List<(LevelSnapshot, Vector2)> { (snap, aim) };
+                                for (var s = snap; parents.TryGetValue(s, out var up); s = up.From) chain.Insert(0, up);
+                                report.Solution.AddRange(chain);
+                            }
+                        }
+                        else if (o.Result == ShotResult.Rest && Remember(next, o.After)) parents[o.After] = (snap, aim);
                     }
                 }
                 if (found > 0 && minShots == 0) minShots = depth;
@@ -141,6 +226,13 @@ namespace OutOfOffice.EditorTools
             }
 
             ok = minShots > 0;
+            report.Solved = ok;
+            report.MinShots = minShots;
+            report.StarsReached = maxStars;
+            report.OneShotWin = 100f * wins / shots;
+            report.Hazard = 100f * hazards / shots;
+            // Par is the fewest shots, plus one when the one-shot win is a needle in a haystack.
+            report.SuggestedPar = minShots == 1 && report.OneShotWin < 2f ? 2 : Mathf.Max(1, minShots);
             string parNote = !ok ? "" : minShots > def.Par ? $"  PAR {def.Par} TOO LOW (min {minShots})" : minShots < def.Par - 1 ? $"  PAR {def.Par} LOOSE (min {minShots})" : "";
             string starNote = def.Stars.Count == 0 ? "no stars" : $"stars reached {maxStars}/{def.Stars.Count}";
             bool solved = ok;
@@ -195,7 +287,7 @@ namespace OutOfOffice.EditorTools
         // One receptionist a chapter (OUT-38).
         static string CheckReceptions(out bool ok)
         {
-            var counts = new int[Themes.All.Length];
+            var counts = new int[Themes.ChapterCount];
             for (int i = 0; i < Levels.All.Length; i++)
                 foreach (var b in Levels.All[i].Blocks)
                     if (b.Reception != 0) counts[Themes.ChapterOf(i)]++;
@@ -276,7 +368,8 @@ namespace OutOfOffice.EditorTools
             return n;
         }
 
-        static void Remember(Dictionary<Vector3Int, LevelSnapshot> rests, LevelSnapshot snap)
+        // True when this is a new resting state worth exploring from.
+        static bool Remember(Dictionary<Vector3Int, LevelSnapshot> rests, LevelSnapshot snap)
         {
             int switches = 0;
             for (int i = 0; i < snap.Switches.Length; i++) if (snap.Switches[i]) switches |= 1 << i;
@@ -285,7 +378,9 @@ namespace OutOfOffice.EditorTools
             int broken = 0;
             for (int i = 0; i < snap.Broken.Length; i++) if (snap.Broken[i]) broken |= 1 << i;
             var key = new Vector3Int(Mathf.RoundToInt(snap.Puck.x / 1.2f), Mathf.RoundToInt(snap.Puck.y / 1.2f), switches * 1000 + crates + broken * 7919);
-            if (!rests.ContainsKey(key)) rests[key] = snap;
+            if (rests.ContainsKey(key)) return false;
+            rests[key] = snap;
+            return true;
         }
 
         // Picks resting states that differ in switch/crate state first; within each, half are the ones closest to the
@@ -317,7 +412,8 @@ namespace OutOfOffice.EditorTools
             return picked;
         }
 
-        public static ShotOutcome Shoot(LevelInstance inst, LevelSnapshot from, Vector2 velocity)
+        // With a trace list, records where the puck is after every step (the level editor draws it).
+        public static ShotOutcome Shoot(LevelInstance inst, LevelSnapshot from, Vector2 velocity, List<Vector2> trace = null)
         {
             inst.Restore(from);
             inst.Puck.PlaceAt(from.Puck);
@@ -338,6 +434,7 @@ namespace OutOfOffice.EditorTools
                     break;
                 }
                 Physics2D.Simulate(Rules.Dt);
+                trace?.Add(inst.Puck.Body.position);
             }
             // Resting on pop-up spikes only lasts until they rise, and that sends the puck back, as in the game.
             if (outcome.Result == ShotResult.Rest && inst.Zones.Exists(z => z.Kind == ZoneKind.Spikes && z.Contains(inst.Puck.Body.position)))
@@ -346,6 +443,13 @@ namespace OutOfOffice.EditorTools
             outcome.After = inst.Capture(inst.Puck.Body.position, from.Shots + 1, t);
             return outcome;
         }
+
+        // The start state at the given moment of the movers' cycle: the sweep reuses one start and changes its time.
+        static LevelSnapshot At(LevelSnapshot s, float time) => new LevelSnapshot
+        {
+            Puck = s.Puck, Shots = s.Shots, Time = time, Switches = s.Switches, Stars = s.Stars, Broken = s.Broken,
+            CratePositions = s.CratePositions, CrateRotations = s.CrateRotations,
+        };
 
         static bool Moving(LevelInstance inst)
         {

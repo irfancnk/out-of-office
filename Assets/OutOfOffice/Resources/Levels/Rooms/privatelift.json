@@ -1,0 +1,24 @@
+{
+  "id": "privatelift",
+  "name": "The Private Elevator",
+  "hint": "SPIN, THEN SLIP THROUGH",
+  "par": 2,
+  "tags": ["remix:turnstile"],
+  "hole": [-3, 6],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7], "mirror": true },
+  "blocks": [
+    { "kind": "Bouncer", "at": [0, 0.4], "size": [3.6, 0.5], "spin": -80 },
+    { "kind": "Wall", "at": [0, 3], "size": [3.2, 0.6] },
+    { "kind": "Kicker", "post": true, "at": [3.4, 6.5], "size": [0.9, 0.9] },
+    { "kind": "Sticky", "at": [3.3, -3.2], "size": [1.2, 1.2], "corner": 0.6 },
+    { "kind": "Bouncer", "post": true, "at": [-3.1, -3.8], "size": [0.9, 0.9] }
+  ],
+  "zones": [
+    { "kind": "OneWay", "at": [3.05, 3], "size": [2.9, 0.7], "turn": -1 },
+    { "kind": "OneWay", "at": [-3.05, 3], "size": [2.9, 0.7], "angle": -180, "turn": -1 }
+  ],
+  "rails": [],
+  "stars": [[3, 1], [3, 5], [0, 6.4]],
+  "bridges": []
+}

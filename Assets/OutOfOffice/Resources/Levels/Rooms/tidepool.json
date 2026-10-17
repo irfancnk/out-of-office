@@ -1,0 +1,21 @@
+{
+  "id": "tidepool",
+  "name": "Twice the Mess, No Raise",
+  "hint": "TWO PLATFORMS, TWO SPINS",
+  "par": 2,
+  "teaches": "conveyor",
+  "hole": [-3, 6.8],
+  "start": [2.6, -6.5],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Hazard", "post": true, "at": [0, -3.6], "size": [0.8, 0.8], "move": [2, 0], "period": 3 }
+  ],
+  "zones": [
+    { "kind": "Vortex", "at": [-2, -1], "size": [4, 4], "turn": -1 },
+    { "kind": "Vortex", "at": [2, 2.4], "size": [4, 4] },
+    { "kind": "Conveyor", "at": [0, 5], "size": [2, 9], "angle": 90 }
+  ],
+  "rails": [],
+  "stars": [[3.3, -3.8], [2, 2.4], [0, 5]],
+  "bridges": []
+}

@@ -1,0 +1,20 @@
+{
+  "id": "bonuspool",
+  "name": "The Bonus Pool",
+  "hint": "LET IT FLING YOU",
+  "par": 2,
+  "hole": [0, 6.4],
+  "start": [0, -6],
+  "shape": { "kind": "rect", "args": [9, 16, 0.7] },
+  "blocks": [
+    { "kind": "Wall", "at": [0, 4], "size": [2.6, 0.6] },
+    { "kind": "Bouncer", "post": true, "at": [-3, 3.4], "size": [1, 1] },
+    { "kind": "Bouncer", "post": true, "at": [3, 3.4], "size": [1, 1] }
+  ],
+  "zones": [
+    { "kind": "Vortex", "at": [0, 0.6], "size": [3.6, 3.6] }
+  ],
+  "rails": [],
+  "stars": [[-3.4, -2.6], [3.4, 0.6], [-2.2, 5.6]],
+  "bridges": []
+}
