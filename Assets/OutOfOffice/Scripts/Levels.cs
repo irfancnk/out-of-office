@@ -498,10 +498,14 @@ namespace OutOfOffice
 
         static Levels() => Reload();
 
-        // Reads every level file again (the level editor calls this after a save).
-        public static void Reload()
+        // Reads every level file again (the level editor calls this after a save). log: false keeps load errors out of
+        // the console (the checks, which test broken files on purpose).
+        public static void Reload() => Reload(true);
+
+        public static void Reload(bool log)
         {
             Errors.Clear();
+            LevelDef tutorial = null;
             var all = new List<LevelDef>();
             var chapters = new List<ChapterDef>();
             LevelData.Manifest manifest = null;
@@ -529,13 +533,13 @@ namespace OutOfOffice
                     chapter.End = all.Count;
                     chapters.Add(chapter);
                 }
-                if (!string.IsNullOrEmpty(manifest.Tutorial)) Tutorial = Load(manifest.Tutorial);
+                if (!string.IsNullOrEmpty(manifest.Tutorial)) tutorial = Load(manifest.Tutorial);
             }
             // The game always has a first room, even with no level files, so a bad content push can't brick it.
             if (all.Count == 0) all.Add(Lab);
             if (chapters.Count == 0) chapters.Add(new ChapterDef { Theme = "", First = 0, End = all.Count });
-            if (Tutorial == null) Tutorial = all[0];
-            foreach (var e in Errors) Debug.LogError("Out of Office levels: " + e);
+            Tutorial = tutorial ?? all[0];
+            if (log) foreach (var e in Errors) Debug.LogError("Out of Office levels: " + e);
 
             All = all.ToArray();
             Chapters = chapters.ToArray();
