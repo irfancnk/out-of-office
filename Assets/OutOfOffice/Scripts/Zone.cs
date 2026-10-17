@@ -32,10 +32,14 @@ namespace OutOfOffice
             return Mathf.Abs(Vector2.Dot(d, right)) <= Def.Size.x * 0.5f && Mathf.Abs(Vector2.Dot(d, dir)) <= Def.Size.y * 0.5f;
         }
 
+        // Timed staples stay down through a Coffee Break (OUT-51); a strip with no period is always up and stays so.
+        bool Resting => Level != null && Level.OnBreak && Def.Period > 0f;
+
         // Pop-up spikes: 1 fully up, 0 fully down, from the level clock. Always up without a period.
         public float SpikeHeight(float time)
         {
             if (Def.Period <= 0f) return 1f;
+            if (Resting) return 0f;
             float k = Mathf.Repeat(time / Def.Period + Def.Phase, 1f) * Def.Period;  // seconds into the cycle
             float up = Def.Period * Rules.SpikeDuty;
             const float rise = 0.12f;
@@ -43,12 +47,12 @@ namespace OutOfOffice
             return 0f;
         }
 
-        public bool SpikesUp(float time) => Def.Period <= 0f || Mathf.Repeat(time / Def.Period + Def.Phase, 1f) < Rules.SpikeDuty;
+        public bool SpikesUp(float time) => Def.Period <= 0f || !Resting && Mathf.Repeat(time / Def.Period + Def.Phase, 1f) < Rules.SpikeDuty;
 
-        // Seconds until the spikes rise next (0 while up).
+        // Seconds until the spikes rise next (0 while up, or while resting).
         public float UntilRise(float time)
         {
-            if (Def.Period <= 0f || SpikesUp(time)) return 0f;
+            if (Def.Period <= 0f || Resting || SpikesUp(time)) return 0f;
             return (1f - Mathf.Repeat(time / Def.Period + Def.Phase, 1f)) * Def.Period;
         }
 

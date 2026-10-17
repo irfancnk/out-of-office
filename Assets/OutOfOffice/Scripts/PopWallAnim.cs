@@ -23,8 +23,8 @@ namespace OutOfOffice
         {
             if (wall == null || level == null || wall.Visual == null) return;
             float t = level.Time;
-            float up = wall.Height(t);
-            float until = wall.UntilRise(t);
+            float up = level.OnBreak ? 0f : wall.Height(t);  // down for a Coffee Break (OUT-51)
+            float until = level.OnBreak ? 0f : wall.UntilRise(t);
             float warn = until > 0f && until < 0.5f ? 1f - until / 0.5f : 0f;
             float h = Mathf.Max(up, warn * 0.15f);
             wall.Visual.localScale = new Vector3(1f, 1f, Mathf.Max(0.02f, h));

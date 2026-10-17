@@ -1459,16 +1459,23 @@ namespace OutOfOffice.EditorTools
             Object.DestroyImmediate(inst.Root);
 
             var moving = new LevelDef("coffee-break-check", "Coffee Break Check", 0f, 4f).WithShape(ShapeDef.Rect(9f, 12f, 1f)).StartAt(0f, -4f)
-                .Wall(0f, 0f, 2f, 0.6f).Moving(2f, 0f, 2f).PopWall(0f, 2.5f, 4f, 0.5f, 2f, 0f);
+                .Wall(0f, 0f, 2f, 0.6f).Moving(2f, 0f, 2f).PopWall(0f, 2.5f, 4f, 0.5f, 2f, 0f)
+                .Spikes(2.5f, -2.5f, 2f, 1f, 2f, 0f).Conveyor(-2.5f, -2.5f, 1.6f, 3f, 0f);
             var mi = LevelBuilder.Build(moving, parent, false);
-            mi.TickMovers(0.5f, true, 0.5f);
+            // Everyone's on break (OUT-51): the movers' clock is held, the pop wall and the timed staples stay down, and
+            // the belt carries nothing; afterwards everything picks up where it was.
+            mi.TickMovers(0.25f, true, 0.25f);
             Vector3 held = mi.Movers[0].transform.position;
-            bool upBefore = mi.PopWalls[0].Collider.enabled;
-            mi.TickMovers(1.5f, true, 0.5f);  // the board's clock runs on; the movers' is held
+            bool upBefore = mi.PopWalls[0].Collider.enabled && mi.Zones[0].SpikesUp(0.25f);
+            mi.OnBreak = true;
+            mi.TickMovers(1.25f, true, 0.25f);  // the board's clock runs on; the movers' is held
             bool still = (mi.Movers[0].transform.position - held).sqrMagnitude < 1e-8f;
-            bool beat = mi.PopWalls[0].Collider.enabled != upBefore;
+            bool beat = upBefore && !mi.PopWalls[0].Collider.enabled && !mi.Zones[0].SpikesUp(0.25f);
+            var belt = Simulate(mi, new Vector2(-2.5f, -2.5f), new Vector2(0.01f, 0f), 120);
+            beat &= belt[belt.Count - 1].Pos.y < -2f;  // the belt (pushing up) is off, so the puck stays near where it was put
+            mi.OnBreak = false;
             mi.TickMovers(1.5f, true, 1.5f);
-            bool resumes = (mi.Movers[0].transform.position - held).sqrMagnitude > 0.01f;
+            bool resumes = (mi.Movers[0].transform.position - held).sqrMagnitude > 0.01f && mi.Zones[0].SpikesUp(0.25f);
             Object.DestroyImmediate(mi.Root);
 
             var clock = new FakeClock(new System.DateTime(2026, 10, 16, 8, 0, 0, System.DateTimeKind.Utc));
@@ -1490,7 +1497,7 @@ namespace OutOfOffice.EditorTools
 
             bool ok = pulls && reach && still && beat && resumes && locked && unlocks && gift && counts && ordered && prices;
             Report("boosters", ok, $"magnet bed sinks a roll beside the bed {pulls} (without it: {plain} at {plainEnd}, with it: {pulled}); nothing out of reach {reach}; " +
-                $"coffee break holds movers {still}, pop walls keep the beat {beat}, movers resume {resumes}; locked {locked}, unlocks {unlocks}, three to start once {gift}, " +
+                $"coffee break holds movers {still}, walls, staples and belt stand down {beat}, all resume {resumes}; locked {locked}, unlocks {unlocks}, three to start once {gift}, " +
                 $"counts {counts}; unlocks in order {ordered}; box discount {prices}");
         }
 

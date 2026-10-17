@@ -99,14 +99,17 @@ namespace OutOfOffice
 
         public float Time;  // level clock of the last tick: drives movers and pop-up spikes
 
+        // A Coffee Break (OUT-51): everyone's on break. Pop walls and timed staples stay down, and belts, vents and spin
+        // platforms switch off; the movers' own clock is held still by the caller.
+        public bool OnBreak;
+
         public void TickMovers(float time, bool snap) => TickMovers(time, snap, time);
 
-        // moverTime: the clock for moving desks and turnstiles. A Coffee Break (OUT-13) holds it still while pop walls and
-        // pop-up spikes keep their beat on `time`.
+        // moverTime: the clock for moving desks and turnstiles, which a Coffee Break holds still (OUT-13).
         public void TickMovers(float time, bool snap, float moverTime)
         {
             Time = time;
-            foreach (var w in PopWalls) w.Collider.enabled = w.Up(time);
+            foreach (var w in PopWalls) w.Collider.enabled = !OnBreak && w.Up(time);
             foreach (var m in Movers) m.Tick(moverTime, snap);
         }
 

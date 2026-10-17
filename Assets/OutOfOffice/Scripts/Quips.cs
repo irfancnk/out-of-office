@@ -17,6 +17,7 @@ namespace OutOfOffice
         // ---- One line per room (by level id) ----
         static readonly Dictionary<string, string> LevelLines = new Dictionary<string, string>
         {
+            { "orientation", "Welcome aboard! Your first task: a nap." },  // OUT-52
             { "first", "First day. The bed is over there. Professionally speaking." },
             { "easy", "A quick sync. Historically inaccurate." },
             { "bank", "Bounce off the wall. Like feedback." },

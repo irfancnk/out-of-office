@@ -995,6 +995,101 @@ dialog[open] .viewer img { animation: zoomin .45s var(--ease); }
 </body>
 </html>`;
 
+// Legal and support pages for the store listings (OUT-54). They describe what the game does today: progress stays on
+// the phone, one time check goes to Google, rewarded ads come from Google AdMob, and purchases go through the stores.
+const UPDATED = "17 October 2026";
+const legal = (path, title, body) => `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${title} · Out of Office</title>
+<meta name="theme-color" content="#24104a">
+<link rel="canonical" href="https://gotobed.win${path}">
+<link rel="icon" href="/favicon.png" type="image/png">
+<style>
+:root { color-scheme: light; --ink: #1d1330; --muted: #5f566f; --paper: #f3ede2; --sheet: #fffdf8; --purple: #3a1a6e; --orange: #ff8a1f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+.back { display: inline-block; margin-bottom: 24px; color: var(--purple); font-weight: 700; text-decoration: none; }
+article { background: var(--sheet); border-radius: 18px; padding: 28px 24px; box-shadow: 0 2px 0 rgba(29,19,48,.08); }
+h1 { margin: 0 0 4px; color: var(--purple); font-size: 32px; line-height: 1.15; }
+.updated { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+h2 { margin: 28px 0 8px; font-size: 20px; }
+a { color: var(--purple); }
+li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="/">&larr; Out of Office</a>
+<article>
+<h1>${title}</h1>
+<p class="updated">Last updated ${UPDATED}</p>
+${body}
+</article>
+</main>
+</body>
+</html>`;
+
+const pages = {
+  "/privacy": legal("/privacy", "Privacy Policy", `
+<p>Out of Office is a puzzle game for iPhone and Android. This policy explains what information the game uses and why. We keep it short because the game collects very little.</p>
+<h2>What stays on your phone</h2>
+<ul>
+<li>Your progress, settings, items, gems and the energy timer are saved on your device.</li>
+<li>The game makes a random install number, used only to keep A/B tests and statistics consistent on your device. It is not linked to your name, email or contacts.</li>
+<li>Gameplay events (for example a room finished or a booster used) are recorded on your device to help us improve the game. The current version does not send them to us.</li>
+</ul>
+<h2>What leaves your phone</h2>
+<ul>
+<li><b>A time check.</b> When the game starts, it asks a Google web server for the current date and time, so daily rewards can't be unlocked by changing the phone's clock. Like any web request, this shares your IP address with Google. No game data is sent.</li>
+<li><b>Ads.</b> The game offers optional rewarded videos from Google AdMob. To show and measure ads, Google may collect your device's advertising ID, IP address and ad interactions, and may personalise ads where you allow it. In the EEA, the UK and Switzerland, the game asks for your consent first using Google's consent message, and you can change your choice later. See <a href="https://policies.google.com/technologies/partner-sites">how Google uses information from apps that use its services</a>.</li>
+<li><b>Purchases.</b> In-app purchases are handled by Google Play or the App Store. We never see your payment details; the store tells the game only what you bought.</li>
+</ul>
+<h2>What we don't do</h2>
+<ul>
+<li>We don't ask for your name, email, contacts, location, photos or microphone.</li>
+<li>We don't sell your information.</li>
+</ul>
+<h2>Children</h2>
+<p>Out of Office is not directed at children under 13, and we don't knowingly collect personal information from them.</p>
+<h2>Your choices</h2>
+<p>You can reset your advertising ID or opt out of personalised ads in your phone's settings. Uninstalling the game deletes everything it saved on your device.</p>
+<h2>Changes and contact</h2>
+<p>If the game starts using information in a new way, we'll update this page first. Questions? Write to <a href="mailto:${EMAIL}">${EMAIL}</a>.</p>`),
+
+  "/terms": legal("/terms", "Terms of Use", `
+<p>By playing Out of Office you agree to these terms. If you don't agree, please don't play.</p>
+<h2>Your licence</h2>
+<p>We give you a personal, non-transferable licence to play the game on your own devices. The game, its art and its code stay ours.</p>
+<h2>Virtual items</h2>
+<ul>
+<li>Gems, clips, boosters, energy, staff and wardrobe items are part of the game. They have no cash value and can't be exchanged for money.</li>
+<li>Purchases are processed by Google Play or the App Store, and their refund rules apply.</li>
+<li>Chest contents are random. The odds for every chest are shown in the game before you open it.</li>
+</ul>
+<h2>Fair play</h2>
+<p>Please don't cheat, modify the game or interfere with ads or purchases. We may reset progress gained that way.</p>
+<h2>No warranty</h2>
+<p>The game is provided as it is. We work hard to keep it running well, but we can't promise it will always be available or free of bugs. To the extent the law allows, we aren't liable for indirect losses from using the game.</p>
+<h2>Changes and contact</h2>
+<p>We may update these terms; the date above shows when. Questions? Write to <a href="mailto:${EMAIL}">${EMAIL}</a>.</p>`),
+
+  "/support": legal("/support", "Support", `
+<p>Stuck, found a bug, or a purchase didn't arrive? We're happy to help.</p>
+<h2>Contact</h2>
+<p>Email <a href="mailto:${EMAIL}">${EMAIL}</a>. Please include your phone model and, for a purchase, the order number from your store receipt.</p>
+<h2>Common questions</h2>
+<ul>
+<li><b>I bought gems but didn't get them.</b> Restart the game while online. If they still don't arrive, email us with the order number.</li>
+<li><b>Can I replay the tutorial?</b> Yes: Settings, then Tutorial.</li>
+<li><b>Will I lose my progress if I change phones?</b> Progress is saved on your phone today. Cloud saves are on the way.</li>
+<li><b>How do I stop personalised ads?</b> See the <a href="/privacy">privacy policy</a>.</li>
+</ul>`),
+};
+
 const security = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
@@ -1047,9 +1142,14 @@ export default {
     if (url.pathname === "/robots.txt") return text("User-agent: *\nAllow: /\nSitemap: https://gotobed.win/sitemap.xml\n", "text/plain; charset=utf-8");
     if (url.pathname === "/sitemap.xml") {
       return text(
-        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gotobed.win/</loc></url></urlset>\n',
+        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gotobed.win/</loc></url><url><loc>https://gotobed.win/privacy</loc></url><url><loc>https://gotobed.win/terms</loc></url><url><loc>https://gotobed.win/support</loc></url></urlset>\n',
         "application/xml; charset=utf-8"
       );
+    }
+    if (pages[url.pathname]) {
+      return new Response(pages[url.pathname], {
+        headers: { ...security, "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" },
+      });
     }
     if (url.pathname !== "/") return Response.redirect("https://gotobed.win/", 302);
 

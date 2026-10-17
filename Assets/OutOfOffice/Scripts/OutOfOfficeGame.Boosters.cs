@@ -10,6 +10,7 @@ namespace OutOfOffice
         readonly HashSet<BoosterKind> activeBoosters = new HashSet<BoosterKind>();
         float frozenAt;  // the movers' clock while a Coffee Break holds it
         int doOvers;     // Do-Overs on this try: a hole-in-one doesn't count after one
+        readonly List<BoosterFx> boosterFx = new List<BoosterFx>();  // cups over stopped gadgets, the bed's ring (OUT-51)
 
         bool Boosted(BoosterKind k) => activeBoosters.Contains(k);
         float MoverClock => Boosted(BoosterKind.CoffeeBreak) ? frozenAt : levelTime;
@@ -41,6 +42,9 @@ namespace OutOfOffice
         {
             activeBoosters.Clear();
             doOvers = 0;
+            if (level != null) level.OnBreak = false;
+            foreach (var fx in boosterFx) if (fx != null) Destroy(fx.gameObject);
+            boosterFx.Clear();
             hud.SetBoostersShown(BoostersHere);
         }
 
@@ -52,6 +56,7 @@ namespace OutOfOffice
             {
                 case BoosterKind.DoOver: return history.Count > 0;  // a shot to take back
                 case BoosterKind.Overtime: return ShotLimit > 0;    // stacks
+                case BoosterKind.CoffeeBreak: return !Boosted(k) && Boosters.BreakMatters(Def);  // never spent for nothing (OUT-51)
                 default: return !Boosted(k);
             }
         }
@@ -63,6 +68,7 @@ namespace OutOfOffice
             if (!CanBoost(k))
             {
                 sound.Play(Sfx.Cancel, 0.4f);
+                if (k == BoosterKind.CoffeeBreak && BoostersHere && !Boosters.BreakMatters(Def)) hud.Banner("NOTHING MOVING HERE", Palette.Gold, 0.4f);
                 return;
             }
             bool bought = false;
@@ -92,12 +98,16 @@ namespace OutOfOffice
                 case BoosterKind.CoffeeBreak:
                     activeBoosters.Add(k);
                     frozenAt = levelTime;
+                    level.OnBreak = true;
+                    level.TickMovers(levelTime, true, MoverClock);
+                    boosterFx.Add(BoosterFx.BreakSigns(level));
                     break;
                 case BoosterKind.DoOver:
                     DoOver();
                     break;
                 case BoosterKind.MagnetBed:
                     activeBoosters.Add(k);
+                    boosterFx.Add(BoosterFx.BedRing(level, Def.Hole, Boosters.MagnetRadius));
                     break;
             }
             progress.BumpStat(Achievements.BoostersUsed);

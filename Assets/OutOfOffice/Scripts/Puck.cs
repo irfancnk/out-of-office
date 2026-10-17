@@ -534,7 +534,7 @@ namespace OutOfOffice
                 }
                 if (zone.Kind == ZoneKind.Vortex)
                 {
-                    if (!SpinPlatform(zone, pos, ref v, dt)) continue;
+                    if (Level.OnBreak || !SpinPlatform(zone, pos, ref v, dt)) continue;
                     nowSwirl = true;
                     if (!inSwirl) info.Swirled = zone;
                     continue;
@@ -583,6 +583,7 @@ namespace OutOfOffice
                         return true;
                     }
                     case ZoneKind.Wind:
+                        if (Level.OnBreak) break;  // switched off for a Coffee Break (OUT-51)
                         v += zone.Direction * (Rules.WindAccel * dt);
                         break;
                     case ZoneKind.Spikes:
@@ -596,6 +597,7 @@ namespace OutOfOffice
                         break;
                     case ZoneKind.Conveyor:
                     {
+                        if (Level.OnBreak) break;
                         // The belt drags the puck toward its own surface velocity, like friction on a moving floor.
                         Vector2 belt = zone.Direction * Rules.ConveyorSpeed;
                         v += (belt - v) * Mathf.Min(1f, Rules.ConveyorGrip * dt);

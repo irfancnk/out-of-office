@@ -8,6 +8,7 @@ A one-thumb physics puzzle for iPhone and Android, built in Unity.
 - `Assets/Plugins/iOS/` - native iOS haptics
 - `deploy_ios.sh` - builds the game and installs it on a connected iPhone
 - `deploy_android.sh` - builds a development APK and installs it on a connected Android phone (USB debugging on); then `adb logcat -s Unity` shows the game log
+- `RELEASE.md` - the Google Play release checklist; `OOO_RELEASE=1 ./deploy_android.sh` builds the signed App Bundle
 - `site/` - the game's website (Cloudflare Worker)
 
 ## Getting started

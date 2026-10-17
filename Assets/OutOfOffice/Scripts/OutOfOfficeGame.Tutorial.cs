@@ -93,11 +93,55 @@ namespace OutOfOffice
                 () => ShowIntroCard(intros, i + 1));
         }
 
-        // Every frame: the hand on the first room, while the employee waits for a first shot.
+        // ---------- The orientation room (OUT-52) ----------
+
+        const int TutorialIndex = -2;  // levelIndex of the orientation room: Def is Levels.Tutorial
+        bool InTutorial => levelIndex == TutorialIndex;
+        // A brand-new player starts in the orientation room instead of on the title.
+        bool NeedsTutorial => !progress.FtueDone("tutorial") && progress.Unlocked <= 1 && progress.Best(Levels.All[0].Id) == 0;
+        SpriteRenderer coachRing;  // a pulsing ring on the next goal in the orientation room
+
+        // Straight into the orientation room on a first launch: no title, no energy, a goal for every shot.
+        void BeginTutorial()
+        {
+            hud.HideAll();
+            hud.HideTitle();
+            state = State.Ready;
+            hud.SetHint(false);  // the coach and the hand say it here
+            quipAt = Time.unscaledTime + 1.2f;
+            Analytics.Event("tutorial_start", ("replay", progress.FtueDone("tutorial")));
+        }
+
+        // From Settings, any time.
+        void ReplayTutorial()
+        {
+            if (StartLevel(TutorialIndex)) Analytics.Event("tutorial_start", ("replay", true));
+        }
+
+        // The next goal and what the coach says about it: the coffees in order, then the bed.
+        (Vector2 target, string say) TutorialStep()
+        {
+            for (int i = 0; i < level.Stars.Count; i++)
+                if (!level.Stars[i].Collected)
+                    return (level.Stars[i].Position, i == 0 ? "DRAG BACK, AIM, RELEASE" : i == 1 ? "AIM FOR THE COFFEE BY THE DESK" : "GRAB THE LAST COFFEE");
+            return (Def.Hole, "NOW, STRAIGHT TO BED!");
+        }
+
+        void FinishTutorial()
+        {
+            bool first = !progress.FtueDone("tutorial");
+            progress.MarkFtue("tutorial");
+            progress.MarkFtue("first_aim");
+            Analytics.Event("tutorial_complete", ("shots", shots), ("first", first));
+        }
+
+        // Every frame: the hand on the orientation room and on the first room, while the employee waits for a shot.
         void TickTutorial()
         {
-            bool want = level != null && levelIndex == 0 && state == State.Ready && shots == 0 && !hud.PanelOpen && !progress.FtueDone("first_win");
-            if (levelIndex == 0 && state == State.Aiming) progress.MarkFtue("first_aim");
+            bool firstRoom = levelIndex == 0 && shots == 0 && !progress.FtueDone("first_win");
+            bool want = level != null && (InTutorial || firstRoom) && state == State.Ready && !hud.PanelOpen;
+            if ((levelIndex == 0 || InTutorial) && state == State.Aiming) progress.MarkFtue("first_aim");
+            TickCoachRing(want && InTutorial);
             if (!want)
             {
                 if (handShown) hud.HideHand();
@@ -106,14 +150,33 @@ namespace OutOfOffice
                 return;
             }
             if (Time.unscaledTime < handReadyAt) return;
-            // From the employee, straight back away from the bed: the shot it teaches goes for the bed.
+            // From the employee, straight back away from the goal: the shot it teaches goes for it.
+            var (goal, say) = InTutorial ? TutorialStep() : (Def.Hole, "DRAG BACK, THEN LET GO");
             Vector2 puck = level.Puck.transform.position;
             Vector2 from = cam.WorldToScreenPoint(new Vector3(puck.x, puck.y, 0f));
-            Vector2 bed = cam.WorldToScreenPoint(new Vector3(Def.Hole.x, Def.Hole.y, 0f));
-            Vector2 dir = (bed - from).sqrMagnitude > 1f ? (bed - from).normalized : Vector2.up;
-            hud.ShowHand(from, from - dir * Screen.height * 0.16f, "DRAG BACK, THEN LET GO");
+            Vector2 to = cam.WorldToScreenPoint(new Vector3(goal.x, goal.y, 0f));
+            Vector2 dir = (to - from).sqrMagnitude > 1f ? (to - from).normalized : Vector2.up;
+            hud.ShowHand(from, from - dir * Screen.height * 0.16f, say);
             if (!handShown) progress.MarkFtue("hand");
             handShown = true;
+        }
+
+        // A gold ring that breathes on the orientation room's next goal, so the target is never in doubt.
+        void TickCoachRing(bool show)
+        {
+            if (!show)
+            {
+                if (coachRing != null) coachRing.enabled = false;
+                return;
+            }
+            if (coachRing == null)
+                coachRing = LevelBuilder.MakeSprite("Coach Ring", Shapes.Ring, Palette.Gold, level.Root.transform, Vector3.zero, Vector2.one, 9);
+            var (goal, _) = TutorialStep();
+            float k = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
+            coachRing.enabled = true;
+            coachRing.transform.position = new Vector3(goal.x, goal.y, -0.05f);
+            coachRing.transform.localScale = Vector3.one * (goal == Def.Hole ? 1.9f : 1.15f) * (1f + 0.12f * k);
+            coachRing.color = new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, 0.55f + 0.35f * k);
         }
 
         // On the home screen: the first free chest, then the wardrobe once something is in it.

@@ -21,7 +21,8 @@ namespace OutOfOffice
         public const int GemCost = 20, StartGift = 3, OvertimeShots = 3;
         public const int BoxEach = 2, BoxGems = 150;  // the shop's booster box: two of each unlocked one, at a discount
         public const float LaserReach = 1.6f;
-        public const float MagnetRadius = 1.9f, MagnetPull = 7.5f;
+        // Magnet Bed (OUT-51): well above floor friction across its whole reach, hardest at the bed.
+        public const float MagnetRadius = 2.8f, MagnetPull = 16f, MagnetEdge = 0.45f;
 
         public static readonly BoosterDef[] All =
         {
@@ -30,12 +31,19 @@ namespace OutOfOffice
             new BoosterDef { Kind = BoosterKind.Overtime, Key = "overtime", Name = "OVERTIME", Icon = "alarm", UnlockRoom = 11,
                 Text = "+3 shots on this try. Nobody has to know." },
             new BoosterDef { Kind = BoosterKind.CoffeeBreak, Key = "coffeebreak", Name = "COFFEE BREAK", Icon = "coffee", UnlockRoom = 15,
-                Text = "Moving desks and turnstiles stop for the rest of this try. Everyone's on break." },
+                Text = "Everyone's on break: desks and turnstiles stop, pop-up walls and staples stay down, belts and vents switch off." },
             new BoosterDef { Kind = BoosterKind.DoOver, Key = "doover", Name = "DO-OVER", Icon = "mulligan", UnlockRoom = 21,
                 Text = "Takes back your last shot, and it doesn't count. A do-over never makes a hole-in-one." },
             new BoosterDef { Kind = BoosterKind.MagnetBed, Key = "magnetbed", Name = "MAGNET BED", Icon = "magnet", UnlockRoom = 29,
                 Text = "The bed pulls you in when you roll close, for the rest of this try." },
         };
+
+        // Whether a Coffee Break changes anything in a room (OUT-51): something that moves, rises or blows. Elsewhere it
+        // isn't offered, so it is never spent for nothing.
+        public static bool BreakMatters(LevelDef d) =>
+            d.Blocks.Exists(b => b.Moves || b.Kind == BlockKind.PopWall && b.BlinkPeriod > 0f) ||
+            d.Zones.Exists(z => z.Kind == ZoneKind.Conveyor || z.Kind == ZoneKind.Wind || z.Kind == ZoneKind.Vortex ||
+                                z.Kind == ZoneKind.Spikes && z.Period > 0f);
 
         public static BoosterDef Find(BoosterKind kind) => Array.Find(All, b => b.Kind == kind);
         public static BoosterDef Find(string key) => Array.Find(All, b => b.Key == key);
@@ -47,7 +55,7 @@ namespace OutOfOffice
             float d = to.magnitude;
             if (d >= MagnetRadius || d < 1e-4f) return Vector2.zero;
             float k = 1f - d / MagnetRadius;
-            return to / d * (MagnetPull * (0.25f + 0.75f * k) * dt);
+            return to / d * (MagnetPull * Mathf.Lerp(MagnetEdge, 1f, k) * dt);
         }
     }
 }

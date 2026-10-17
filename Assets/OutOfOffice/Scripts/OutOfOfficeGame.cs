@@ -53,7 +53,7 @@ namespace OutOfOffice
         Vector3 cameraRest, shakePos, shakeVel;
         Vector3Int fittedFor;
 
-        LevelDef Def => levelIndex < 0 ? Levels.Lab : Levels.All[levelIndex];
+        LevelDef Def => levelIndex == TutorialIndex ? Levels.Tutorial : levelIndex < 0 ? Levels.Lab : Levels.All[levelIndex];
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => booted = false;
@@ -112,13 +112,15 @@ namespace OutOfOffice
             boot.Progress(0.7f);
             yield return null;
 
-            LoadLevel(progress.CurrentIndex);
+            bool tutorial = NeedsTutorial;  // a brand-new player goes straight into the orientation room (OUT-52)
+            LoadLevel(tutorial ? TutorialIndex : progress.CurrentIndex);
             boot.Progress(0.85f);
             yield return null;
 
             IconStudio.RenderHero(progress.Outfit);
             IconStudio.RenderItems(progress.Outfit);
-            ShowTitle();
+            if (tutorial) BeginTutorial();
+            else ShowTitle();
             ready = true;
             boot.Finish();
         }
@@ -254,7 +256,7 @@ namespace OutOfOffice
                 // After the last room there is nothing to start: go home rather than replay it forever.
                 if (IsFinalLevel) { GoHome(); return; }
                 Tap();
-                StartLevel(levelIndex < 0 ? -1 : levelIndex + 1);
+                StartLevel(InTutorial ? 0 : levelIndex < 0 ? -1 : levelIndex + 1);  // the orientation room leads to room 1
             };
             hud.Replay = () => { if (StartLevel(levelIndex)) sound.Play(Sfx.Restart, 0.7f); };
             hud.Home = GoHome;
@@ -269,6 +271,8 @@ namespace OutOfOffice
                 hud.UpdateSettings(progress.Sfx, progress.Music, progress.ReducedMotion);
             };
             hud.OpenLab = () => { Tap(); StartLevel(-1); };
+            hud.ReplayTutorial = () => { Tap(); ReplayTutorial(); };
+            hud.OpenLink = url => { Tap(); Application.OpenURL(url); };
             hud.QuitGame = () =>
             {
                 progress.Flush();
@@ -410,7 +414,7 @@ namespace OutOfOffice
             debugView.Level = level;
             debugView.ClearShapes();
 
-            hud.SetLevel(index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
+            hud.SetLevel(index == TutorialIndex ? -1 : index < 0 ? 0 : index + 1, Def.Name, Def.Hint, theme);
             hud.SetShots(0, Def.Par, ShotLimit);
             hud.SetStars(0, level.Stars.Count, false);
             ResetBoosters();  // a new try starts with none active (OUT-13)
@@ -419,7 +423,7 @@ namespace OutOfOffice
             undoAllowance.Reset(index >= 0 && progress.Unlocked >= Ads.FirstRoom, perk.FreeUndos);  // a new attempt: three free again, plus the perk's
             hud.SetUndoCount(undoAllowance.FreeLeft, undoAllowance.Limited);
             hud.SetUndoAvailable(false);
-            hud.SetHint(true);
+            hud.SetHint(!InTutorial);  // the orientation room's coach says it instead (OUT-52)
             hud.SetRestartCost(StartOverCost);
             state = State.Ready;
         }
@@ -473,6 +477,7 @@ namespace OutOfOffice
         {
             if (!ready) return;
             PaceFrames();
+            TickDetails();  // the bed perks up as the employee rolls close (OUT-55)
             TickDevice();
             TickTutorial();
             // Nothing of the room shows under the home screen, so the camera draws none of it there (OUT-36): the menu
@@ -719,7 +724,11 @@ namespace OutOfOffice
                     case BlockKind.Sticky: sound.Play(Sfx.Soft, volume, pitch, 0.6f); chip = Palette.Sticky; break;
                     case BlockKind.Crate: sound.Play(Sfx.Crate, volume, pitch, 0.6f); chip = new Color(0.85f, 0.62f, 0.38f); break;
                     case BlockKind.Breakable: sound.Play(Sfx.RimTouch, 0.3f + volume * 0.5f, pitch * 0.8f, 0.6f); chip = Themes.Hex(0xE6DCFF); break;
-                    default: sound.Play(Sfx.Wood, volume, pitch, 0.6f); chip = new Color(0.95f, 0.8f, 0.58f); break;
+                    default:
+                        sound.Play(Sfx.Wood, volume, pitch, 0.6f);
+                        chip = new Color(0.95f, 0.8f, 0.58f);
+                        if (info.ImpactBlock != null && k > 0.35f) ShedPapers(info.ImpactPoint, info.ImpactNormal, k);  // OUT-55
+                        break;
                 }
                 Fx.Flash(info.ImpactPoint, new Color(1f, 0.97f, 0.85f, 0.5f + 0.4f * k), 0.35f + 0.6f * k);
                 if (k > 0.15f) Fx.Chips(info.ImpactPoint, info.ImpactNormal, chip, 2 + Mathf.RoundToInt(5f * k), 2f + 4f * k);
@@ -975,11 +984,13 @@ namespace OutOfOffice
                 yield return new WaitForSeconds(0.25f);
             }
 
+            bool newBest = false;
             if (levelIndex >= 0)
             {
                 energy.FinishAttempt();  // a win carries the play on to the next room (OUT-48)
                 CountWin();
                 int before = progress.Best(Def.Id);
+                newBest = before > 0 && earned > before;  // a better result on a room played before (OUT-55)
                 progress.Record(levelIndex, earned, shots);
                 // A perk that pays for new stars (OUT-45): only new ones, so replays can't farm it.
                 int gained = Mathf.Max(0, earned - before);
@@ -996,10 +1007,13 @@ namespace OutOfOffice
                 if (shots <= Def.Par) TrackQuest(QuestKind.ParFinishes);
                 if (shots == 1 && doOvers == 0) TrackQuest(QuestKind.HoleInOne);  // never after a Do-Over (OUT-13)
             }
+            if (InTutorial) FinishTutorial();
             yield return new WaitForSeconds(reduced ? 0.3f : 0.6f);
             state = State.Complete;
             sound.Play(Sfx.Complete, 0.6f, 1f, 1f);
-            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel, newStamps);
+            hud.ShowComplete(levelIndex + 1, earned, shots, Def.Par, level.Stars.Count > 0 && level.StarsCollected == level.Stars.Count, IsFinalLevel, newStamps,
+                InTutorial ? "ORIENTATION DONE" : null, InTutorial ? "YOU'RE HIRED! ROOM 1 IS NEXT" : null);
+            if (newBest) hud.StampNewBest();
         }
 
         // The blanket rises and falls with slow sleepy breaths.
@@ -1097,7 +1111,10 @@ namespace OutOfOffice
 
         // ---------- Shot limit (OUT-27) ----------
 
-        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots + extraShots + perk.ExtraShots;  // the lab has no limit; continues and perks add shots
+        int ShotLimit => levelIndex < 0 ? 0 : Def.MaxShots + RookieShots(levelIndex) + extraShots + perk.ExtraShots;  // the lab has no limit; continues and perks add shots
+
+        // Spare shots while the game is new (OUT-52): rooms 1-5 get three more, the rest of the first floor two.
+        public static int RookieShots(int index) => index < 0 ? 0 : index < 5 ? 3 : index < Themes.ChapterStart[1] ? 2 : 0;
 
         // The worn employee's perk (OUT-45), and what gems buy with it.
         Perk perk = Perk.None;
@@ -1317,7 +1334,7 @@ namespace OutOfOffice
                         dot.enabled = true;
                         dot.transform.position = new Vector3(p.x, p.y, -0.03f);
                         dot.transform.localScale = Vector3.one * Mathf.Lerp(0.27f, 0.15f, along);
-                        dot.color = new Color(1f, 1f, 1f, Mathf.Clamp01(fade));
+                        dot.color = Boosted(BoosterKind.Laser) ? new Color(1f, 0.32f, 0.3f, Mathf.Clamp01(fade)) : new Color(1f, 1f, 1f, Mathf.Clamp01(fade));  // the Laser Pointer draws red (OUT-51)
                     }
                     walked += len;
                 }

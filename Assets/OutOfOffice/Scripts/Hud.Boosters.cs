@@ -30,13 +30,13 @@ namespace OutOfOffice
 
         void BuildBoosters()
         {
-            var button = IconButton3D(hudRoot, "Boosters", new Vector2(1f, 0f), new Vector2(-100f, 292f), 124f, Themes.Hex(0xFFE0A3), UiArt.Icon3D("briefcase"));
+            var button = IconButton3D(hudRoot, "Boosters", new Vector2(1f, 0f), new Vector2(-148f, 372f), 124f, Themes.Hex(0xFFE0A3), UiArt.Icon3D("briefcase"));
             button.Clicked = () => SetBoosterTray(!boosterTrayOpen);
             boosterButton = button.transform as RectTransform;
             boosterNew = Badge(boosterButton, "!");
             hudBlockers.Add(boosterButton);
 
-            boosterTray = Rect("Booster Tray", hudRoot, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-100f, 292f), Vector2.zero);
+            boosterTray = Rect("Booster Tray", hudRoot, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-148f, 372f), Vector2.zero);
             foreach (var def in Boosters.All)
             {
                 var item = Rect(def.Key, boosterTray, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(116f, 116f));
@@ -62,7 +62,7 @@ namespace OutOfOffice
             }
             boosterTray.gameObject.SetActive(false);
 
-            boosterActiveRow = Rect("Active Boosters", hudRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(60f, -196f), new Vector2(0f, 64f));
+            boosterActiveRow = Rect("Active Boosters", hudRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(80f, -214f), new Vector2(0f, 64f));
             foreach (var def in Boosters.All)
             {
                 if (def.Kind == BoosterKind.Overtime || def.Kind == BoosterKind.DoOver) continue;  // those act at once

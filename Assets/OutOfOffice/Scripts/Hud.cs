@@ -13,14 +13,15 @@ namespace OutOfOffice
     public partial class Hud : MonoBehaviour
     {
         // Game actions. OutOfOfficeGame wires these up.
-        public System.Action Play, Pause, Resume, Restart, Undo, Next, Replay, Home, OpenLab, ToggleDebug;
+        public System.Action Play, Pause, Resume, Restart, Undo, Next, Replay, Home, OpenLab, ToggleDebug, ReplayTutorial;
+        public System.Action<string> OpenLink;  // the privacy policy and terms (OUT-54)
         public System.Action<int> SelectLevel;
         public System.Action<bool> SetSfx, SetMusic, SetReducedMotion;
         public System.Func<int> UnlockedCount, CurrentLevel;
         public System.Func<string, int> BestStars;
 
-        public const float TopHeight = 175f;     // reference units the top bar covers (the board may scroll under it)
-        public const float BottomHeight = 170f;  // reference units the bottom buttons cover (OUT-40: 160 px buttons)
+        public const float TopHeight = 190f;     // reference units the top bar covers (the board may scroll under it)
+        public const float BottomHeight = 250f;  // reference units the bottom buttons cover (OUT-40: 160 px buttons, OUT-53: off the edges)
         const float RefWidth = 1080f, RefHeight = 1920f;
 
         // Reduced Motion: cards fade instead of sliding and popping; no idle wobble, spins, or sparkle bursts.
@@ -204,11 +205,11 @@ namespace OutOfOffice
             hudRoot = Rect("HUD", safe, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
             // One slim top bar: pause, the level and its shot count in a single capsule, stars. The board gets the rest.
-            var pause = IconButton(hudRoot, "Pause", new Vector2(0f, 1f), new Vector2(86f, -80f), 112f, Color.white, "pause", Ink);
+            var pause = IconButton(hudRoot, "Pause", new Vector2(0f, 1f), new Vector2(104f, -96f), 112f, Color.white, "pause", Ink);
             pause.Clicked = () => Pause?.Invoke();
             hudBlockers.Add(pause.transform as RectTransform);
 
-            var titleBlock = Capsule(hudRoot, "Level", new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(340f, 116f), Shade);
+            var titleBlock = Capsule(hudRoot, "Level", new Vector2(0.5f, 1f), new Vector2(0f, -96f), new Vector2(340f, 116f), Shade);
             chapterPill = Capsule(titleBlock, "Chapter", new Vector2(0.5f, 1f), new Vector2(0f, 14f), new Vector2(200f, 40f), theme.Accent);
             chapterText = Txt(chapterPill, Themes.All[0].Name, 24f, Color.white, Ink, 0.3f, false);
             chapterText.characterSpacing = 4f;
@@ -220,13 +221,14 @@ namespace OutOfOffice
             shotsPill = Rect("Shots", titleBlock, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(320f, 40f));
             shotsText = Txt(shotsPill, "SHOTS 0 · PAR 1", 28f, Color.white, Ink, 0.2f, false);
 
-            starPill = Capsule(hudRoot, "Stars", new Vector2(1f, 1f), new Vector2(-118f, -80f), new Vector2(190f, 88f), Shade);
+            starPill = Capsule(hudRoot, "Stars", new Vector2(1f, 1f), new Vector2(-134f, -96f), new Vector2(190f, 88f), Shade);
             Img(Rect("Icon", starPill, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(46f, 3f), new Vector2(92f, 92f)), UiArt.Cup, Color.white);
             starText = Txt(Rect("Count", starPill, Vector2.zero, Vector2.one, new Vector2(42f, 0f), new Vector2(-84f, 0f)), "0/1", 50f, Color.white, Ink, 0.35f, true);
             hudBlockers.Add(starPill);
 
-            // Undo and restart: big, thumb-sized buttons in the bottom corners (OUT-40), clear of the board.
-            var undo = IconButton(hudRoot, "Undo", new Vector2(0f, 0f), new Vector2(100f, 96f), 160f, Palette.UiBlue, "undo", Color.white);
+            // Undo and restart: big, thumb-sized buttons in the bottom corners (OUT-40), clear of the board and well in from the
+            // screen edges, so rounded corners and the Android gesture bar never crowd them (OUT-53).
+            var undo = IconButton(hudRoot, "Undo", new Vector2(0f, 0f), new Vector2(148f, 168f), 160f, Palette.UiBlue, "undo", Color.white);
             undo.Clicked = () => Undo?.Invoke();
             undoButton = undo.transform as RectTransform;
             undoBadge = Badge(undoButton, "3");  // free undos left (OUT-41)
@@ -238,12 +240,12 @@ namespace OutOfOffice
                 undoBadgeGem.SetActive(false);
             }
             hudBlockers.Add(undoButton);
-            var restart = IconButton(hudRoot, "Restart", new Vector2(1f, 0f), new Vector2(-100f, 96f), 160f, Palette.UiRed, "restart", Color.white);
+            var restart = IconButton(hudRoot, "Restart", new Vector2(1f, 0f), new Vector2(-148f, 168f), 160f, Palette.UiRed, "restart", Color.white);
             restart.Clicked = () => Restart?.Invoke();
             BuildRestartChip(restart.transform as RectTransform);  // what starting over takes, once it takes a play (OUT-48)
             hudBlockers.Add(restart.transform as RectTransform);
 
-            hintPill = Capsule(hudRoot, "Hint", new Vector2(0.5f, 0f), new Vector2(0f, 92f), new Vector2(560f, 80f), Shade);
+            hintPill = Capsule(hudRoot, "Hint", new Vector2(0.5f, 0f), new Vector2(0f, 160f), new Vector2(560f, 80f), Shade);
             hintText = Txt(hintPill, "DRAG BACK, AIM, RELEASE", 32f, Color.white, Ink, 0.25f, false);
             hintPill.gameObject.AddComponent<CanvasGroup>();
             hintPill.gameObject.SetActive(false);
@@ -266,7 +268,7 @@ namespace OutOfOffice
         {
             SetTheme(levelTheme);
             chapterText.text = levelTheme.Name;
-            levelText.text = number > 0 ? "LEVEL " + number : "LAB";
+            levelText.text = number > 0 ? "LEVEL " + number : number < 0 ? "TUTORIAL" : "LAB";  // -1: the orientation room (OUT-52)
             chapterPill.sizeDelta = new Vector2(chapterText.GetPreferredValues(levelTheme.Name).x + 44f, 40f);
             Pop(levelText.rectTransform, 0f);
             Banner(name.ToUpperInvariant(), Color.white);
@@ -1320,7 +1322,7 @@ namespace OutOfOffice
                 press.Clicked = () =>
                 {
                     // Five taps on the logo reveal the developer tools in the pause menu.
-                    if (++logoTaps >= 5) SetDevVisible(true);
+                    if (++logoTaps >= 5 && (Application.isEditor || Debug.isDebugBuild)) SetDevVisible(true);  // never in a store build (OUT-54)
                 };
             }
         }
@@ -2082,9 +2084,31 @@ namespace OutOfOffice
 
         // finalLevel: the last room there is, so NEXT becomes HOME instead of replaying it.
         // newStamps: coffees that stamped the punch card for the first time on this run.
-        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups, bool finalLevel = false, int newStamps = 0)
+        RectTransform newBestStamp;
+
+        // A red "NEW BEST!" stamp that thumps onto the result card when a room beats its old record (OUT-55).
+        public void StampNewBest()
+        {
+            if (newBestStamp == null)
+            {
+                newBestStamp = Capsule(completeCard.Root, "New Best", new Vector2(0.5f, 0.5f), new Vector2(300f, 300f), new Vector2(250f, 74f), Palette.UiRed);
+                Txt(newBestStamp, "NEW BEST!", 38f, Color.white, Themes.Hex(0x7A1424), 0.3f, true);
+            }
+            newBestStamp.gameObject.SetActive(true);
+            newBestStamp.SetAsLastSibling();
+            newBestStamp.localRotation = Quaternion.Euler(0f, 0f, -12f);
+            var r = newBestStamp;
+            Tweens.Kill(r);
+            if (ReducedMotion) { r.localScale = Vector3.one; return; }
+            r.localScale = Vector3.zero;
+            Tweens.Run(0.35f, k => r.localScale = Vector3.one * Mathf.LerpUnclamped(2.2f, 1f, k), Tweens.OutBack, 0.75f, () => Haptics.Play(Haptics.Style.Rigid, 0.6f), r);
+        }
+
+        public void ShowComplete(int levelNumber, int stars, int shots, int par, bool allPickups, bool finalLevel = false, int newStamps = 0,
+            string label = null, string note = null)
         {
             HideAll();
+            if (newBestStamp != null) newBestStamp.gameObject.SetActive(false);
             completeCard.Title.text = stars >= 3 ? "PERFECT!" : stars == 2 ? "GREAT!" : "NICE!";
             completeLevel.text = levelNumber > 0 ? $"LEVEL {levelNumber} CLEAR" : "LAB CLEAR";
             completeShots.text = shots.ToString();
@@ -2094,6 +2118,8 @@ namespace OutOfOffice
             completeExtra.text = finalLevel ? "OFFICE CLEARED! MORE ROOMS SOON"
                 : stamped.Length > 0 ? (allPickups ? "FULLY CAFFEINATED! " : "") + stamped
                 : allPickups ? "FULLY CAFFEINATED!" : shots <= par ? "UNDER PAR!" : "";
+            if (label != null) completeLevel.text = label;  // the orientation room (OUT-52)
+            if (note != null) completeExtra.text = note;
             completeNextLabel.text = finalLevel ? "HOME" : "NEXT";
             completeNextIcon.sprite = UiArt.Icon(finalLevel ? "home" : "play");
             ShowCard(completeCard);

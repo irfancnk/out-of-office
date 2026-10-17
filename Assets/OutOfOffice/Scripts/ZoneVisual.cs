@@ -29,9 +29,13 @@ namespace OutOfOffice
 
         readonly Dictionary<Transform, Vector3> baseScales = new Dictionary<Transform, Vector3>();
 
+        float runClock;  // stops while belts, vents and spin platforms are off for a Coffee Break (OUT-51)
+
         void Update()
         {
-            float t = Time.time;
+            bool resting = Zone != null && Zone.Level != null && Zone.Level.OnBreak;
+            if (!resting) runClock += Time.deltaTime;
+            float t = Kind == ZoneKind.Conveyor || Kind == ZoneKind.Wind || Kind == ZoneKind.Vortex ? runClock : Time.time;
             pulse = Mathf.MoveTowards(pulse, 0f, Time.deltaTime * 3f);
             switch (Kind)
             {

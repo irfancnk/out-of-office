@@ -34,20 +34,26 @@ namespace OutOfOffice
 
         void BuildSettingsCard()
         {
-            settingsCard = MakeCard("Settings", "SETTINGS", new Vector2(880f, 1160f), true);
+            settingsCard = MakeCard("Settings", "SETTINGS", new Vector2(880f, 1320f), true);
             var c = settingsCard.Root;
-            const float top = 380f, step = 128f;
+            const float top = 450f, step = 128f;
             SliderRow(c, "sfx", "SOUND", "speaker", new Vector2(0f, top), (v, done) => SetSfxVolume?.Invoke(v, done));
             SliderRow(c, "music", "MUSIC", "music", new Vector2(0f, top - step), (v, done) => SetMusicVolume?.Invoke(v, done));
             ChoiceRow(c, "haptics", "HAPTICS", "vibrate", new Vector2(0f, top - 2f * step), new[] { "OFF", "LIGHT", "FULL" }, i => SetHaptics?.Invoke(i));
             ChoiceRow(c, "graphics", "GRAPHICS", "display", new Vector2(0f, top - 3f * step), new[] { "AUTO", "LOW", "MID", "HIGH" }, i => SetGraphics?.Invoke(i - 1));
             graphicsNote = Body(Rect("Graphics Note", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, top - 3f * step - 82f), new Vector2(700f, 44f)),
                 "", 24f, Themes.Hex(0x8A6A9E), Ink);
+            FitWidth(graphicsNote, 16f);  // the longest note (cooling down) shrinks to fit the card
             SwitchRow(c, "saver", "BATTERY SAVER", "battery", new Vector2(0f, top - 4f * step - 40f), () => SetBatterySaver?.Invoke(!SwitchOn("saver")));
             SwitchRow(c, "motion", "REDUCE MOTION", "motion", new Vector2(0f, top - 5f * step - 40f), () => SetReducedMotion?.Invoke(!SwitchOn("motion")));
             var note = Body(Rect("Motion Note", c, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, top - 5f * step - 150f), new Vector2(700f, 100f)),
                 "Battery saver runs menus at 30 fps. Reduce motion calms shake and extra animation. Gameplay never changes.", 24f, Ink, Ink);
             note.textWrappingMode = TextWrappingModes.Normal;
+            // The orientation room again (OUT-52), and the legal pages a store release needs (OUT-54).
+            var links = top - 5f * step - 290f;
+            TextButton(c, "TUTORIAL", Palette.UiBlue, new Vector2(-262f, links), new Vector2(240f, 100f), 34f, null).Clicked = () => ReplayTutorial?.Invoke();
+            TextButton(c, "PRIVACY", Themes.Hex(0x8C7BA6), new Vector2(0f, links), new Vector2(240f, 100f), 34f, null).Clicked = () => OpenLink?.Invoke(Links.Privacy);
+            TextButton(c, "TERMS", Themes.Hex(0x8C7BA6), new Vector2(262f, links), new Vector2(240f, 100f), 34f, null).Clicked = () => OpenLink?.Invoke(Links.Terms);
             CloseButton(settingsCard, () => Back());
         }
 
@@ -55,8 +61,8 @@ namespace OutOfOffice
         void SliderRow(RectTransform parent, string key, string label, string icon, Vector2 pos, System.Action<float, bool> changed)
         {
             var row = SettingRow(parent, label, icon, pos, out var text);
-            text.rectTransform.offsetMax = new Vector2(-394f, 0f);
-            var track = Rect("Track", row, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-254f, -2f), new Vector2(260f, 30f));
+            text.rectTransform.offsetMax = new Vector2(-414f, 0f);
+            var track = Rect("Track", row, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-282f, -2f), new Vector2(250f, 30f));
             Sliced(Img(track, UiArt.Pill, Themes.Hex(0xC9BFD6)), 30f, 0.5f);
             var fill = Rect("Fill", track, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             Sliced(Img(fill, UiArt.Pill, Palette.UiGreen), 30f, 0.5f);
@@ -66,7 +72,7 @@ namespace OutOfOffice
             percent.alignment = TextAlignmentOptions.MidlineRight;
             var view = new SliderView { Key = key, Fill = fill, Knob = knob, Percent = percent };
             sliders.Add(view);
-            var hit = Rect("Hit", row, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-254f, 0f), new Vector2(310f, 112f));
+            var hit = Rect("Hit", row, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-282f, 0f), new Vector2(300f, 112f));
             Img(hit, Shapes.Square, new Color(1f, 1f, 1f, 0.001f)).raycastTarget = true;
             var drag = hit.gameObject.AddComponent<SliderDrag>();
             drag.Track = track;

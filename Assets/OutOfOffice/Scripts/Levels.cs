@@ -393,7 +393,7 @@ namespace OutOfOffice
 
             new LevelDef("easy", "Avoid Eye Contact", 0f, 5.3f).WithHint("GO AROUND THE DESK").WithPar(2)
                 .Wall(0f, 1.2f, 5.4f, 2.6f).Rounded(0.6f)
-                .SpikeBall(3.6f, 1.2f, 0.4f).Moving(0f, 1.7f, 3f)
+                .SpikeBall(3.9f, 3.5f, 0.36f)  // OUT-52: still, and up in the corner, out of a new player's way
                 .Wall(-2.9f, -3.8f, 2.2f, 0.6f).Post(BlockKind.Bouncer, 3f, -3.4f, 0.45f)  // OUT-25: a side desk and a chair by the start
                 .Star(-3.5f, -1.4f).Star(-3.5f, 2.8f).Star(-1.4f, 4.4f).Reception(false),
 
@@ -409,7 +409,7 @@ namespace OutOfOffice
                 .StartAt(0f, -5.4f)
                 .Post(BlockKind.Wall, 0f, 0f, 3.3f)
                 .Post(BlockKind.Bouncer, -5.3f, 0.4f, 0.5f)
-                .SpikeBall(5.25f, 0f, 0.4f).Moving(0f, 1.3f, 3f)
+                .SpikeBall(5.25f, 0f, 0.4f).Moving(0f, 1f, 5f)  // OUT-52: slower
                 .Star(-4.6f, -3.9f).Star(-4.4f, 4.2f).Star(4.6f, 3.9f),
 
             new LevelDef("graze", "Cutting Corners, Legally", 2.7f, 6.2f).WithHint("GRAZE THE ROUND CORNERS").WithPar(2)
@@ -423,7 +423,7 @@ namespace OutOfOffice
                 .StartAt(2.6f, -6f)
                 .Arc(BlockKind.Wall, 0f, 3.4f, 4.1f, -2f, 182f)
                 .Rail(BlockKind.Wall, 0f, 0f, -8.1f, 0f, 0.6f)
-                .SpikeBall(2.4f, -1.8f, 0.4f).Moving(1.3f, 0f, 2.6f)
+                .SpikeBall(2.4f, -1.8f, 0.4f).Moving(1f, 0f, 4.2f)  // OUT-52: slower
                 .Star(3f, 1.4f).Star(0f, 6.85f).Star(-2.5f, 5.9f),
 
             new LevelDef("kicker", "The Boss Will See You Now", -2.8f, 6.2f).WithHint("RED CHAIRS KICK YOU AWAY").WithPar(2)
@@ -443,7 +443,7 @@ namespace OutOfOffice
                 .Post(BlockKind.Wall, 0f, 7.4f, 2.5f)
                 .Post(BlockKind.Bouncer, -4.3f, -7.4f, 0.5f)
                 .Post(BlockKind.Bouncer, 4.3f, 7.4f, 0.5f)
-                .SpikeBall(0f, 0f, 0.36f).Moving(0.95f, 0f, 2.6f)
+                .SpikeBall(0f, 0f, 0.36f).Moving(0.95f, 0f, 3.8f)  // OUT-52: slower
                 .Star(4.2f, -4.6f).Star(0f, 2.6f).Star(-4.2f, 9.8f),
 
             new LevelDef("boing", "Launched Into Management", 0f, 5f).WithHint("BOUNCE MATS LAUNCH YOU OVER").WithPar(2)
@@ -451,14 +451,14 @@ namespace OutOfOffice
                 .Jump(0f, -2f, 0.8f)
                 .Post(BlockKind.Bouncer, -3.4f, 6.6f, 0.5f)
                 .Post(BlockKind.Bouncer, 3.4f, 6.6f, 0.5f)
-                .SpikeBall(-3f, -2f, 0.4f).Moving(0.8f, 0f, 2.4f)
+                .SpikeBall(-3f, -2f, 0.4f).Moving(0.8f, 0f, 3.6f)  // OUT-52: slower
                 .Star(0f, -3.6f).Star(0f, 2.6f).Star(2.6f, 4.2f),
 
             new LevelDef("rows", "Open Plan, Closed Hearts", 0f, 6.4f).WithHint("SLALOM THROUGH THE DESKS").WithPar(3)
                 .Wall(-1.2f, -2.6f, 6.6f, 0.6f)
                 .Wall(1.2f, 0.6f, 6.6f, 0.6f)
                 .Wall(-1.2f, 3.8f, 6.6f, 0.6f)
-                .SpikeBall(0f, -1f, 0.36f).Moving(2.4f, 0f, 3f)
+                .SpikeBall(0f, -1f, 0.36f).Moving(2.4f, 0f, 4.4f)  // OUT-52: slower
                 .Star(3.4f, -2.6f).Star(-3.4f, 0.6f).Star(3.4f, 3.8f),
 
             new LevelDef("cubicles", "Cubicle Farm Animal", 2.8f, 6.2f).WithHint("BANK OFF THE PARTITIONS").WithPar(2)
@@ -966,6 +966,15 @@ namespace OutOfOffice
                 .Rail(BlockKind.Wall, 0f, 3.7f, 1.2f, 3.7f, 4.4f)              // narrow channel, right side
                 .Rail(BlockKind.Wall, 0f, -4.6f, 7.6f, -2.6f, 7.6f)            // smooth join: two collinear rods meeting
                 .Rail(BlockKind.Wall, 0f, -2.6f, 7.6f, -0.6f, 7.6f);
+
+        // The orientation room (OUT-52): a new player's first room, before the hundred and not one of them. Three shots
+        // teach the game: straight up to a coffee, through the gap at the end of the desk for the next, then into bed.
+        public static readonly LevelDef Tutorial =
+            new LevelDef("orientation", "Orientation Day", -2.2f, 5.2f).WithHint("DRAG BACK, AIM, RELEASE").WithPar(3)
+                .StartAt(0f, -5.6f)
+                .Wall(-1.1f, 1.4f, 6.8f, 0.6f)                  // a long desk, open at the right-hand end
+                .Post(BlockKind.Bouncer, 3.3f, 5.4f, 0.45f)     // a chair in the far corner to bounce off
+                .Star(0f, -2.4f).Star(3.2f, 1.4f).Star(0.6f, 4.4f);
 
         // The game's rooms: the first 64, then the three new floors (OUT-46), rooms 65 to 100.
         public static readonly LevelDef[] All = WithNewFloors(Classic);
